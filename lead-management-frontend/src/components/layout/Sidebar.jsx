@@ -9,50 +9,56 @@ import {
   X,
   Layers,
   Target,
-  FileText
+  FileText,
+  IndianRupee,
+  Upload
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail }) => {
   const getNavItems = () => {
-    const commonItems = [
-      { id: 'overview', label: 'System Overview', icon: LayoutDashboard },
-    ];
-
     if (role === 'ADMIN') {
       return [
-        ...commonItems,
+        { id: 'overview', label: 'System Architecture', icon: LayoutDashboard },
         { id: 'users', label: 'Users & Roles', icon: Users },
         { id: 'pipeline', label: 'Pipeline Explorer', icon: Layers },
-        { id: 'revenue', label: 'Revenue Flow', icon: TrendingUp },
+        { id: 'revenue', label: 'Revenue & Payments', icon: TrendingUp },
       ];
     }
 
     if (role === 'MANAGER') {
       return [
-        ...commonItems,
+        { id: 'overview', label: 'Branch Analytics', icon: LayoutDashboard },
         { id: 'hierarchy', label: 'Team Hierarchy', icon: Layers },
         { id: 'pipeline', label: 'Lead Lifecycle', icon: Target },
+        { id: 'users', label: 'Staff Management', icon: Users },
+        { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
+        { id: 'payments', label: 'Payment Ledger', icon: IndianRupee },
         { id: 'reports', label: 'Strategic Reports', icon: FileText },
       ];
     }
 
-    if (role === 'TEAM_LEADER') {
+    if (role === 'TEAM_LEADER' || role === 'ASSOCIATE_TEAM_LEAD') {
       return [
-        ...commonItems,
-        { id: 'leads', label: 'Team Leads', icon: Target },
-        { id: 'performance', label: 'Performance Tracker', icon: PieChart },
+        { id: 'performance', label: 'Team Analytics', icon: LayoutDashboard },
+        { id: 'leads', label: 'Team Lead Pool', icon: Target },
+        { id: 'team', label: 'Staff Performance', icon: Users },
+        { id: 'tasks', label: 'Follow-up Tasks', icon: FileText },
+        { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
+        { id: 'payments', label: 'Team Conversions', icon: IndianRupee },
       ];
     }
 
     if (role === 'ASSOCIATE') {
       return [
-        ...commonItems,
-        { id: 'leads', label: 'My Leads', icon: Target },
+        { id: 'performance', label: 'Performance Hub', icon: LayoutDashboard },
+        { id: 'leads', label: 'My Lead Pool', icon: Target },
+        { id: 'add-leads', label: 'Add New Leads', icon: Upload },
         { id: 'tasks', label: 'Today\'s Tasks', icon: FileText },
+        { id: 'payments', label: 'My Conversions', icon: IndianRupee },
       ];
     }
 
-    return commonItems;
+    return [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }];
   };
 
   const navItems = getNavItems();

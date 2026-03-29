@@ -30,7 +30,7 @@ const AssociateDashboard = () => {
   const [stats, setStats] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('leads');
+  const [activeTab, setActiveTab] = useState('performance');
   const [theme] = useState(localStorage.getItem('theme') || 'dark');
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [trendData, setTrendData] = useState([]);

@@ -306,6 +306,18 @@ const ManagerDashboard = () => {
                     </div>
                 )}
 
+                {activeTab === 'payments' && (
+                    <div className="d-flex flex-column gap-4 animate-fade-in h-100">
+                        <div className="d-flex align-items-center gap-2 mb-1">
+                            <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
+                                <IndianRupee size={18} />
+                            </div>
+                            <h5 className="fw-black mb-0 text-white">Financial Transmission Ledger</h5>
+                        </div>
+                        <PaymentHistory role="MANAGER" />
+                    </div>
+                )}
+
                 {activeTab === 'reports' && (
                     <div className="animate-fade-in d-flex flex-column gap-4">
                         <div className="card overflow-hidden mb-4">
@@ -344,7 +356,6 @@ const ManagerDashboard = () => {
                                 </table>
                             </div>
                         </div>
-                        <PaymentHistory role="MANAGER" />
                     </div>
                 )}
             </div>
