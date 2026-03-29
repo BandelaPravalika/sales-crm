@@ -1,0 +1,48 @@
+package com.lms.www.leadmanagement.repository;
+
+import com.lms.www.leadmanagement.entity.Payment;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
+
+import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Repository
+public interface PaymentRepository extends JpaRepository<Payment, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Payment p WHERE p.paymentGatewayId = :paymentGatewayId")
+    Optional<Payment> findByPaymentGatewayIdWithLock(@Param("paymentGatewayId") String paymentGatewayId);
+
+    Optional<Payment> findByPaymentGatewayId(String paymentGatewayId);
+
+    List<Payment> findByLeadIdIn(List<Long> leadIds);
+
+    List<Payment> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    
+    List<Payment> findAllByStatus(Payment.Status status);
+
+    @Query("SELECT p FROM Payment p WHERE (:status IS NULL OR p.status = :status) " +
+            "AND (:leadIds IS NULL OR p.leadId IN :leadIds) " +
+            "AND (:start IS NULL OR p.createdAt >= :start) " +
+            "AND (:end IS NULL OR p.createdAt <= :end)")
+    List<Payment> findFiltered(
+            @Param("leadIds") java.util.List<Long> leadIds,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end,
+            @Param("status") Payment.Status status);
+
+
+    @Query("SELECT p FROM Payment p WHERE (p.status = 'PAID' OR p.status = 'APPROVED' OR p.status = 'PENDING') " +
+            "AND p.leadId IN (SELECT l.id FROM Lead l WHERE l.assignedTo.id IN :userIds) " +
+            "AND (:start IS NULL OR p.createdAt >= :start) " +
+            "AND (:end IS NULL OR p.createdAt <= :end)")
+    List<Payment> findFilteredByUserIds(
+            @Param("userIds") java.util.Collection<Long> userIds,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+}

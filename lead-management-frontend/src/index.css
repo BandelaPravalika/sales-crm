@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg: #0f172a; /* Slate 900 */
+  --card-bg: rgba(30, 41, 59, 0.7); /* Translucent Slate 800 */
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --success: #10b981;
+  --error: #f43f5e;
+  --warning: #f59e0b;
+  --sidebar-width: 280px;
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-bs-theme="dark"] {
+  --bg: #020617; /* Deep Midnight for dark mode */
+  --card-bg: rgba(15, 23, 42, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+.glass-sidebar {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--card-border);
+  height: 100vh;
+  z-index: 1050;
+}
+
+.sidebar-permanent {
+  width: var(--sidebar-width);
+  position: fixed;
+  top: 0;
+  left: 0;
+  transition: transform 0.3s var(--transition-smooth);
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-permanent {
+    transform: translateX(-100%);
+  }
+  .sidebar-permanent.show {
+    transform: translateX(0);
+  }
+}
+
+.nav-link-premium {
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-link-premium:hover, .nav-link-premium.active {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link-premium.active {
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.premium-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.content-shifted {
+  transition: margin-left 0.3s var(--transition-smooth);
+}
+
+@media (min-width: 992px) {
+  .content-shifted {
+    margin-left: var(--sidebar-width);
+  }
+}
+
+.dashboard-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.flex-grow-1 {
+  flex-grow: 1;
+}
+
+.min-vh-100 {
+  min-height: 100vh;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.bg-dark { background-color: var(--bg) !important; }
+.text-white { color: var(--text) !important; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}

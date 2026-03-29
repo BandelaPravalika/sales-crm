@@ -1,0 +1,61 @@
+package com.lms.www.leadmanagement.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "payments")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Payment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long leadId;
+
+    private BigDecimal amount; // Installment amount
+    private BigDecimal totalAmount;
+    private LocalDateTime date;
+    private String paymentMethod; // UPI, CASH, CARD, BANK_TRANSFER
+    private String paymentType; // FULL, EMI_INSTALLMENT
+    private LocalDateTime dueDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(30)")
+    private Status status;
+
+    private String paymentGatewayId;
+    private String note;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        if (status == null) {
+            status = Status.PENDING;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    public enum Status {
+        PENDING, APPROVED, OVERDUE, PAID, FAILED
+    }
+}
