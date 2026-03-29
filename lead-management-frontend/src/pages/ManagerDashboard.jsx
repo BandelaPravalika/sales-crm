@@ -38,7 +38,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 const ManagerDashboard = () => {
     const { logout } = useAuth();
     const [theme] = useState(localStorage.getItem('theme') || 'dark');
-    const [activeTab, setActiveTab] = useState(localStorage.getItem('mgr_activeTab') || 'stats');
+    const [activeTab, setActiveTab] = useState(localStorage.getItem('mgr_activeTab') || 'overview');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterUnassigned, setFilterUnassigned] = useState(false);
     const [bulkAssignTlId, setBulkAssignTlId] = useState('');
@@ -169,7 +169,7 @@ const ManagerDashboard = () => {
         >
             <div className="animate-fade-in d-flex flex-column gap-4">
                 {/* Strategic Overview Tab */}
-                {activeTab === 'stats' && (
+                {activeTab === 'overview' && (
                   <div className="d-flex flex-column gap-4">
                     <div className="row g-4 mb-2">
                        <div className="col-12">
@@ -183,9 +183,9 @@ const ManagerDashboard = () => {
 
                     <div className="row g-4 animate-fade-in">
                         <div className="col-12 col-xl-8">
-                            <div className="premium-card overflow-hidden h-100">
+                            <div className="card overflow-hidden h-100">
                                <div className="card-header bg-transparent border-0 p-4">
-                                   <h5 className="fw-semibold mb-0 px-2 text-primary">Team Conversion History</h5>
+                                   <h5 className="fw-black mb-0 px-2 text-primary" style={{ fontSize: '16px' }}>Team Conversion History</h5>
                                </div>
                                <div className="card-body p-0">
                                    <RevenueTrendChart data={trend} theme={theme} />
@@ -252,10 +252,10 @@ const ManagerDashboard = () => {
                 )}
 
                 {/* Leads Pipeline Tab */}
-                {activeTab === 'leads' && (
-                    <div className="premium-card overflow-hidden animate-fade-in">
+                {activeTab === 'pipeline' && (
+                    <div className="card overflow-hidden animate-fade-in">
                         <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                            <h5 className="fw-semibold mb-0 text-white small">My Pipeline Leads</h5>
+                            <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>My Pipeline Leads</h5>
                         </div>
                         <LeadsTable 
                             leads={filteredLeadsList}
@@ -306,13 +306,13 @@ const ManagerDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'payments' && (
+                {activeTab === 'reports' && (
                     <div className="animate-fade-in d-flex flex-column gap-4">
-                        <div className="premium-card overflow-hidden mb-4">
+                        <div className="card overflow-hidden mb-4">
                             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                                <h5 className="fw-semibold mb-0 text-white small">Associate Performance Snapshot</h5>
+                                <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Associate Performance Snapshot</h5>
                                 {filters.userId && (
-                                    <button className="btn btn-primary btn-sm rounded-pill px-4" onClick={() => setFilters({...filters, userId: null})}>
+                                    <button className="btn-premium btn-sm px-4" onClick={() => setFilters({...filters, userId: null})}>
                                         Reset Context
                                     </button>
                                 )}

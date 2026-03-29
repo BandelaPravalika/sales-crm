@@ -48,7 +48,7 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail }) =
       return [
         ...commonItems,
         { id: 'leads', label: 'My Leads', icon: Target },
-        { id: 'tasks', label: 'Today\'s Task', icon: FileText },
+        { id: 'tasks', label: 'Today\'s Tasks', icon: FileText },
       ];
     }
 
@@ -59,28 +59,31 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail }) =
 
   return (
     <>
-      {/* Mobile Backdrop Overlay - Responsive */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 z-40 d-lg-none"
+          className="fixed-top w-100 h-100 bg-black bg-opacity-50 z-40 d-lg-none"
+          style={{ backdropFilter: 'blur(4px)' }}
           onClick={onClose}
         />
       )}
 
-      <aside 
-        className={`glass-sidebar ${isOpen ? 'show' : ''}`}
-      >
+      <aside className={`glass-sidebar ${isOpen ? 'show' : ''}`}>
         <div className="d-flex flex-column h-100">
-          {/* Header Mobile Only */}
+          {/* Mobile Header */}
           <div className="d-lg-none p-4 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-            <span className="fw-bold text-white small tracking-wider">NAVIGATION</span>
-            <button className="btn btn-link text-muted p-0 border-0" onClick={onClose}>
+            <span className="fw-bold text-white small tracking-wider opacity-75">MENU</span>
+            <button className="btn btn-link text-white p-0 border-0" onClick={onClose}>
               <X size={20} />
             </button>
           </div>
 
-          <nav className="flex-grow-1 overflow-auto custom-scroll pt-lg-5 pt-2 mt-lg-2">
-            <div className="d-flex flex-column">
+          {/* Navigation */}
+          <nav className="flex-grow-1 overflow-auto custom-scroll py-4">
+             <div className="px-3 mb-2 d-none d-lg-block">
+                <span className="text-muted fw-bold small text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Dashboard Matrix</span>
+             </div>
+            <div className="d-flex flex-column gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -95,24 +98,22 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail }) =
                     className={`nav-link-premium ${isActive ? 'active' : ''}`}
                   >
                     <Icon size={18} />
-                    <span>
-                      {item.label}
-                    </span>
+                    <span>{item.label}</span>
                   </button>
                 );
               })}
             </div>
           </nav>
 
-          {/* Footer Profile Tooltip Style */}
-          <div className="p-4 border-top border-white border-opacity-5">
-            <div className="d-flex align-items-center gap-3 p-2 rounded-3 transition-all hover-bg-dark border border-transparent hover-border-white hover-border-opacity-10">
-              <div className="p-2 bg-primary bg-opacity-10 rounded-circle border border-primary border-opacity-20 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px' }}>
-                <TrendingUp size={16} className="text-primary" />
+          {/* User Profile Section */}
+          <div className="p-4 mt-auto border-top border-white border-opacity-5">
+            <div className="p-3 premium-card d-flex align-items-center gap-3">
+              <div className="flex-shrink-0 p-2 bg-primary bg-opacity-10 rounded-circle border border-primary border-opacity-20 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                <Users size={18} className="text-primary" />
               </div>
-              <div className="overflow-hidden flex-grow-1">
-                <div className="fw-bold text-white text-truncate" style={{ fontSize: '13px' }}>{userEmail}</div>
-                <div className="text-muted fw-medium" style={{ fontSize: '11px', letterSpacing: '0.02em', textTransform: 'uppercase' }}>{role?.replace(/_/g, ' ')}</div>
+              <div className="overflow-hidden">
+                <div className="fw-bold text-white text-truncate small">{userEmail}</div>
+                <div className="text-muted fw-medium text-uppercase tracking-tighter" style={{ fontSize: '9px' }}>{role?.replace(/_/g, ' ')}</div>
               </div>
             </div>
           </div>

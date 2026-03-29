@@ -6,7 +6,6 @@ import Sidebar from './Sidebar';
 const DashboardLayout = ({ children, activeTab, onTabChange, title, subtitle, role }) => {
   const { user, logout } = useAuth();
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -14,16 +13,11 @@ const DashboardLayout = ({ children, activeTab, onTabChange, title, subtitle, ro
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const handleToggleTheme = (newTheme) => {
-    setTheme(newTheme);
-  };
-
-  const handleToggleSidebar = () => {
-    setIsSidebarOpen(prev => !prev);
-  };
+  const handleToggleTheme = (newTheme) => setTheme(newTheme);
+  const handleToggleSidebar = () => setIsSidebarOpen(prev => !prev);
 
   return (
-    <div className={`dashboard-wrapper min-vh-100 flex-column d-flex`} style={{ background: '#0f172a', color: '#fff' }}>
+    <div className="dashboard-wrapper min-vh-100 flex-column d-flex overflow-hidden">
       <Navbar 
         theme={theme}
         onToggleTheme={handleToggleTheme}
@@ -34,7 +28,7 @@ const DashboardLayout = ({ children, activeTab, onTabChange, title, subtitle, ro
         onToggleSidebar={handleToggleSidebar}
       />
 
-      <div className="d-flex flex-grow-1 h-100 overflow-hidden">
+      <div className="d-flex flex-grow-1 position-relative overflow-hidden">
         <Sidebar 
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -44,15 +38,14 @@ const DashboardLayout = ({ children, activeTab, onTabChange, title, subtitle, ro
           userEmail={user?.email}
         />
 
-        {/* Main Content Area */}
         <main 
-          className={`main-content-layout container-fluid p-0 flex-grow-1 overflow-auto custom-scroll content-shifted`} 
+          className="main-content-layout flex-grow-1 overflow-auto custom-scroll content-shifted position-relative"
           style={{ 
-            background: '#0f172a',
-            transition: 'margin-left 0.3s ease'
+            marginTop: 'var(--navbar-height)',
+            minHeight: 'calc(100vh - var(--navbar-height))'
           }}
         >
-           <div className="animate-fade-in d-flex flex-column gap-3 p-4 p-md-5 pt-3" style={{ marginTop: '60px' }}>
+           <div className="container-fluid py-4 px-3 px-md-4 px-xl-5 animate-fade-in h-100">
               {children}
            </div>
         </main>

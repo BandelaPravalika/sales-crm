@@ -21,7 +21,9 @@ import {
   Phone,
   Edit,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  TrendingUp,
+  Layers
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -215,38 +217,43 @@ const AdminDashboard = () => {
 
         {activeTab === 'users' && (
           <div className="row g-4 animate-fade-in">
-            <div className="col-12 col-lg-4">
-               <div className="card shadow-sm border-0 rounded-4 bg-secondary bg-opacity-5 h-100">
+            <div className="col-12 col-xl-4">
+               <div className="card h-100 overflow-hidden">
                   <div className="card-body p-4">
-                    <h5 className="fw-semibold mb-1 text-white">Provision Access</h5>
-                    <p className="text-muted small mb-4">Add new staff to the workspace</p>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                        <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
+                            <UserPlus size={18} />
+                        </div>
+                        <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Provision Access</h5>
+                    </div>
+                    <p className="text-muted fw-bold opacity-50 small mb-4 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Staff Onboarding</p>
                     
-                    <form onSubmit={(e) => {
+                    <form className="d-flex flex-column gap-3" onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.target);
                       const data = Object.fromEntries(formData.entries());
                       handleCreateUser(data);
                       e.target.reset();
                     }}>
-                       <div className="mb-3">
-                           <label className="form-label small text-muted mb-1">Full Name</label>
-                           <input name="name" type="text" className="form-control border-0 bg-dark text-white shadow-none" placeholder="John Doe" required />
+                       <div>
+                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Full Name</label>
+                           <input name="name" type="text" className="glass-input w-100" placeholder="John Doe" required />
                        </div>
-                       <div className="mb-3">
-                           <label className="form-label small text-muted mb-1">Email Terminal</label>
-                           <input name="email" type="email" className="form-control border-0 bg-dark text-white shadow-none" placeholder="john@nexus.com" required />
+                       <div>
+                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Email Terminal</label>
+                           <input name="email" type="email" className="glass-input w-100" placeholder="john@nexus.com" required />
                        </div>
-                       <div className="mb-3">
-                           <label className="form-label small text-muted mb-1">Mobile</label>
-                           <input name="mobile" type="text" className="form-control border-0 bg-dark text-white shadow-none" placeholder="+91 0000000000" required />
+                       <div>
+                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Mobile</label>
+                           <input name="mobile" type="text" className="glass-input w-100" placeholder="+91 0000000000" required />
                        </div>
-                       <div className="mb-3">
-                           <label className="form-label small text-muted mb-1">Initial Cipher</label>
-                           <input name="password" type="password" className="form-control border-0 bg-dark text-white shadow-none" required />
+                       <div>
+                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Initial Cipher</label>
+                           <input name="password" type="password" className="glass-input w-100" required />
                        </div>
-                       <div className="mb-4">
-                           <label className="form-label small text-muted mb-1">Designation</label>
-                           <select name="role" className="form-select border-0 bg-dark text-white shadow-none" required>
+                       <div>
+                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Designation</label>
+                           <select name="role" className="glass-input w-100" required>
                               <option value="">Select Role</option>
                               <option value="ADMIN">System Administrator</option>
                               <option value="MANAGER">Branch Manager</option>
@@ -254,53 +261,53 @@ const AdminDashboard = () => {
                               <option value="ASSOCIATE">Associate Staff</option>
                            </select>
                        </div>
-                       <button type="submit" className="btn btn-primary w-100 fw-semibold rounded-pill py-3 hover-scale transition-smooth">Initialize Account</button>
+                       <button type="submit" className="btn-premium w-100 mt-2 py-3 text-uppercase tracking-widest fw-bold" style={{ fontSize: '11px' }}>Initialize Account</button>
                     </form>
                   </div>
                </div>
             </div>
 
-            <div className="col-12 col-lg-8">
-               <div className="card shadow-sm border-0 rounded-4 h-100 overflow-hidden bg-secondary bg-opacity-5">
-                  <div className="card-header bg-transparent p-4 border-0">
-                     <h5 className="fw-semibold mb-0 text-white">Active Operational Staff</h5>
+            <div className="col-12 col-xl-8">
+               <div className="card h-100 overflow-hidden">
+                  <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
+                     <h5 className="fw-black mb-0 text-white">Active Operational Staff</h5>
                   </div>
-                  <div className="table-responsive">
+                  <div className="table-responsive custom-scroll">
                      <table className="table table-hover align-middle mb-0 table-dark border-0">
-                        <thead className="bg-dark bg-opacity-50 border-0">
-                           <tr className="text-muted small fw-semibold">
+                        <thead>
+                           <tr className="text-muted small fw-bold text-uppercase tracking-wider border-bottom border-white border-opacity-5" style={{ fontSize: '10px' }}>
                               <th className="ps-4">User Details</th>
                               <th>Role</th>
                               <th className="pe-4 text-end">Management</th>
                            </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="border-0">
                            {users.map(u => (
-                              <tr key={u.id} className="border-white border-opacity-5">
-                                 <td className="ps-4 py-3">
+                              <tr key={u.id} className="border-bottom border-white border-opacity-5 transition-all">
+                                 <td className="ps-4 py-4">
                                     <div className="d-flex align-items-center gap-3">
-                                       <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary text-center" style={{ width: '40px', height: '40px' }}>
-                                          <Users size={20} />
+                                       <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary text-center d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                                          <Users size={18} />
                                        </div>
                                        <div>
-                                          <p className="mb-0 fw-semibold text-truncate text-white" style={{ maxWidth: '200px' }}>{u.name}</p>
-                                          <small className="text-muted d-block">{u.email}</small>
+                                          <p className="mb-0 fw-bold text-truncate text-white" style={{ maxWidth: '200px' }}>{u.name}</p>
+                                          <small className="text-muted fw-medium small opacity-75">{u.email}</small>
                                        </div>
                                     </div>
                                  </td>
                                  <td>
-                                    <span className={`badge rounded-pill ${
-                                       u.role === 'ADMIN' ? 'bg-danger text-white' : 
-                                       u.role === 'MANAGER' ? 'bg-warning text-dark' : 
-                                       'bg-info text-dark'
-                                    }`} style={{ fontSize: '10px' }}>
+                                    <span className={`badge rounded-sm px-2 py-1 text-uppercase fw-black ${
+                                       u.role === 'ADMIN' ? 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20' : 
+                                       u.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20' : 
+                                       'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20'
+                                    }`} style={{ fontSize: '9px' }}>
                                        {u.role.toLowerCase().replace(/_/g, ' ')}
                                     </span>
                                  </td>
                                  <td className="pe-4 text-end">
                                     <div className="d-flex align-items-center justify-content-end gap-1">
-                                       <button onClick={() => handleEditUser(u)} className="btn btn-sm btn-link text-primary p-2 transition-smooth hover-scale"><Edit size={16} /></button>
-                                       <button onClick={() => handleDeleteUser(u.id)} className="btn btn-sm btn-link text-danger p-2 transition-smooth hover-scale" disabled={u.email === user?.email}><Trash2 size={16} /></button>
+                                       <button onClick={() => handleEditUser(u)} className="btn btn-sm btn-link text-white opacity-40 hover-opacity-100 p-2 transition-all"><Edit size={16} /></button>
+                                       <button onClick={() => handleDeleteUser(u.id)} className="btn btn-sm btn-link text-danger opacity-40 hover-opacity-100 p-2 transition-all" disabled={u.email === user?.email}><Trash2 size={16} /></button>
                                     </div>
                                  </td>
                               </tr>
@@ -313,11 +320,14 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'leads' && (
-          <div className="card shadow-sm border-0 rounded-4 overflow-hidden border border-white border-opacity-5 bg-secondary bg-opacity-5">
-             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center">
-                <h5 className="fw-semibold mb-0 text-white">Macro Pipeline Explorer</h5>
-                <button className="btn btn-primary btn-sm rounded-pill px-4" onClick={() => fetchData()}>Sync Live</button>
+        {activeTab === 'pipeline' && (
+          <div className="card overflow-hidden animate-fade-in">
+             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
+                <div>
+                    <h5 className="fw-black mb-0 text-white">Macro Pipeline Explorer</h5>
+                    <small className="text-muted fw-bold opacity-50 small text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Consolidated Environment</small>
+                </div>
+                <button className="btn-premium btn-sm px-4" onClick={() => fetchData()}>Sync Live</button>
              </div>
              <div className="card-body p-0">
                 <LeadTable 
@@ -330,9 +340,14 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'payments' && (
-          <div className="d-flex flex-column gap-4 animate-fade-in">
-            <h5 className="fw-semibold mb-0 px-2 text-primary">Financial Transmission Ledger</h5>
+        {activeTab === 'revenue' && (
+          <div className="d-flex flex-column gap-4 animate-fade-in h-100">
+             <div className="d-flex align-items-center gap-2 mb-1">
+                <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
+                    <TrendingUp size={18} />
+                </div>
+                <h5 className="fw-black mb-0 text-white">Financial Transmission Ledger</h5>
+            </div>
             <PaymentHistory role="ADMIN" />
           </div>
         )}

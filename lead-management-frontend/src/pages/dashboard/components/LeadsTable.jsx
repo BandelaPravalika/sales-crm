@@ -18,49 +18,60 @@ const LeadsTable = ({
   teamLeaders
 }) => {
   return (
-    <div className="bg-transparent overflow-hidden">
-      <div className="card-header bg-transparent p-4 border-0 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+    <div className="bg-transparent overflow-hidden h-100 d-flex flex-column">
+      <div className="card-header bg-transparent p-4 border-0 d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-4">
         <div className="d-flex align-items-center gap-3">
-          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded">
+          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-lg border border-primary border-opacity-10">
             <Users size={20} />
           </div>
-          <h5 className="card-title fw-bold mb-0">Leads Pipeline</h5>
+          <div>
+            <h5 className="fw-black mb-0 text-white" style={{ letterSpacing: '-0.01em' }}>Leads Pipeline</h5>
+            <small className="text-muted fw-bold opacity-50 text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Live Inventory</small>
+          </div>
         </div>
         
         <div className="d-flex flex-column flex-md-row gap-3 align-items-md-center">
-          <div className="input-group input-group-sm" style={{ maxWidth: '300px' }}>
-            <span className="input-group-text border-0 bg-secondary bg-opacity-10"><Search size={14} /></span>
+          <div className="position-relative" style={{ minWidth: '260px' }}>
+            <Search className="position-absolute translate-middle-y text-muted opacity-50" size={14} style={{ top: '50%', left: '14px' }} />
             <input 
               type="text" 
-              className="form-control border-0 bg-secondary bg-opacity-10 shadow-none" 
+              className="glass-input ps-5 pe-3 py-2 text-white w-100 shadow-sm" 
               placeholder="Search leads..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ fontSize: '13px' }}
             />
           </div>
-          <div className="form-check form-switch mb-0">
-            <input 
-              className="form-check-input" 
-              type="checkbox" 
-              id="unassignedSw" 
-              checked={filterUnassigned}
-              onChange={(e) => setFilterUnassigned(e.target.checked)}
-            />
-            <label className="form-check-label small fw-bold text-uppercase" htmlFor="unassignedSw">Unassigned</label>
+          <div className="form-check form-switch mb-0 d-flex align-items-center gap-2 ps-0">
+            <div className="position-relative">
+                <input 
+                className="form-check-input ms-0" 
+                type="checkbox" 
+                role="switch"
+                id="unassignedSw" 
+                checked={filterUnassigned}
+                onChange={(e) => setFilterUnassigned(e.target.checked)}
+                style={{ width: '36px', height: '18px', cursor: 'pointer' }}
+                />
+            </div>
+            <label className="text-muted fw-bold small text-uppercase tracking-wider cursor-pointer ms-1" htmlFor="unassignedSw" style={{ fontSize: '10px' }}>Unassigned Only</label>
           </div>
         </div>
       </div>
 
       {selectedLeadIds.length > 0 && (
-        <div className="p-3 bg-primary bg-opacity-10 border-top border-bottom animate-fade-in">
-          <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <span className="badge bg-primary px-3 py-2 rounded-pill fw-bold">
-              {selectedLeadIds.length} Selected
-            </span>
+        <div className="px-4 py-3 bg-primary bg-opacity-5 border-top border-bottom border-white border-opacity-5 animate-fade-in">
+          <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div className="d-flex align-items-center gap-2">
+                <div className="p-1 bg-primary rounded-circle"></div>
+                <span className="text-white fw-bold small">
+                {selectedLeadIds.length} leads selected for bulk action
+                </span>
+            </div>
             <div className="d-flex gap-2">
               <select 
-                className="form-select form-select-sm fw-bold border-0 shadow-sm" 
-                style={{ width: '180px' }}
+                className="glass-input py-1.5 fw-bold border-0" 
+                style={{ width: '180px', fontSize: '12px' }}
                 value={bulkAssignTlId}
                 onChange={(e) => setBulkAssignTlId(e.target.value)}
               >
@@ -69,43 +80,44 @@ const LeadsTable = ({
               </select>
               <button 
                 onClick={() => handleBulkAssign(bulkAssignTlId, teamLeaders)}
-                className="btn btn-primary btn-sm fw-bold text-uppercase px-4 shadow-sm"
+                className="btn-premium py-1.5 px-4 small fw-bold text-uppercase"
+                style={{ fontSize: '10px' }}
               >
-                Assign
+                Execute
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0" style={{ minWidth: '800px' }}>
-          <thead className={theme === 'dark' ? 'table-dark' : 'table-light'}>
-            <tr className="text-uppercase small fw-bold text-muted">
-              <th className="ps-4" style={{ width: '40px' }}>
-                <div className="form-check">
+      <div className="table-responsive flex-grow-1 custom-scroll">
+        <table className="table table-hover align-middle mb-0 table-dark">
+          <thead>
+            <tr className="text-uppercase fw-bold text-muted border-bottom border-white border-opacity-5" style={{ fontSize: '10px', letterSpacing: '0.05em' }}>
+              <th className="ps-4 py-3" style={{ width: '60px' }}>
+                <div className="form-check custom-checkbox">
                   <input 
-                    className="form-check-input" 
+                    className="form-check-input shadow-none" 
                     type="checkbox" 
                     checked={selectedLeadIds.length === leads.length && leads.length > 0}
                     onChange={toggleSelectAll}
                   />
                 </div>
               </th>
-              <th>Identity</th>
-              <th>Status</th>
-              <th>Owner</th>
-              <th className="pe-4 text-end">Transfer</th>
+              <th className="py-3">Staff Identity</th>
+              <th className="py-3">Pipeline Status</th>
+              <th className="py-3">Lead Owner</th>
+              <th className="pe-4 py-3 text-end">Management</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="border-0">
             {leads.map(lead => (
-              <tr key={lead.id} className={selectedLeadIds.includes(lead.id) ? 'table-primary bg-opacity-10' : ''}>
+              <tr key={lead.id} className={`${selectedLeadIds.includes(lead.id) ? 'bg-primary bg-opacity-5' : ''} border-bottom border-white border-opacity-5 transition-all`}>
                 <td className="ps-4">
                   {!lead.assignedToId && (
-                    <div className="form-check">
+                    <div className="form-check custom-checkbox">
                       <input 
-                        className="form-check-input" 
+                        className="form-check-input shadow-none" 
                         type="checkbox" 
                         checked={selectedLeadIds.includes(lead.id)}
                         onChange={() => toggleSelection(lead.id)}
@@ -113,28 +125,38 @@ const LeadsTable = ({
                     </div>
                   )}
                 </td>
-                <td>
-                  <p className="fw-bold mb-0">{lead.name}</p>
-                  <small className="text-muted small">{lead.mobile}</small>
+                <td className="py-4">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="p-2 bg-surface rounded shadow-sm border border-white border-opacity-5 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px' }}>
+                        <ShieldHalf size={16} className="text-muted" />
+                    </div>
+                    <div>
+                        <p className="fw-bold mb-0 text-white" style={{ fontSize: '14px' }}>{lead.name}</p>
+                        <small className="text-muted fw-medium font-monospace" style={{ fontSize: '11px' }}>{lead.mobile}</small>
+                    </div>
+                  </div>
                 </td>
                 <td>
-                  <span className={`badge rounded-pill text-uppercase px-2 py-1 ${
-                    lead.status === 'PAID' ? 'bg-success bg-opacity-75 text-white' :
-                    lead.status === 'NEW' ? 'bg-primary bg-opacity-75 text-white' :
-                    'bg-secondary bg-opacity-75 text-white'
-                  }`} style={{ fontSize: '9px', fontWeight: '800' }}>
+                  <span className={`badge rounded-sm text-uppercase px-2 py-1 ${
+                    lead.status === 'PAID' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-20' :
+                    lead.status === 'NEW' ? 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20' :
+                    'bg-white bg-opacity-5 text-muted border border-white border-opacity-10'
+                  }`} style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.02em' }}>
                     {lead.status}
                   </span>
                 </td>
                 <td>
-                  <span className={`small ${lead.assignedToId ? 'fw-bold' : 'text-muted fst-italic'}`}>
-                    {lead.assignedToName || 'Awaiting Assignment'}
-                  </span>
+                  <div className="d-flex align-items-center gap-2">
+                    {lead.assignedToId && <div className="p-1 bg-success rounded-circle" style={{ width: '6px', height: '6px' }}></div>}
+                    <span className={`small ${lead.assignedToId ? 'fw-bold text-white' : 'text-muted fst-italic opacity-50'}`}>
+                        {lead.assignedToName || 'Awaiting Assignment'}
+                    </span>
+                  </div>
                 </td>
                 <td className="pe-4 text-end">
                   <select 
-                    className="form-select form-select-sm border-0 bg-transparent text-primary fw-bold" 
-                    style={{ width: '130px' }}
+                    className="glass-input py-1 border-0 text-primary fw-bold text-end" 
+                    style={{ width: '130px', fontSize: '12px', background: 'transparent' }}
                     onChange={(e) => handleAssignLead(lead.id, e.target.value, teamLeaders)}
                     value={lead.assignedToId || ''}
                   >
@@ -147,8 +169,10 @@ const LeadsTable = ({
           </tbody>
         </table>
         {leads.length === 0 && (
-          <div className="p-5 text-center">
-            <p className="text-muted fw-bold">No operational records found</p>
+          <div className="p-5 text-center my-4 animate-fade-in">
+            <Users size={48} className="text-muted opacity-20 mb-3" />
+            <p className="text-muted fw-bold mb-0">No operational records found</p>
+            <small className="text-muted opacity-50">Try adjusting your filters or search term</small>
           </div>
         )}
       </div>
