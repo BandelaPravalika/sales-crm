@@ -13,22 +13,71 @@
   --text-muted: #a1a1aa;
   --success: #10b981;
   --error: #ef4444;
-  --sidebar-width: 260px;
-  --navbar-height: 70px;
+  --sidebar-width: 280px;
+  --navbar-height: 72px;
+  --glass-bg: rgba(9, 9, 11, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --surface-glow: rgba(255, 255, 255, 0.03);
   --transition-cubic-bezier: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.navbar-minimal {
-  height: var(--navbar-height);
-  background: rgba(9, 9, 11, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--surface-border);
-  padding: 0 2rem;
+/* Layout Core - Stabilized */
+.dashboard-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg);
+}
+
+.sidebar-minimal {
   position: fixed;
   top: 0;
   left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  z-index: 1060;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--glass-border);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-minimal {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
   right: 0;
-  z-index: 1100;
+  height: var(--navbar-height);
+  z-index: 1050;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 2rem;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  margin-top: var(--navbar-height);
+  padding: 2.5rem;
+  min-height: calc(100vh - var(--navbar-height));
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive Overrides */
+@media (max-width: 992px) {
+  .sidebar-minimal {
+    transform: translateX(-100%);
+  }
+  .sidebar-minimal.show {
+    transform: translateX(0);
+  }
+  .navbar-minimal {
+    left: 0 !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+  }
 }
 
 * {
@@ -45,7 +94,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Glassmorphism Sidebar */
 .glass-sidebar {
   background: rgba(9, 9, 11, 0.9) !important;
   backdrop-filter: blur(16px);
