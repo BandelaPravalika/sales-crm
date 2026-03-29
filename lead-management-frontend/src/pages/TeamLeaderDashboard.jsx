@@ -130,13 +130,13 @@ const TeamLeaderDashboard = () => {
 
   return (
     <DashboardLayout
-      title="Team Leader Console"
-      subtitle="Performance Tracking"
+      title="Team leader console"
+      subtitle="Performance tracking"
       activeTab={activeTab}
       onTabChange={setActiveTab}
       role="TEAM_LEADER"
     >
-      <div className="animate-fade-in d-flex flex-column gap-4">
+      <div className="animate-fade-in d-flex flex-column gap-3">
         {/* Operational Scope Filters */}
         { (activeTab === 'performance' || activeTab === 'team' || activeTab === 'leads') && (
           <FiltersBar 
@@ -190,7 +190,7 @@ const TeamLeaderDashboard = () => {
         {activeTab === 'leads' && (
           <div className="premium-card overflow-hidden animate-fade-in">
              <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">My Pipeline Leads</h5>
+                <h5 className="fw-semibold mb-0 text-white small">My Pipeline Leads</h5>
              </div>
                <div className="card-body p-0">
                    <LeadList 
@@ -222,12 +222,12 @@ const TeamLeaderDashboard = () => {
           <div className="d-flex flex-column gap-4">
             <div className="premium-card overflow-hidden">
               <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                 <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">Associate Performance Snapshot</h5>
+                 <h5 className="fw-semibold mb-0 text-white small">Associate Performance Snapshot</h5>
               </div>
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
                   <thead className={theme === 'dark' ? 'table-dark' : 'table-light'}>
-                    <tr className="text-uppercase text-muted small fw-bold">
+                    <tr className="text-muted small fw-semibold">
                       <th className="ps-4">Associate</th>
                       <th className="text-center">Leads Handled</th>
                       <th className="text-center">Lost</th>
@@ -259,7 +259,7 @@ const TeamLeaderDashboard = () => {
 
             <div className="premium-card overflow-hidden">
                <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                   <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">Team Assignment Matrix</h5>
+                   <h5 className="fw-semibold mb-0 text-white small">Team Assignment Matrix</h5>
                </div>
                <div className="card-body p-0">
                    <LeadList 
@@ -316,7 +316,7 @@ const TeamLeaderDashboard = () => {
 
         {activeTab === 'payments' && (
           <div className="d-flex flex-column gap-4">
-             <h5 className="fw-bold text-uppercase mb-0 px-2 text-primary">Team Conversion History</h5>
+             <h5 className="fw-semibold mb-0 px-2 text-primary">Team Conversion History</h5>
              <PaymentHistory role="TEAM_LEADER" />
           </div>
         )}

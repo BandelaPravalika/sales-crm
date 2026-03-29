@@ -31,13 +31,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginDemo = (role) => {
+    const userData = { 
+      email: `demo_${role.toLowerCase()}@lms.com`, 
+      role,
+      name: `Demo ${role.charAt(0) + role.slice(1).toLowerCase().replace(/_/g, ' ')}`
+    };
+    
+    localStorage.setItem('token', 'demo-token-' + Date.now());
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    return userData;
+  };
+
   const logout = () => {
-    authService.logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginDemo, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

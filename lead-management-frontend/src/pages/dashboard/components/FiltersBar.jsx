@@ -10,8 +10,8 @@ const FiltersBar = ({ filters, onChange, theme }) => {
             <LayoutDashboard size={20} />
           </div>
           <div className="d-flex flex-column">
-            <h6 className="fw-bold text-uppercase mb-0 text-white small tracking-wider">Operational Scope</h6>
-            <small className="text-muted fw-bold" style={{ fontSize: '9px' }}>Global Performance Window</small>
+            <h6 className="fw-semibold mb-0 text-white small">Operational Scope</h6>
+            <small className="text-muted" style={{ fontSize: '9px' }}>Global Performance Window</small>
           </div>
         </div>
         
@@ -20,7 +20,7 @@ const FiltersBar = ({ filters, onChange, theme }) => {
             <Calendar size={14} className="text-primary opacity-75" />
             <input 
               type="date" 
-              className="form-control form-control-sm border-0 bg-transparent text-white shadow-none small fw-bold px-1"
+              className="form-control form-control-sm border-0 bg-transparent text-white shadow-none small fw-semibold px-1"
               value={filters.from?.split('T')[0] || ""}
               onChange={(e) => onChange({...filters, from: e.target.value + 'T00:00:00'})}
               style={{ width: '120px', fontSize: '11px' }}
@@ -28,7 +28,7 @@ const FiltersBar = ({ filters, onChange, theme }) => {
             <span className="text-muted small px-1">to</span>
             <input 
               type="date" 
-              className="form-control form-control-sm border-0 bg-transparent text-white shadow-none small fw-bold px-1"
+              className="form-control form-control-sm border-0 bg-transparent text-white shadow-none small fw-semibold px-1"
               value={filters.to?.split('T')[0] || ""}
               onChange={(e) => onChange({...filters, to: e.target.value + 'T23:59:59'})}
               style={{ width: '120px', fontSize: '11px' }}
@@ -36,7 +36,7 @@ const FiltersBar = ({ filters, onChange, theme }) => {
           </div>
           
           <button 
-            className="btn btn-primary btn-sm rounded-pill px-4 fw-bold d-flex align-items-center gap-2 shadow-sm transition-all hover-translate-y"
+            className="btn btn-primary btn-sm rounded-pill px-4 fw-semibold d-flex align-items-center gap-2 shadow-sm transition-all hover-translate-y"
             style={{ fontSize: '11px' }}
             onClick={() => onChange(filters)} // Trigger parent reload if needed
           >

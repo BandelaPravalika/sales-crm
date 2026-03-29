@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { 
+  ShieldCheck, 
+  UserCog, 
+  Users, 
+  User, 
+  Sparkles 
+} from 'lucide-react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const LoginPage = () => {
@@ -10,8 +17,24 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
 
-  const { login } = useAuth();
+  const { login, loginDemo } = useAuth();
   const navigate = useNavigate();
+
+  const handleDemoLogin = (role) => {
+    try {
+      const user = loginDemo(role);
+      toast.success(`Logged in as ${role}`);
+      
+      // role-based redirect
+      if (role === 'ADMIN') navigate('/admin');
+      else if (role === 'MANAGER') navigate('/manager');
+      else if (role === 'TEAM_LEADER') navigate('/tl');
+      else if (role === 'ASSOCIATE') navigate('/associate');
+      else navigate('/');
+    } catch (err) {
+      toast.error('Demo login failed');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,6 +119,64 @@ const LoginPage = () => {
           </button>
 
         </form>
+
+        <div className="mt-4">
+          <div className="d-flex align-items-center mb-3">
+            <div className="flex-grow-1 border-bottom border-secondary-subtle"></div>
+            <div className="mx-3 text-muted small fw-medium">DEMO ACCESS</div>
+            <div className="flex-grow-1 border-bottom border-secondary-subtle"></div>
+          </div>
+
+          <div className="row g-2">
+            <div className="col-6">
+              <button 
+                onClick={() => handleDemoLogin('ADMIN')}
+                className="btn btn-outline-dark w-100 py-2 d-flex flex-column align-items-center gap-1 border-opacity-10"
+                style={{ fontSize: '12px' }}
+              >
+                <ShieldCheck size={18} className="text-primary" />
+                <span>Admin</span>
+              </button>
+            </div>
+            <div className="col-6">
+              <button 
+                onClick={() => handleDemoLogin('MANAGER')}
+                className="btn btn-outline-dark w-100 py-2 d-flex flex-column align-items-center gap-1 border-opacity-10"
+                style={{ fontSize: '12px' }}
+              >
+                <UserCog size={18} className="text-info" />
+                <span>Manager</span>
+              </button>
+            </div>
+            <div className="col-6">
+              <button 
+                onClick={() => handleDemoLogin('TEAM_LEADER')}
+                className="btn btn-outline-dark w-100 py-2 d-flex flex-column align-items-center gap-1 border-opacity-10"
+                style={{ fontSize: '12px' }}
+              >
+                <Users size={18} className="text-success" />
+                <span>Team Lead</span>
+              </button>
+            </div>
+            <div className="col-6">
+              <button 
+                onClick={() => handleDemoLogin('ASSOCIATE')}
+                className="btn btn-outline-dark w-100 py-2 d-flex flex-column align-items-center gap-1 border-opacity-10"
+                style={{ fontSize: '12px' }}
+              >
+                <User size={18} className="text-warning" />
+                <span>Associate</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="text-center mt-3">
+            <p className="text-muted" style={{ fontSize: '10px' }}>
+              <Sparkles size={10} className="me-1" />
+              Bypass backend for UI demonstration
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -126,9 +126,9 @@ const AssociateDashboard = () => {
         {activeTab === 'leads' && (
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-secondary bg-opacity-5">
             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center">
-              <h5 className="fw-bold text-uppercase mb-0 text-white">My Lead Pool</h5>
+              <h5 className="fw-semibold mb-0 text-white">My Lead Pool</h5>
               <button 
-                className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-2"
+                className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-2"
                 onClick={() => setActiveTab('add-leads')}
               >
                 <Upload size={14} /> Add Leads
@@ -162,10 +162,10 @@ const AssociateDashboard = () => {
                   <div className="mb-4 text-primary bg-primary bg-opacity-10 rounded-circle p-4 d-inline-flex">
                      <Upload size={48} />
                   </div>
-                  <h4 className="fw-bold text-white mb-2">Mass Data Ingestion</h4>
+                  <h4 className="fw-semibold text-white mb-2">Mass Data Ingestion</h4>
                   <p className="text-muted w-75 mx-auto mb-4">Upload a large CSV file instantly populating your lead pool. Make sure to download the template format before uploading.</p>
                   <button 
-                    className="btn btn-primary rounded-pill fw-bold text-uppercase px-4 d-flex align-items-center gap-2"
+                    className="btn btn-primary rounded-pill fw-semibold px-4 d-flex align-items-center gap-2"
                     onClick={() => setIsBulkUploadModalOpen(true)}
                   >
                      <Upload size={18} /> Open Bulk Uploader
@@ -214,7 +214,7 @@ const AssociateDashboard = () => {
 
             <div className="card shadow-sm border-0 rounded-4 overflow-hidden mt-2 bg-secondary bg-opacity-5">
               <div className="card-header bg-transparent p-4 border-0">
-                <h5 className="fw-bold text-uppercase mb-0 text-white">My Performance Analysis</h5>
+                <h5 className="fw-semibold mb-0 text-white">My Performance Analysis</h5>
               </div>
               <div className="card-body">
                 <div className="d-flex align-items-center gap-4 p-4 bg-primary bg-opacity-10 rounded-4">
@@ -222,10 +222,10 @@ const AssociateDashboard = () => {
                       <TrendingUp size={48} />
                    </div>
                    <div>
-                      <h2 className="fw-black mb-1">
+                      <h2 className="fw-bold mb-1">
                         {stats?.TOTAL > 0 ? ((stats?.PAID / stats?.TOTAL) * 100).toFixed(1) : 0}%
                       </h2>
-                      <p className="text-muted fw-bold text-uppercase small mb-0">Conversion Efficiency</p>
+                      <p className="text-muted small mb-0">Conversion Efficiency</p>
                    </div>
                 </div>
               </div>
@@ -235,7 +235,7 @@ const AssociateDashboard = () => {
 
         {activeTab === 'payments' && (
           <div className="d-flex flex-column gap-4">
-             <h5 className="fw-bold text-uppercase mb-0 px-2 text-primary">My Conversion History</h5>
+             <h5 className="fw-semibold mb-0 px-2 text-primary">My Conversion History</h5>
              <PaymentHistory role="ASSOCIATE" />
           </div>
         )}

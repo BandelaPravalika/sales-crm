@@ -2,127 +2,117 @@ import React from 'react';
 import { 
   LayoutDashboard, 
   Users, 
-  UserPlus, 
-  IndianRupee, 
-  Zap, 
-  ClipboardList, 
-  Phone,
-  Settings,
-  ShieldCheck,
-  BarChart3,
-  TrendingUp,
+  PieChart, 
+  TrendingUp, 
+  Settings, 
+  LogOut, 
   X,
-  GitBranch,
-  CheckSquare,
-  Upload
+  Layers,
+  Target,
+  FileText
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail }) => {
-  const adminItems = [
-    { id: 'stats', label: 'System Overview', icon: LayoutDashboard },
-    { id: 'users', label: 'Users & Roles', icon: ShieldCheck },
-    { id: 'leads', label: 'Pipeline Explorer', icon: ClipboardList },
-    { id: 'payments', label: 'Revenue Flow', icon: IndianRupee }
-  ];
-
-  const managerItems = [
-    { id: 'stats', label: 'Strategic Overview', icon: LayoutDashboard },
-    { id: 'hierarchy', label: 'Staff Hierarchy', icon: GitBranch },
-    { id: 'leads', label: 'Leads Pipeline', icon: Users },
-    { id: 'ingestion', label: 'Lead Ingestion', icon: Upload }, // Use Upload icon for Ingestion
-    { id: 'users', label: 'Users & Roles', icon: UserPlus },
-    { id: 'payments', label: 'Revenue Flow', icon: IndianRupee }
-  ];
-
-  const tlItems = [
-    { id: 'leads', label: 'My Leads', icon: ClipboardList },
-    { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'team', label: 'Team Matrix', icon: Users },
-    { id: 'performance', label: 'Performance', icon: BarChart3 },
-    { id: 'payments', label: 'Revenue Flow', icon: IndianRupee }
-  ];
-
-  const associateItems = [
-    { id: 'leads', label: 'My Leads', icon: Users },
-    { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
-    { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-    { id: 'performance', label: 'Performance', icon: Zap },
-    { id: 'payments', label: 'Payment History', icon: IndianRupee }
-  ];
-
   const getNavItems = () => {
-    switch (role) {
-      case 'ADMIN': return adminItems;
-      case 'MANAGER': return managerItems;
-      case 'TEAM_LEADER': return tlItems;
-      case 'ASSOCIATE': return associateItems;
-      default: return [];
+    const commonItems = [
+      { id: 'overview', label: 'System Overview', icon: LayoutDashboard },
+    ];
+
+    if (role === 'ADMIN') {
+      return [
+        ...commonItems,
+        { id: 'users', label: 'Users & Roles', icon: Users },
+        { id: 'pipeline', label: 'Pipeline Explorer', icon: Layers },
+        { id: 'revenue', label: 'Revenue Flow', icon: TrendingUp },
+      ];
     }
+
+    if (role === 'MANAGER') {
+      return [
+        ...commonItems,
+        { id: 'hierarchy', label: 'Team Hierarchy', icon: Layers },
+        { id: 'pipeline', label: 'Lead Lifecycle', icon: Target },
+        { id: 'reports', label: 'Strategic Reports', icon: FileText },
+      ];
+    }
+
+    if (role === 'TEAM_LEADER') {
+      return [
+        ...commonItems,
+        { id: 'leads', label: 'Team Leads', icon: Target },
+        { id: 'performance', label: 'Performance Tracker', icon: PieChart },
+      ];
+    }
+
+    if (role === 'ASSOCIATE') {
+      return [
+        ...commonItems,
+        { id: 'leads', label: 'My Leads', icon: Target },
+        { id: 'tasks', label: 'Today\'s Task', icon: FileText },
+      ];
+    }
+
+    return commonItems;
   };
 
   const navItems = getNavItems();
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop Overlay - Responsive */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-70 z-50 d-lg-none" 
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 z-40 d-lg-none"
           onClick={onClose}
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
         />
       )}
 
-      {/* Sidebar Container */}
-      <aside className={`glass-sidebar d-flex flex-column transition-smooth sidebar-permanent shadow-2xl ${isOpen ? 'show' : ''}`}>
-        <div className="p-4 d-flex flex-column h-100">
-          {/* Brand Section */}
-          <div className="p-2 mb-4 border-bottom border-white border-opacity-5">
-            <div className="d-flex align-items-center gap-3">
-              <div className="p-2 bg-primary rounded-3 shadow-sm text-white flex-shrink-0">
-                <Zap size={24} fill="currentColor" />
-              </div>
-              <div className="overflow-hidden">
-                <h5 className="fw-bold mb-0 text-white tracking-widest text-uppercase" style={{ fontSize: '13px' }}>NEXUS LMS</h5>
-                <p className="mb-0 text-primary fw-bold tracking-widest" style={{ fontSize: '8px', opacity: 0.8 }}>STRATEGIC OPERATIONS</p>
-              </div>
-            </div>
+      <aside 
+        className={`glass-sidebar ${isOpen ? 'show' : ''}`}
+      >
+        <div className="d-flex flex-column h-100">
+          {/* Header Mobile Only */}
+          <div className="d-lg-none p-4 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
+            <span className="fw-bold text-white small tracking-wider">NAVIGATION</span>
+            <button className="btn btn-link text-muted p-0 border-0" onClick={onClose}>
+              <X size={20} />
+            </button>
           </div>
 
-          <nav className="flex-grow-1 overflow-auto custom-scroll pe-2">
-            <div className="d-flex flex-column gap-2">
+          <nav className="flex-grow-1 overflow-auto custom-scroll pt-lg-5 pt-2 mt-lg-2">
+            <div className="d-flex flex-column">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
+
                 return (
                   <button
                     key={item.id}
-                    type="button"
                     onClick={() => {
                       onTabChange(item.id);
                       if (window.innerWidth < 992) onClose();
                     }}
-                    className={`nav-link-premium border-0 w-100 text-start d-flex align-items-center gap-3 py-3 px-3 rounded-4 mb-1 transition-smooth ${isActive ? 'active' : 'text-muted'}`}
-                    style={{ position: 'relative' }}
+                    className={`nav-link-premium ${isActive ? 'active' : ''}`}
                   >
-                    <Icon size={18} className={`${isActive ? 'text-primary' : ''} flex-shrink-0`} />
-                    <span className={`fw-bold small ${isActive ? 'text-white' : ''}`}>{item.label}</span>
+                    <Icon size={18} />
+                    <span>
+                      {item.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </nav>
 
-          {/* Footer User Profile */}
-          <div className="mt-auto pt-4 border-top border-white border-opacity-10">
-            <div className="p-3 rounded-4 bg-primary bg-opacity-5 d-flex align-items-center gap-3 border border-primary border-opacity-10 shadow-sm">
-              <div className="p-2 bg-dark rounded-circle border border-primary border-opacity-20 text-primary flex-shrink-0">
-                <TrendingUp size={16} />
+          {/* Footer Profile Tooltip Style */}
+          <div className="p-4 border-top border-white border-opacity-5">
+            <div className="d-flex align-items-center gap-3 p-2 rounded-3 transition-all hover-bg-dark border border-transparent hover-border-white hover-border-opacity-10">
+              <div className="p-2 bg-primary bg-opacity-10 rounded-circle border border-primary border-opacity-20 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px' }}>
+                <TrendingUp size={16} className="text-primary" />
               </div>
-              <div className="d-flex flex-column overflow-hidden text-truncate">
-                <span className="fw-bold small text-truncate text-white">{userEmail}</span>
-                <span className="text-muted fw-bold text-uppercase" style={{ fontSize: '9px' }}>{role?.replace(/_/g, ' ')} Portal</span>
+              <div className="overflow-hidden flex-grow-1">
+                <div className="fw-bold text-white text-truncate" style={{ fontSize: '13px' }}>{userEmail}</div>
+                <div className="text-muted fw-medium" style={{ fontSize: '11px', letterSpacing: '0.02em', textTransform: 'uppercase' }}>{role?.replace(/_/g, ' ')}</div>
               </div>
             </div>
           </div>

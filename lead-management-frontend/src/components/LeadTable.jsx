@@ -55,41 +55,24 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
     <div className="w-100 animate-fade-in">
       <div className="p-0">
         <div className="table-responsive">
-          <table className={`table table-hover align-middle mb-0 ${theme === 'dark' ? 'table-dark border-0' : ''}`}>
-            <thead className={theme === 'dark' ? 'bg-dark bg-opacity-50 border-0' : 'table-light'}>
-              <tr className="text-uppercase text-muted-premium small fw-bold">
-                <th>Lead Info</th>
+          <table className={`table table-hover align-middle mb-0 table-dark border-0`}>
+            <thead>
+              <tr className="text-muted small fw-semibold border-bottom border-white border-opacity-5">
+                <th className="ps-4">Lead Info</th>
                 <th>Status</th>
-                <th>Assigned To</th>
+                <th>Assigned Node</th>
                 <th>Note/Remarks</th>
-                {showActions && <th className="text-end">Actions</th>}
+                {showActions && <th className="pe-4 text-end">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {leads.map((lead) => (
-                <tr key={lead.id}>
-                  <td>
+                <tr key={lead.id} className="border-bottom border-white border-opacity-5">
+                  <td className="ps-4 py-3">
                     <div className="d-flex flex-column">
                       <span className="fw-bold">{lead.name}</span>
                       <small className="text-muted">{lead.email}</small>
                       <small className="text-muted fw-bold">{lead.mobile}</small>
-                      
-                      {/* Persistent Rejection/Follow-up Details */}
-                      {lead.status === 'NOT_INTERESTED' && (
-                        <div className="d-flex flex-column gap-1 mt-2 p-2 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25" style={{ fontSize: '0.75rem' }}>
-                          <div className="d-flex align-items-center gap-2 text-danger">
-                            <XCircle size={14} />
-                            <span className="fw-bold">{lead.rejectionReason?.replace('_', ' ')}</span>
-                          </div>
-                          {lead.rejectionNote && <p className="text-muted fst-italic mb-0">"{lead.rejectionNote}"</p>}
-                          {lead.followUpRequired && (
-                            <div className="d-flex align-items-center gap-2 text-primary mt-1 fw-bold">
-                              <Clock size={14} />
-                              <span>Remind: {new Date(lead.followUpDate).toLocaleString()}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </td>
                   <td>
@@ -98,41 +81,9 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
                     </span>
                   </td>
                   <td>
-                    {role === 'TEAM_LEADER' ? (
-                      <div className="d-flex align-items-center gap-2">
-                        {lead.assignedToId ? (
-                           <div className="d-flex align-items-center bg-success bg-opacity-10 border border-success border-opacity-25 rounded px-2 py-1">
-                             <span className="small fw-bold text-success text-truncate" style={{ maxWidth: '100px' }}>{lead.assignedToName}</span>
-                             <select 
-                                className="form-select form-select-sm border-0 bg-transparent shadow-none p-0 ms-1"
-                                style={{ width: '20px', color: 'transparent' }}
-                                value={lead.assignedToId || ''}
-                                onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
-                              >
-                                {associates && associates.map(a => (
-                                  <option key={a.id} value={a.id} style={{ color: 'initial' }}>{a.name}</option>
-                                ))}
-                              </select>
-                           </div>
-                        ) : (
-                          <select 
-                            className="form-select form-select-sm border-0 bg-warning bg-opacity-10 text-warning fw-bold shadow-none"
-                            style={{ fontSize: '0.75rem', minWidth: '120px' }}
-                            value={lead.assignedToId || ''}
-                            onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
-                          >
-                            <option value="">Assign to...</option>
-                            {associates && associates.map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    ) : (
-                    <span className={`small fw-bold px-2 py-1 rounded border border-secondary border-opacity-10 ${theme === 'dark' ? 'bg-secondary bg-opacity-25 text-muted' : 'bg-light text-muted'}`}>
-                        {lead.assignedToName || 'Unassigned'}
-                      </span>
-                    )}
+                    <span className="badge bg-secondary bg-opacity-25 text-muted px-2 py-1">
+                      {lead.assignedToName || 'Unassigned'}
+                    </span>
                   </td>
                   <td>
                     <div className="d-flex align-items-center gap-2 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded px-2 py-1 w-100" style={{ minWidth: '150px' }}>
@@ -140,59 +91,20 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
                       <input 
                         type="text" 
                         placeholder="Add note..."
-                        className="form-control form-control-sm border-0 bg-transparent shadow-none p-0"
-                        id={`note-${lead.id}`}
+                        className="form-control form-control-sm border-0 bg-transparent shadow-none p-0 text-white"
                         defaultValue={lead.note || ""}
-                        onBlur={(e) => {
-                          if (e.target.value !== lead.note) {
-                            onUpdateStatus(lead.id, lead.status, { note: e.target.value });
-                          }
-                        }}
                       />
                     </div>
                   </td>
                   {showActions && (
-                    <td className="text-end">
+                    <td className="text-end pe-4">
                       <div className="d-flex align-items-center justify-content-end gap-2">
-                        {/* Status Update / Call Result Buttons */}
-                        {(lead.status !== 'PAID' && lead.status !== 'LOST' && lead.status !== 'NOT_INTERESTED') && (
-                          <div className="d-flex gap-2">
-                            <button className="btn btn-outline-primary btn-sm fw-bold border-0 d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }} onClick={() => setSelectedOutcomeLead(lead)}>
-                              <Phone size={12} /> Log / Update
-                            </button>
-                          </div>
-                        )}
-
-                        {(lead.status === 'NEW' || lead.status === 'CONTACTED' || lead.status === 'INTERESTED' || lead.status === 'PAYMENT_FAILED' || lead.status === 'EMI' || lead.status === 'FOLLOW_UP') && (
-                          <div className="d-flex flex-column flex-sm-row align-items-end justify-content-end gap-2 w-100">
-                            <button 
-                              className="btn btn-primary btn-sm d-flex align-items-center fw-bold text-nowrap rounded-3 px-3"
-                              style={{ fontSize: '0.75rem' }}
-                              onClick={() => setSelectedLinkLead(lead)}
-                            >
-                              <Zap size={12} className="me-1" />
-                              {lead.status === 'INTERESTED' ? 'Generate Link' : 'Regenerate'}
-                            </button>
-
-                            <div className="d-flex gap-2 align-items-center">
-                              <button className="btn btn-sm d-flex align-items-center justify-content-center rounded" style={{ background: '#25D366', color: 'white', width: '32px', height: '30px' }} onClick={() => handleWhatsAppShare(lead)} title="Share on WhatsApp">
-                                <MessageCircle size={16} />
-                              </button>
-                              <button className="btn btn-sm d-flex align-items-center justify-content-center rounded" style={{ background: '#6366f1', color: 'white', width: '32px', height: '30px' }} onClick={() => handleCopyLink(lead)} title="Copy Link">
-                                <Copy size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Recovery: NOT_INTERESTED -> Recovery */}
-                        {lead.status === 'NOT_INTERESTED' && (
-                          <div className="d-flex align-items-center justify-content-end w-100">
-                            <button className="btn btn-outline-primary btn-sm d-flex align-items-center fw-bold border-0" style={{ fontSize: '0.7rem' }} onClick={() => onUpdateStatus(lead.id, 'INTERESTED')}>
-                              <Heart size={12} className="me-1" /> Recover
-                            </button>
-                          </div>
-                        )}
+                        <button className="btn btn-outline-primary btn-sm border-0" onClick={() => setSelectedOutcomeLead(lead)}>
+                          <Phone size={14} />
+                        </button>
+                        <button className="btn btn-primary btn-sm rounded-pill px-3" onClick={() => setSelectedLinkLead(lead)} style={{ fontSize: '11px' }}>
+                          <Zap size={12} className="me-1" /> Link
+                        </button>
                       </div>
                     </td>
                   )}
@@ -219,7 +131,6 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
             if (onRecordCallOutcome) {
               await onRecordCallOutcome(selectedOutcomeLead.id, data);
             } else {
-              // Fallback to onUpdateStatus
               onUpdateStatus(selectedOutcomeLead.id, data.status, data);
             }
             setSelectedOutcomeLead(null);
@@ -227,18 +138,6 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
         />
       )}
 
-      {selectedRejectionLead && (
-        <RejectionModal 
-          isOpen={!!selectedRejectionLead}
-          onClose={() => setSelectedRejectionLead(null)}
-          leadName={selectedRejectionLead.name}
-          theme={theme}
-          onSubmit={(data) => {
-            onUpdateStatus(selectedRejectionLead.id, 'NOT_INTERESTED', data);
-            setSelectedRejectionLead(null);
-          }}
-        />
-      )}
       {selectedLinkLead && (
         <GeneratePaymentLinkModal 
           show={!!selectedLinkLead}

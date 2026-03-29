@@ -185,7 +185,7 @@ const ManagerDashboard = () => {
                         <div className="col-12 col-xl-8">
                             <div className="premium-card overflow-hidden h-100">
                                <div className="card-header bg-transparent border-0 p-4">
-                                   <h6 className="fw-bold text-uppercase mb-0 text-white tracking-widest small">Revenue Velocity</h6>
+                                   <h5 className="fw-semibold mb-0 px-2 text-primary">Team Conversion History</h5>
                                </div>
                                <div className="card-body p-0">
                                    <RevenueTrendChart data={trend} theme={theme} />
@@ -204,12 +204,12 @@ const ManagerDashboard = () => {
                         <div className="col-12 col-xl-12">
                              <div className="premium-card overflow-hidden">
                                 <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                                    <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">Performance Metrics</h5>
+                                    <h5 className="fw-semibold mb-0 text-white small">Team Assignment Matrix</h5>
                                 </div>
                                 <div className="table-responsive">
                                     <table className="table table-hover align-middle mb-0 table-dark border-0">
                                         <thead className="bg-dark bg-opacity-50 border-0">
-                                             <tr className="text-uppercase small fw-bold text-muted">
+                                             <tr className="small fw-semibold text-muted">
                                                  <th className="ps-4">Staff Member</th>
                                                  <th className="text-center">Leads</th>
                                                  <th className="text-center">Converted</th>
@@ -220,11 +220,11 @@ const ManagerDashboard = () => {
                                         <tbody>
                                              {performance.slice(0, 10).map(p => (
                                                  <tr key={p.userId} className="border-white border-opacity-5">
-                                                     <td className="ps-4 fw-bold text-primary">{p.username}</td>
-                                                     <td className="text-center fw-bold">{p.totalLeads}</td>
-                                                     <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
-                                                     <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
-                                                     <td className="pe-4 text-end text-primary fw-bold">
+                                                     <td className="ps-4 fw-semibold text-primary">{p.username}</td>
+                                                     <td className="text-center fw-semibold">{p.totalLeads}</td>
+                                                     <td className="text-center text-success fw-semibold">{p.convertedLeads}</td>
+                                                     <td className="text-center text-danger fw-semibold">{p.lostLeads}</td>
+                                                     <td className="pe-4 text-end text-primary fw-semibold">
                                                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
                                                      </td>
                                                  </tr>
@@ -255,7 +255,7 @@ const ManagerDashboard = () => {
                 {activeTab === 'leads' && (
                     <div className="premium-card overflow-hidden animate-fade-in">
                         <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                            <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">Pipeline overview</h5>
+                            <h5 className="fw-semibold mb-0 text-white small">My Pipeline Leads</h5>
                         </div>
                         <LeadsTable 
                             leads={filteredLeadsList}
@@ -310,7 +310,7 @@ const ManagerDashboard = () => {
                     <div className="animate-fade-in d-flex flex-column gap-4">
                         <div className="premium-card overflow-hidden mb-4">
                             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                                <h5 className="fw-bold text-uppercase mb-0 text-white tracking-wider small">Performance Analytics</h5>
+                                <h5 className="fw-semibold mb-0 text-white small">Associate Performance Snapshot</h5>
                                 {filters.userId && (
                                     <button className="btn btn-primary btn-sm rounded-pill px-4" onClick={() => setFilters({...filters, userId: null})}>
                                         Reset Context

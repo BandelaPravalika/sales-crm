@@ -127,18 +127,22 @@ const AdminDashboard = () => {
         {activeTab === 'stats' && (
           <>
             <div className="d-flex flex-column flex-md-row justify-content-end align-items-md-center mb-4 gap-3">
-              <div className="d-flex gap-2">
+              <div className="d-flex gap-2 align-items-center bg-dark bg-opacity-50 p-2 rounded-pill px-3 border border-white border-opacity-5 shadow-sm">
+                <span className="text-muted small me-1">Range:</span>
                 <input 
                   type="date" 
-                  className="form-control form-control-sm border-0 bg-dark text-white shadow-none px-3 rounded-pill"
+                  className="form-control form-control-sm border-0 bg-transparent text-white shadow-none px-2"
                   value={dateRange.start.split('T')[0]}
                   onChange={(e) => setDateRange({...dateRange, start: e.target.value + 'T00:00:00'})}
+                  style={{ width: '130px', fontSize: '11px' }}
                 />
+                <span className="text-muted opacity-25">|</span>
                 <input 
                   type="date" 
-                  className="form-control form-control-sm border-0 bg-dark text-white shadow-none px-3 rounded-pill"
+                  className="form-control form-control-sm border-0 bg-transparent text-white shadow-none px-2"
                   value={dateRange.end.split('T')[0]}
                   onChange={(e) => setDateRange({...dateRange, end: e.target.value + 'T23:59:59'})}
+                  style={{ width: '130px', fontSize: '11px' }}
                 />
               </div>
             </div>
@@ -147,7 +151,7 @@ const AdminDashboard = () => {
               <div className="col-12 col-lg-8">
                 <div className="card shadow-sm border-0 rounded-4 overflow-hidden h-100">
                   <div className="card-header bg-transparent border-0 p-4">
-                     <h6 className="fw-bold text-uppercase mb-0">Revenue Trajectory</h6>
+                     <h6 className="fw-semibold mb-0">Revenue Trajectory</h6>
                   </div>
                   <div className="card-body p-0">
                     <RevenueTrendChart data={trendData} theme={theme} />
@@ -177,12 +181,12 @@ const AdminDashboard = () => {
 
             <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5 bg-secondary bg-opacity-5">
               <div className="card-header bg-transparent p-4 border-0">
-                 <h5 className="fw-bold text-uppercase mb-0 text-white">Operational Efficiency Report</h5>
+                 <h5 className="fw-semibold mb-0 text-white">Operational Efficiency Report</h5>
               </div>
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
                   <thead className="table-dark">
-                    <tr className="text-uppercase text-muted small fw-bold">
+                    <tr className="text-muted small fw-semibold">
                       <th className="ps-4">Staff Node</th>
                       <th>Role</th>
                       <th className="text-center">Leads</th>
@@ -194,12 +198,12 @@ const AdminDashboard = () => {
                   <tbody>
                     {performance.map((p) => (
                       <tr key={p.userId}>
-                        <td className="ps-4 fw-bold text-primary">{p.username}</td>
+                        <td className="ps-4 fw-semibold text-primary">{p.username}</td>
                         <td><span className="badge bg-secondary-subtle text-secondary small">{p.role}</span></td>
-                        <td className="text-center fw-bold">{p.totalLeads}</td>
-                        <td className="text-center text-info fw-bold">{p.interestedLeads || 0}</td>
-                        <td className="text-center text-success fw-bold">{p.convertedLeads || 0}</td>
-                        <td className="pe-4 text-end text-danger fw-bold">{p.lostLeads || 0}</td>
+                        <td className="text-center fw-semibold">{p.totalLeads}</td>
+                        <td className="text-center text-info fw-semibold">{p.interestedLeads || 0}</td>
+                        <td className="text-center text-success fw-semibold">{p.convertedLeads || 0}</td>
+                        <td className="pe-4 text-end text-danger fw-semibold">{p.lostLeads || 0}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -214,36 +218,35 @@ const AdminDashboard = () => {
             <div className="col-12 col-lg-4">
                <div className="card shadow-sm border-0 rounded-4 bg-secondary bg-opacity-5 h-100">
                   <div className="card-body p-4">
-                    <h5 className="fw-bold text-uppercase mb-1 text-white">Provision Access</h5>
-                    <p className="text-muted small mb-4 fw-bold">Add new staff to the workspace</p>
+                    <h5 className="fw-semibold mb-1 text-white">Provision Access</h5>
+                    <p className="text-muted small mb-4">Add new staff to the workspace</p>
                     
                     <form onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.target);
                       const data = Object.fromEntries(formData.entries());
-                      data.permissions = Array.from(formData.getAll('permissions'));
                       handleCreateUser(data);
                       e.target.reset();
                     }}>
                        <div className="mb-3">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-1">Full Name</label>
+                           <label className="form-label small text-muted mb-1">Full Name</label>
                            <input name="name" type="text" className="form-control border-0 bg-dark text-white shadow-none" placeholder="John Doe" required />
                        </div>
                        <div className="mb-3">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-1">Email Terminal</label>
+                           <label className="form-label small text-muted mb-1">Email Terminal</label>
                            <input name="email" type="email" className="form-control border-0 bg-dark text-white shadow-none" placeholder="john@nexus.com" required />
                        </div>
                        <div className="mb-3">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-1">Mobile</label>
+                           <label className="form-label small text-muted mb-1">Mobile</label>
                            <input name="mobile" type="text" className="form-control border-0 bg-dark text-white shadow-none" placeholder="+91 0000000000" required />
                        </div>
                        <div className="mb-3">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-1">Initial Cipher</label>
+                           <label className="form-label small text-muted mb-1">Initial Cipher</label>
                            <input name="password" type="password" className="form-control border-0 bg-dark text-white shadow-none" required />
                        </div>
                        <div className="mb-4">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-1">Designation</label>
-                           <select name="role" className="form-select border-0 bg-dark text-white shadow-none fw-bold" required>
+                           <label className="form-label small text-muted mb-1">Designation</label>
+                           <select name="role" className="form-select border-0 bg-dark text-white shadow-none" required>
                               <option value="">Select Role</option>
                               <option value="ADMIN">System Administrator</option>
                               <option value="MANAGER">Branch Manager</option>
@@ -251,20 +254,7 @@ const AdminDashboard = () => {
                               <option value="ASSOCIATE">Associate Staff</option>
                            </select>
                        </div>
-                       <div className="mb-4">
-                           <label className="form-label small text-muted text-uppercase fw-bold mb-2 d-block">Extra Privileges</label>
-                           <div className="p-3 rounded-4 bg-dark text-white overflow-auto shadow-inner" style={{ maxHeight: '150px' }}>
-                               {availablePermissions.map(perm => (
-                                  <div key={perm} className="form-check mb-1">
-                                     <input name="permissions" value={perm} className="form-check-input" type="checkbox" id={`perm-${perm}`} />
-                                     <label className="form-check-label small" htmlFor={`perm-${perm}`}>
-                                        {perm.replace(/_/g, ' ')}
-                                     </label>
-                                  </div>
-                               ))}
-                           </div>
-                       </div>
-                       <button type="submit" className="btn btn-primary w-100 fw-bold text-uppercase rounded-pill py-3 hover-scale transition-smooth">Initialize Account</button>
+                       <button type="submit" className="btn btn-primary w-100 fw-semibold rounded-pill py-3 hover-scale transition-smooth">Initialize Account</button>
                     </form>
                   </div>
                </div>
@@ -273,15 +263,14 @@ const AdminDashboard = () => {
             <div className="col-12 col-lg-8">
                <div className="card shadow-sm border-0 rounded-4 h-100 overflow-hidden bg-secondary bg-opacity-5">
                   <div className="card-header bg-transparent p-4 border-0">
-                     <h5 className="fw-bold text-uppercase mb-0 text-white">Active Operational Staff</h5>
+                     <h5 className="fw-semibold mb-0 text-white">Active Operational Staff</h5>
                   </div>
                   <div className="table-responsive">
                      <table className="table table-hover align-middle mb-0 table-dark border-0">
                         <thead className="bg-dark bg-opacity-50 border-0">
-                           <tr className="text-uppercase text-muted small fw-bold">
+                           <tr className="text-muted small fw-semibold">
                               <th className="ps-4">User Details</th>
                               <th>Role</th>
-                              <th className="text-center">Permissions</th>
                               <th className="pe-4 text-end">Management</th>
                            </tr>
                         </thead>
@@ -294,7 +283,7 @@ const AdminDashboard = () => {
                                           <Users size={20} />
                                        </div>
                                        <div>
-                                          <p className="mb-0 fw-bold text-truncate text-white" style={{ maxWidth: '200px' }}>{u.name}</p>
+                                          <p className="mb-0 fw-semibold text-truncate text-white" style={{ maxWidth: '200px' }}>{u.name}</p>
                                           <small className="text-muted d-block">{u.email}</small>
                                        </div>
                                     </div>
@@ -305,18 +294,8 @@ const AdminDashboard = () => {
                                        u.role === 'MANAGER' ? 'bg-warning text-dark' : 
                                        'bg-info text-dark'
                                     }`} style={{ fontSize: '10px' }}>
-                                       {u.role.replace(/_/g, ' ')}
+                                       {u.role.toLowerCase().replace(/_/g, ' ')}
                                     </span>
-                                 </td>
-                                 <td className="text-center">
-                                    <div className="d-flex flex-wrap gap-1 justify-content-center">
-                                       {u.permissions?.slice(0, 2).map(p => (
-                                          <span key={p} className="badge bg-secondary-subtle text-secondary small" style={{ fontSize: '9px' }}>
-                                             {p.split('_')[0]}
-                                          </span>
-                                       ))}
-                                       {u.permissions?.length > 2 && <span className="text-muted small">+{u.permissions.length - 2}</span>}
-                                    </div>
                                  </td>
                                  <td className="pe-4 text-end">
                                     <div className="d-flex align-items-center justify-content-end gap-1">
@@ -337,7 +316,7 @@ const AdminDashboard = () => {
         {activeTab === 'leads' && (
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden border border-white border-opacity-5 bg-secondary bg-opacity-5">
              <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center">
-                <h5 className="fw-bold text-uppercase mb-0 text-white">Macro Pipeline explorer</h5>
+                <h5 className="fw-semibold mb-0 text-white">Macro Pipeline Explorer</h5>
                 <button className="btn btn-primary btn-sm rounded-pill px-4" onClick={() => fetchData()}>Sync Live</button>
              </div>
              <div className="card-body p-0">
@@ -353,7 +332,7 @@ const AdminDashboard = () => {
 
         {activeTab === 'payments' && (
           <div className="d-flex flex-column gap-4 animate-fade-in">
-            <h5 className="fw-bold text-uppercase mb-0 px-2 text-primary">Financial Transmission ledger</h5>
+            <h5 className="fw-semibold mb-0 px-2 text-primary">Financial Transmission Ledger</h5>
             <PaymentHistory role="ADMIN" />
           </div>
         )}
