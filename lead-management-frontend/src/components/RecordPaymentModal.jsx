@@ -28,7 +28,7 @@ const RecordPaymentModal = ({ show, onClose, onConfirm }) => {
       const res = await adminService.fetchLeads(); 
       setStudents(res.data);
     } catch (err) {
-      console.error('Failed to fetch students');
+      // Quiet fail to avoid intrusive alerts during search
     } finally {
       setLoading(false);
     }
@@ -93,31 +93,38 @@ const RecordPaymentModal = ({ show, onClose, onConfirm }) => {
                     />
                   </div>
                   
-                  {isOpen && (
+                  {isOpen && searchTerm.length > 0 && (
                     <div className="position-absolute w-100 mt-1 shadow-2xl rounded-3 border border-secondary border-opacity-25 overflow-hidden animate-fade-in" 
                          style={{ zIndex: 1050, background: '#1a1f2e', maxHeight: '180px', overflowY: 'auto' }}>
                       {students.filter(s => 
-                        s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        (s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
                         (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                      ).map(s => (
-                        <div 
-                          key={s.id} 
-                          className="d-flex align-items-center gap-2 p-2 hover-bg-primary cursor-pointer border-bottom border-secondary border-opacity-10 transition-all"
-                          onClick={() => {
-                            setFormData({ ...formData, leadId: s.id });
-                            setSearchTerm(s.name);
-                            setIsOpen(false);
-                          }}
-                        >
-                          <div className="bg-primary bg-opacity-20 text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
-                            {s.name.charAt(0).toUpperCase()}
+                      ).length > 0 ? (
+                        students.filter(s => 
+                          (s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
+                          (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                        ).map(s => (
+                          <div 
+                            key={s.id} 
+                            className="d-flex align-items-center gap-2 p-2 hover-bg-primary cursor-pointer border-bottom border-secondary border-opacity-10 transition-all"
+                            onClick={() => {
+                              setFormData({ ...formData, leadId: s.id });
+                              setSearchTerm(s.name || s.email);
+                              setIsOpen(false);
+                            }}
+                          >
+                            <div className="bg-primary bg-opacity-20 text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
+                              {(s.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="mb-0 fw-bold small text-white" style={{ fontSize: '11px' }}>{s.name || 'Unnamed'}</p>
+                              <small className="text-secondary d-block" style={{ fontSize: '10px' }}>{s.email || 'No email'}</small>
+                            </div>
                           </div>
-                          <div>
-                            <p className="mb-0 fw-bold small text-white" style={{ fontSize: '11px' }}>{s.name}</p>
-                            <small className="text-secondary d-block" style={{ fontSize: '10px' }}>{s.email || 'No email'}</small>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <div className="p-3 text-center text-muted small">No matches found</div>
+                      )}
                     </div>
                   )}
                 </div>

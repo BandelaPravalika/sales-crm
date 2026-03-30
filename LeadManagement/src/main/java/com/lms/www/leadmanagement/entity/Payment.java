@@ -33,6 +33,7 @@ public class Payment {
 
     private String paymentGatewayId;
     private String note;
+    private String receiptUrl; // For manual payment screenshots
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "updated_by")

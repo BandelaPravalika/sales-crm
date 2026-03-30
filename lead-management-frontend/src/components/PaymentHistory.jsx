@@ -22,7 +22,6 @@ const PaymentHistory = ({ role }) => {
   const [associates, setAssociates] = useState([]);
   const [fetchingAssociates, setFetchingAssociates] = useState(false);
   const [selectedSplitPayment, setSelectedSplitPayment] = useState(null);
-  const [showRecordModal, setShowRecordModal] = useState(false);
   const [selectedClearPayment, setSelectedClearPayment] = useState(null);
 
   const fetchTeamLeaders = async () => {
@@ -71,14 +70,7 @@ const PaymentHistory = ({ role }) => {
   };
 
   const handleRecordConfirm = async (formData) => {
-    try {
-      await paymentService.recordManualPayment(formData);
-      toast.success('Payment recorded successfully');
-      setShowRecordModal(false);
-      fetchHistory();
-    } catch (err) {
-      toast.error('Failed to record payment');
-    }
+    // Feature removed per request
   };
 
   const fetchAssociates = async (tlId) => {
@@ -100,7 +92,7 @@ const PaymentHistory = ({ role }) => {
   useEffect(() => {
     fetchHistory();
     fetchTeamLeaders();
-  }, [role]);
+  }, [role, filters.startDate, filters.endDate, filters.tlId, filters.status]);
 
   useEffect(() => {
     if (filters.tlId) {
@@ -135,16 +127,9 @@ const PaymentHistory = ({ role }) => {
         <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-4">
           <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
             <div>
-              <h5 className="fw-semibold mb-0 text-white">Conversion History</h5>
-              <p className="text-muted small mb-0">Real-time payment audit</p>
+              <h5 className="fw-black mb-0 text-white" style={{ fontSize: '18px' }}>Financial Transmission Ledger</h5>
+              <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Real-time payment audit</p>
             </div>
-            <button 
-              className="btn btn-primary rounded-pill d-flex align-items-center gap-2 px-4 py-2 fw-semibold shadow-sm hover-scale transition-all border-0"
-              onClick={() => setShowRecordModal(true)}
-              style={{ fontSize: '13px', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}
-            >
-              <PlusCircle size={16} /> Record Payment
-            </button>
           </div>
           
           <div className="d-flex flex-column flex-md-row gap-3 w-100 w-lg-auto align-items-md-end">
@@ -227,34 +212,33 @@ const PaymentHistory = ({ role }) => {
             </thead>
             <tbody>
               {payments.map((payment) => (
-                <tr key={payment.id}>
-                  <td>
+                <tr key={payment.id} className="table-row border-white border-opacity-5">
+                  <td className="ps-4 table-cell">
                     <div className="d-flex flex-column">
                       <span className="fw-bold">{new Date(payment.createdAt).toLocaleDateString()}</span>
-                      <small className="text-muted">{new Date(payment.createdAt).toLocaleTimeString()}</small>
+                      <small className="text-muted" style={{ fontSize: '10px' }}>{new Date(payment.createdAt).toLocaleTimeString()}</small>
                     </div>
                   </td>
-                  <td>
+                  <td className="table-cell">
                     <div className="d-flex flex-column">
-                      <span className="fw-bold text-uppercase">{payment.leadName}</span>
-                      <small className="text-muted fst-italic">{payment.leadEmail}</small>
+                      <span className="fw-bold text-uppercase" style={{ fontSize: '12px' }}>{payment.leadName}</span>
+                      <small className="text-muted fst-italic" style={{ fontSize: '10px' }}>{payment.leadEmail}</small>
                     </div>
                   </td>
-                  <td>
-                    <span className="fs-5 fw-bold text-success">₹{payment.amount}</span>
+                  <td className="table-cell">
+                    <span className="fw-bold text-success">₹{payment.amount}</span>
                   </td>
-                  <td className="py-4">
+                  <td className="table-cell">
                     <div className="d-flex flex-column">
-                       <span className={`badge rounded-pill px-3 py-1.5 fw-semibold ${(payment.status === 'PAID' || payment.status === 'SUCCESS' || payment.status === 'APPROVED') ? 'bg-success bg-opacity-10 text-success' : payment.status === 'PENDING' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-danger bg-opacity-10 text-danger'}`} style={{ width: 'fit-content', fontSize: '10px', border: '1px solid currentColor' }}>
+                       <span className={`badge rounded-sm px-2 py-1 fw-bold ${(payment.status === 'PAID' || payment.status === 'SUCCESS' || payment.status === 'APPROVED') ? 'bg-success bg-opacity-10 text-success' : payment.status === 'PENDING' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-danger bg-opacity-10 text-danger'}`} style={{ width: 'fit-content', fontSize: '9px', border: '1px solid currentColor' }}>
                          {payment.status}
                        </span>
-                       <small className="text-muted mt-2 fw-bold" style={{ fontSize: '10px', letterSpacing: '0.02em' }}>{payment.paymentType || 'FULL'}</small>
                     </div>
                   </td>
-                  <td className="py-4">
-                    <span className="badge bg-secondary bg-opacity-20 text-muted rounded-pill px-3" style={{ fontSize: '10px' }}>{payment.assignedTlName || "Unassigned"}</span>
+                  <td className="table-cell">
+                    <span className="badge bg-secondary bg-opacity-10 text-muted rounded-pill px-2 py-1" style={{ fontSize: '10px' }}>{payment.assignedTlName || "Unassigned"}</span>
                   </td>
-                  <td className="text-end">
+                  <td className="pe-4 table-cell text-end">
                      <div className="d-flex justify-content-end gap-2">
                         {payment.status === 'PENDING' && (
                           <>
@@ -332,12 +316,6 @@ const PaymentHistory = ({ role }) => {
         onClose={() => setSelectedSplitPayment(null)}
         payment={selectedSplitPayment}
         onConfirm={handleSplitConfirm}
-      />
-
-      <RecordPaymentModal 
-        show={showRecordModal}
-        onClose={() => setShowRecordModal(false)}
-        onConfirm={handleRecordConfirm}
       />
     </div>
   );

@@ -10,7 +10,8 @@ const adminService = {
   updateUser: (id, userData) => api.put(`/admin/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   fetchAssociatesByTl: (tlId) => api.get(`/admin/associates/${tlId}`),
-  fetchTeamLeaders: () => api.get('/admin/team-leaders')
+  fetchTeamLeaders: () => api.get('/admin/team-leaders'),
+  fetchLeads: () => api.get('/admin/leads')
 };
 
 export default adminService;

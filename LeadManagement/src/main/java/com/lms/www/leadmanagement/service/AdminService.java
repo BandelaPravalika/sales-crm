@@ -4,6 +4,7 @@ import com.lms.www.leadmanagement.dto.LeadDTO;
 import com.lms.www.leadmanagement.dto.RoleDTO;
 import com.lms.www.leadmanagement.dto.UserDTO;
 import com.lms.www.leadmanagement.entity.Permission;
+import com.lms.www.leadmanagement.entity.ReportScope;
 import com.lms.www.leadmanagement.entity.Role;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.repository.PermissionRepository;
@@ -14,13 +15,18 @@ import com.lms.www.leadmanagement.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.ArrayList;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import org.springframework.transaction.annotation.Transactional;
+import java.util.regex.Pattern;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Service
 @Transactional
@@ -33,13 +39,16 @@ public class AdminService {
     private RoleRepository roleRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private PermissionRepository permissionRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+
     public User getCurrentUser() {
-        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                .getName();
         return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
@@ -50,7 +59,8 @@ public class AdminService {
     private PaymentRepository paymentRepository;
 
     public UserDTO createManager(UserDTO userDTO) {
-        Role managerRole = roleRepository.findByName("MANAGER").orElseThrow(() -> new RuntimeException("Role MANAGER not found"));
+        Role managerRole = roleRepository.findByName("MANAGER")
+                .orElseThrow(() -> new RuntimeException("Role MANAGER not found"));
         User user = User.builder()
                 .name(userDTO.getName())
                 .email(userDTO.getEmail())
@@ -67,9 +77,9 @@ public class AdminService {
                 .map(r -> RoleDTO.builder()
                         .id(r.getId())
                         .name(r.getName())
-                        .permissions(r.getPermissions() != null 
-                            ? r.getPermissions().stream().map(Permission::getName).collect(Collectors.toList())
-                            : java.util.Collections.emptyList())
+                        .permissions(r.getPermissions() != null
+                                ? r.getPermissions().stream().map(Permission::getName).collect(Collectors.toList())
+                                : java.util.Collections.emptyList())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -77,22 +87,23 @@ public class AdminService {
     public RoleDTO createRole(RoleDTO roleDTO) {
         java.util.Set<Permission> perms = (roleDTO.getPermissions() != null)
                 ? roleDTO.getPermissions().stream()
-                    .map(p -> permissionRepository.findByName(p).orElseThrow(() -> new RuntimeException("Permission not found: " + p)))
-                    .collect(Collectors.toSet())
+                        .map(p -> permissionRepository.findByName(p)
+                                .orElseThrow(() -> new RuntimeException("Permission not found: " + p)))
+                        .collect(Collectors.toSet())
                 : new java.util.HashSet<>();
 
         Role role = roleRepository.findByName(roleDTO.getName().toUpperCase())
                 .orElse(Role.builder().name(roleDTO.getName().toUpperCase()).build());
-        
+
         role.setPermissions(perms);
         Role saved = roleRepository.save(role);
-        
+
         return RoleDTO.builder()
                 .id(saved.getId())
                 .name(saved.getName())
-                .permissions(saved.getPermissions() != null 
-                    ? saved.getPermissions().stream().map(Permission::getName).collect(Collectors.toList())
-                    : java.util.Collections.emptyList())
+                .permissions(saved.getPermissions() != null
+                        ? saved.getPermissions().stream().map(Permission::getName).collect(Collectors.toList())
+                        : java.util.Collections.emptyList())
                 .build();
     }
 
@@ -104,44 +115,63 @@ public class AdminService {
     }
 
     public UserDTO createUser(UserDTO userDTO) {
-        if (userRepository.existsByEmail(userDTO.getEmail())) {
-            throw new RuntimeException("Email already exists: " + userDTO.getEmail());
+        // 1. Null/Empty Validation
+        String email = (userDTO.getEmail() != null) ? userDTO.getEmail().trim() : "";
+        String password = userDTO.getPassword();
+        String name = (userDTO.getName() != null) ? userDTO.getName().trim() : "";
+
+        if (email.isEmpty()) {
+            throw new RuntimeException("Email is required");
+        }
+        if (password == null || password.length() < 6) {
+            throw new RuntimeException("Password must be at least 6 characters long");
+        }
+        if (name.isEmpty()) {
+            throw new RuntimeException("Name is required");
+        }
+        
+        // 2. Email Format Validation
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new RuntimeException("Invalid email format: " + email);
+        }
+
+        // 3. Email Uniqueness
+        if (userRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email already exists: " + email);
         }
 
         Role role = roleRepository.findByName(userDTO.getRole())
                 .orElseThrow(() -> new RuntimeException("Role not found: " + userDTO.getRole()));
-        
+
         // Assign default report scope based on role
-        com.lms.www.leadmanagement.entity.ReportScope scope = com.lms.www.leadmanagement.entity.ReportScope.OWN;
+        ReportScope scope = ReportScope.OWN;
         if ("ADMIN".equals(role.getName()) || "MANAGER".equals(role.getName())) {
-            scope = com.lms.www.leadmanagement.entity.ReportScope.ALL;
+            scope = ReportScope.ALL;
         } else if ("TEAM_LEADER".equals(role.getName())) {
-            scope = com.lms.www.leadmanagement.entity.ReportScope.TEAM;
+            scope = ReportScope.TEAM;
         }
 
         User user = User.builder()
-                .name(userDTO.getName())
-                .email(userDTO.getEmail())
+                .name(name)
+                .email(email.toLowerCase())
                 .mobile(userDTO.getMobile())
-                .password(passwordEncoder.encode(userDTO.getPassword()))
+                .password(passwordEncoder.encode(password))
                 .role(role)
                 .reportScope(scope)
                 .build();
         return UserDTO.fromEntity(userRepository.save(user));
     }
 
-    public List<UserDTO> getAllUsers() {
-        System.out.println("LOG: Admin fetching all users directory...");
-        return userRepository.findAll().stream()
-                .map(UserDTO::fromEntity)
-                .collect(Collectors.toList());
+    public Page<UserDTO> getAllUsers(Pageable pageable) {
+        System.out.println("LOG: Admin fetching paginated users directory...");
+        return userRepository.findAll(pageable)
+                .map(UserDTO::fromEntity);
     }
 
-    public List<LeadDTO> getAllLeads() {
-        System.out.println("LOG: Admin fetching all system leads oversight...");
-        return leadRepository.findAll().stream()
-                .map(LeadDTO::fromEntity)
-                .collect(Collectors.toList());
+    public Page<LeadDTO> getAllLeads(Pageable pageable) {
+        System.out.println("LOG: Admin fetching paginated system leads oversight...");
+        return leadRepository.findAll(pageable)
+                .map(LeadDTO::fromEntity);
     }
 
     public java.util.Map<String, Long> getLeadStats() {
@@ -153,16 +183,18 @@ public class AdminService {
 
     public UserDTO updateUser(Long id, UserDTO userDTO) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
-        
-        if (userDTO.getName() != null) user.setName(userDTO.getName());
-        if (userDTO.getMobile() != null) user.setMobile(userDTO.getMobile());
-        
+
+        if (userDTO.getName() != null)
+            user.setName(userDTO.getName());
+        if (userDTO.getMobile() != null)
+            user.setMobile(userDTO.getMobile());
+
         if (userDTO.getRole() != null) {
             Role role = roleRepository.findByName(userDTO.getRole())
                     .orElseThrow(() -> new RuntimeException("Role not found: " + userDTO.getRole()));
             user.setRole(role);
         }
-        
+
         if (userDTO.getManagerId() != null) {
             User manager = userRepository.findById(userDTO.getManagerId())
                     .orElseThrow(() -> new RuntimeException("Manager not found"));
@@ -171,8 +203,8 @@ public class AdminService {
 
         if (userDTO.getReportScope() != null) {
             // Basic validation: Associates cannot have elevated scopes
-            if ("ASSOCIATE".equals(user.getRole().getName()) && 
-                userDTO.getReportScope() != com.lms.www.leadmanagement.entity.ReportScope.OWN) {
+            if ("ASSOCIATE".equals(user.getRole().getName()) &&
+                    userDTO.getReportScope() != ReportScope.OWN) {
                 throw new RuntimeException("Associates are restricted to OWN report scope");
             }
             user.setReportScope(userDTO.getReportScope());
@@ -181,22 +213,24 @@ public class AdminService {
         if (userDTO.getPermissions() != null) {
             System.out.println(">>> Updating permissions for user: " + user.getEmail());
             System.out.println(">>> New Permissions Request: " + userDTO.getPermissions());
-            
+
             java.util.Set<Permission> direct = new java.util.HashSet<>();
             for (String p : userDTO.getPermissions()) {
                 permissionRepository.findByName(p).ifPresent(direct::add);
             }
-            
+
             boolean exactMatch = false;
             if (user.getRole() != null && user.getRole().getPermissions() != null) {
-                java.util.Set<String> rps = user.getRole().getPermissions().stream().map(Permission::getName).collect(Collectors.toSet());
+                java.util.Set<String> rps = user.getRole().getPermissions().stream().map(Permission::getName)
+                        .collect(Collectors.toSet());
                 if (rps.size() == direct.size() && rps.containsAll(userDTO.getPermissions())) {
                     exactMatch = true;
                 }
             }
-            
+
             if (!exactMatch) {
-                System.out.println(">>> Applying DIRECT overrides: " + direct.stream().map(Permission::getName).collect(Collectors.toList()));
+                System.out.println(">>> Applying DIRECT overrides: "
+                        + direct.stream().map(Permission::getName).collect(Collectors.toList()));
                 user.setDirectPermissions(direct);
             } else {
                 System.out.println(">>> Permissions match Role defaults, clearing direct overrides.");
@@ -213,42 +247,53 @@ public class AdminService {
         userRepository.delete(user);
     }
 
-    public java.util.Map<String, Object> getDashboardStats(java.time.LocalDateTime start, java.time.LocalDateTime end, User requester, Long targetUserId) {
+    public Map<String, Object> getDashboardStats(LocalDateTime start, LocalDateTime end,
+            User requester, Long targetUserId) {
         if (start == null) {
             start = java.time.LocalDate.now().atStartOfDay();
         }
         if (end == null) {
-            end = java.time.LocalDateTime.now();
+            end = LocalDateTime.now();
         }
 
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
-        
+
         java.util.List<User> visibleUsers = new java.util.ArrayList<>();
-        
+
         // Scope-based user collection
-        com.lms.www.leadmanagement.entity.ReportScope scope = (requester != null && requester.getReportScope() != null) 
-            ? requester.getReportScope() 
-            : com.lms.www.leadmanagement.entity.ReportScope.ALL;
+        com.lms.www.leadmanagement.entity.ReportScope scope = requester.getReportScope();
+        if (scope == null && requester.getRole() != null) {
+            String roleName = requester.getRole().getName();
+            if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+                scope = ReportScope.ALL;
+            } else if ("TEAM_LEADER".equals(roleName)) {
+                scope = ReportScope.TEAM;
+            } else {
+                scope = ReportScope.OWN;
+            }
+        }
+        if (scope == null)
+            scope = com.lms.www.leadmanagement.entity.ReportScope.OWN;
 
         if (targetUserId != null) {
             User target = userRepository.findById(targetUserId).orElse(null);
             if (target != null) {
                 boolean allowed = false;
-                if (scope == com.lms.www.leadmanagement.entity.ReportScope.ALL) {
+                if (scope == ReportScope.ALL) {
                     allowed = true;
-                } else if (scope == com.lms.www.leadmanagement.entity.ReportScope.TEAM && requester != null) {
+                } else if (scope == ReportScope.TEAM && requester != null) {
                     List<User> subs = new ArrayList<>();
                     subs.add(requester);
                     collectSubordinates(requester, subs);
                     if (subs.stream().anyMatch(u -> u.getId().equals(targetUserId))) {
                         allowed = true;
                     }
-                } else if (scope == com.lms.www.leadmanagement.entity.ReportScope.OWN && requester != null) {
+                } else if (scope == ReportScope.OWN && requester != null) {
                     if (requester.getId().equals(targetUserId)) {
                         allowed = true;
                     }
                 }
-                
+
                 if (allowed) {
                     visibleUsers.add(target);
                 } else if (requester != null) {
@@ -258,7 +303,8 @@ public class AdminService {
         } else {
             switch (scope) {
                 case OWN:
-                    if (requester != null) visibleUsers.add(requester);
+                    if (requester != null)
+                        visibleUsers.add(requester);
                     break;
                 case TEAM:
                     if (requester != null) {
@@ -272,9 +318,13 @@ public class AdminService {
             }
         }
 
-        java.util.List<com.lms.www.leadmanagement.entity.Lead> leads;
+        List<com.lms.www.leadmanagement.entity.Lead> leads;
         if (visibleUsers != null) {
-            leads = leadRepository.findByCreatedAtBetweenAndAssignedToIn(start, end, visibleUsers);
+            if (visibleUsers.isEmpty()) {
+                leads = new java.util.ArrayList<>();
+            } else {
+                leads = leadRepository.findByCreatedAtBetweenAndAssignedToIn(start, end, visibleUsers);
+            }
         } else {
             leads = leadRepository.findByCreatedAtBetween(start, end);
         }
@@ -284,64 +334,91 @@ public class AdminService {
                 .collect(Collectors.groupingBy(l -> l.getStatus().name(), Collectors.counting()));
         leadStatsMap.put("TOTAL", (long) leads.size());
         stats.put("leadStats", leadStatsMap);
-        
+
         // New stats for calls and interest
-        long callsToday = leads.stream().filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONTACTED).count();
-        long interestedToday = leads.stream().filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.INTERESTED).count();
-        long lostToday = leads.stream().filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.NOT_INTERESTED).count();
-        long convertedToday = leads.stream().filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI).count();
-        
+        long callsToday = leads.stream()
+                .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONTACTED).count();
+        long interestedToday = leads.stream()
+                .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.INTERESTED).count();
+        long lostToday = leads.stream().filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST
+                || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.NOT_INTERESTED).count();
+        long convertedToday = leads.stream()
+                .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID
+                        || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED
+                        || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI)
+                .count();
+
         stats.put("callsToday", callsToday);
         stats.put("interestedToday", interestedToday);
         stats.put("lostToday", lostToday);
         stats.put("convertedToday", convertedToday);
-        
+
         java.util.List<com.lms.www.leadmanagement.entity.Payment> payments;
         if (visibleUsers != null) {
-            List<Long> leadIds = leads.stream().map(com.lms.www.leadmanagement.entity.Lead::getId).collect(Collectors.toList());
-            payments = paymentRepository.findFiltered(leadIds, start, end, null);
+            if (leads.isEmpty()) {
+                payments = new java.util.ArrayList<>();
+            } else {
+                List<Long> leadIds = leads.stream().map(com.lms.www.leadmanagement.entity.Lead::getId)
+                        .collect(Collectors.toList());
+                payments = paymentRepository.findFiltered(leadIds, start, end, null);
+            }
         } else {
             payments = paymentRepository.findByCreatedAtBetween(start, end);
         }
-        
-        java.math.BigDecimal totalPayments = payments.stream()
-                .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
+
+        BigDecimal totalPayments = payments.stream()
+                .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID
+                        || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
                 .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.put("totalPayments", totalPayments);
 
-        java.math.BigDecimal pendingRevenue = payments.stream()
+        BigDecimal pendingRevenue = payments.stream()
                 .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PENDING)
                 .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.put("pendingRevenue", pendingRevenue);
-        
+
         // New stats for payment types
         long partPayments = payments.stream().filter(p -> "EMI_INSTALLMENT".equals(p.getPaymentType())).count();
         long fullPayments = payments.stream().filter(p -> "FULL".equals(p.getPaymentType())).count();
-        
+
         stats.put("partPayments", partPayments);
         stats.put("fullPayments", fullPayments);
         return stats;
     }
 
-    public java.util.List<java.util.Map<String, Object>> getMemberPerformanceFiltered(java.time.LocalDateTime start, java.time.LocalDateTime end, User requester) {
-        if (start == null) start = java.time.LocalDate.now().atStartOfDay();
-        if (end == null) end = java.time.LocalDateTime.now();
+    public java.util.List<java.util.Map<String, Object>> getMemberPerformanceFiltered(java.time.LocalDateTime start,
+            java.time.LocalDateTime end, User requester) {
+        if (start == null)
+            start = LocalDate.now().atStartOfDay();
+        if (end == null)
+            end = LocalDateTime.now();
 
-        final java.time.LocalDateTime fStart = start;
-        final java.time.LocalDateTime fEnd = end;
+        final LocalDateTime fStart = start;
+        final LocalDateTime fEnd = end;
 
         java.util.List<User> userList = new java.util.ArrayList<>();
-        
+
         // Use identical scope logic for performance reports
-        com.lms.www.leadmanagement.entity.ReportScope scope = (requester != null && requester.getReportScope() != null) 
-            ? requester.getReportScope() 
-            : com.lms.www.leadmanagement.entity.ReportScope.OWN;
+        com.lms.www.leadmanagement.entity.ReportScope scope = requester.getReportScope();
+        if (scope == null && requester.getRole() != null) {
+            String roleName = requester.getRole().getName();
+            if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+                scope = ReportScope.ALL;
+            } else if ("TEAM_LEADER".equals(roleName)) {
+                scope = ReportScope.TEAM;
+            } else {
+                scope = ReportScope.OWN;
+            }
+        }
+        if (scope == null)
+            scope = com.lms.www.leadmanagement.entity.ReportScope.OWN;
 
         switch (scope) {
             case OWN:
-                if (requester != null) userList.add(requester);
+                if (requester != null)
+                    userList.add(requester);
                 break;
             case TEAM:
                 if (requester != null) {
@@ -361,26 +438,26 @@ public class AdminService {
                     uStats.put("userId", u.getId());
                     uStats.put("username", u.getName());
                     uStats.put("role", u.getRole() != null ? u.getRole().getName() : "UNASSIGNED");
-                    
+
                     @SuppressWarnings("null")
                     java.util.List<com.lms.www.leadmanagement.entity.Lead> uLeads = leadRepository.findByAssignedTo(u);
                     long totalLeads = uLeads.size();
                     long interestedLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.INTERESTED 
+                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.INTERESTED
                                     || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI
                                     || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.UNDER_REVIEW)
                             .count();
                     long convertedLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED 
+                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED
                                     || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID)
                             .count();
                     long lostLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST 
+                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST
                                     || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.NOT_INTERESTED)
                             .count();
                     long callsMade = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONTACTED 
-                                    && l.getUpdatedAt() != null 
+                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONTACTED
+                                    && l.getUpdatedAt() != null
                                     && !l.getUpdatedAt().isBefore(fStart) && !l.getUpdatedAt().isAfter(fEnd))
                             .count();
 
@@ -389,26 +466,39 @@ public class AdminService {
                     uStats.put("convertedLeads", convertedLeads);
                     uStats.put("lostLeads", lostLeads);
                     uStats.put("callsMade", callsMade);
-                    
+
                     return uStats;
                 })
                 .collect(Collectors.toList());
     }
 
     private void collectSubordinates(User user, java.util.List<User> collector) {
+        // Collect managerial subordinates
         if (user.getSubordinates() != null) {
             for (User sub : user.getSubordinates()) {
-                collector.add(sub);
-                collectSubordinates(sub, collector);
+                if (!collector.contains(sub)) {
+                    collector.add(sub);
+                    collectSubordinates(sub, collector);
+                }
+            }
+        }
+        // Collect supervisory associates (Team Leader -> Associates)
+        if (user.getManagedAssociates() != null) {
+            for (User assoc : user.getManagedAssociates()) {
+                if (!collector.contains(assoc)) {
+                    collector.add(assoc);
+                    collectSubordinates(assoc, collector);
+                }
             }
         }
     }
 
     public List<UserDTO> getAssociatesByTl(Long tlId) {
+        if (tlId == null) throw new IllegalArgumentException("tlId cannot be null");
         User tl = userRepository.findById(tlId)
-            .orElseThrow(() -> new RuntimeException("Team Leader not found"));
+                .orElseThrow(() -> new RuntimeException("Team Leader not found"));
         return userRepository.findBySupervisor(tl).stream()
-            .map(UserDTO::fromEntity)
-            .collect(Collectors.toList());
+                .map(UserDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 }

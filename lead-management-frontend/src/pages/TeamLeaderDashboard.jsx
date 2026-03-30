@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, TrendingUp, Zap, AlertCircle, LogOut, Sun, Moon, Menu, BarChart3, IndianRupee, Phone, Upload, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, Zap, AlertCircle, LogOut, Sun, Moon, Menu, BarChart3, BarChart2, IndianRupee, Phone, Upload, CheckCircle } from 'lucide-react';
 import tlService from '../services/tlService';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -147,21 +147,15 @@ const TeamLeaderDashboard = () => {
         )}
 
         {filters.userId && (
-          <div className="alert alert-primary border-0 rounded-4 d-flex align-items-center justify-content-between p-3 animate-fade-in shadow-sm">
-            <div className="d-flex align-items-center gap-3">
-              <div className="bg-primary bg-opacity-10 p-2 rounded-circle">
-                <Users size={20} className="text-primary" />
-              </div>
-              <div>
-                 <p className="mb-0 fw-bold small">Deep-diving into <span className="text-primary">{associates.find(a => a.id === filters.userId)?.name || 'Associate'}</span>'s Performance</p>
-                 <small className="text-muted">Currently viewing scoped analytics for this staff member</small>
-              </div>
-            </div>
+          <div className="d-flex align-items-center gap-2 mb-4 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
+            <span className="label text-primary" style={{ fontSize: '10px', textTransform: 'uppercase' }}>Focus Node:</span>
+            <span className="value text-white me-2 small fw-bold">{associates.find(a => a.id === filters.userId)?.name || 'Associate'}</span>
             <button 
-              className="btn btn-sm btn-outline-primary rounded-pill px-4 fw-bold"
-              onClick={() => setFilters({ ...filters, userId: null })}
+              className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
+              onClick={() => setFilters({...filters, userId: null})}
+              style={{ fontSize: '9px' }}
             >
-              Reset to Team Total
+              [ CLEAR FOCUS ]
             </button>
           </div>
         )}
@@ -188,9 +182,10 @@ const TeamLeaderDashboard = () => {
         )}
 
         {activeTab === 'leads' && (
-          <div className="premium-card overflow-hidden animate-fade-in">
+          <div className="card overflow-hidden border border-white border-opacity-5 animate-fade-in">
              <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                <h5 className="fw-semibold mb-0 text-white small">My Pipeline Leads</h5>
+                <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Lead Pipeline Management</h5>
+                <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Assigned Working Set</p>
              </div>
                <div className="card-body p-0">
                    <LeadList 
@@ -220,35 +215,109 @@ const TeamLeaderDashboard = () => {
 
         {activeTab === 'team' && (
           <div className="d-flex flex-column gap-4">
-            <div className="premium-card overflow-hidden">
-              <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                 <h5 className="fw-semibold mb-0 text-white small">Associate Performance Snapshot</h5>
+            {/* Squad Efficiency Snapshot */}
+            {(() => {
+              const squadStats = performance.reduce((acc, p) => ({
+                leads: acc.leads + (p.totalLeads || 0),
+                converted: acc.converted + (p.convertedLeads || 0),
+                lost: acc.lost + (p.lostLeads || 0),
+                revenue: acc.revenue + (p.revenue || 0)
+              }), { leads: 0, converted: 0, lost: 0, revenue: 0 });
+              
+              const squadConversion = squadStats.leads > 0 
+                ? ((squadStats.converted / squadStats.leads) * 100).toFixed(1) 
+                : "0.0";
+
+              return (
+                <div className="row g-3 animate-fade-in">
+                  <div className="col-12 col-md-3">
+                    <div className="premium-card p-4 border border-white border-opacity-5 relative overflow-hidden h-100">
+                      <div className="position-absolute top-0 end-0 p-3 opacity-10">
+                         <BarChart2 size={40} className="text-primary" />
+                      </div>
+                      <p className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '10px' }}>Squad Conversion</p>
+                      <h3 className="fw-black mb-0 text-white">{squadConversion}%</h3>
+                      <div className="progress mt-2 bg-secondary bg-opacity-10" style={{ height: '3px' }}>
+                        <div className="progress-bar bg-primary" style={{ width: `${squadConversion}%` }}></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-3">
+                    <div className="premium-card p-4 border border-white border-opacity-5 relative overflow-hidden h-100">
+                      <p className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '10px' }}>Active Pipeline</p>
+                      <h3 className="fw-black mb-0 text-white">{squadStats.leads}</h3>
+                      <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>TOTAL RANGE LEADS</small>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-3">
+                    <div className="premium-card p-4 border border-white border-opacity-5 relative overflow-hidden h-100">
+                      <p className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '10px' }}>Success Nodes</p>
+                      <h3 className="fw-black mb-0 text-success">{squadStats.converted}</h3>
+                      <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>COMPLETED TARGETS</small>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-3">
+                    <div className="premium-card p-4 border border-white border-opacity-5 relative overflow-hidden h-100">
+                      <p className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '10px' }}>Lost Assets</p>
+                      <h3 className="fw-black mb-0 text-danger">{squadStats.lost}</h3>
+                      <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>OFF-PITCH TERMINATIONS</small>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="card overflow-hidden border border-white border-opacity-5">
+              <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5 d-flex justify-content-between align-items-center">
+                 <div>
+                    <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Associate Performance Snapshot</h5>
+                    <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Operational Node Status</p>
+                 </div>
+                 <div className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-3 py-1 fw-bold">
+                    {performance.length} TOTAL ASSOCIATES
+                 </div>
               </div>
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
-                  <thead className={theme === 'dark' ? 'table-dark' : 'table-light'}>
-                    <tr className="text-muted small fw-semibold">
-                      <th className="ps-4">Associate</th>
-                      <th className="text-center">Leads Handled</th>
-                      <th className="text-center">Lost</th>
-                      <th className="text-center">Conversions</th>
-                      <th className="pe-4 text-end">Efficiency %</th>
+                  <thead>
+                    <tr className="text-muted small fw-black border-bottom border-white border-opacity-5">
+                      <th className="ps-4" style={{ fontSize: '10px' }}>ASSOCIATE IDENTIFIER</th>
+                      <th className="text-center" style={{ fontSize: '10px' }}>MGMT LOAD</th>
+                      <th className="text-center" style={{ fontSize: '10px' }}>LOST NODE</th>
+                      <th className="text-center" style={{ fontSize: '10px' }}>SUCCESS CONV</th>
+                      <th className="pe-4 text-end" style={{ fontSize: '10px' }}>EFFICIENCY RATE</th>
                     </tr>
                   </thead>
                   <tbody>
                     {performance.map((p) => (
-                      <tr key={p.userId} className="cursor-pointer" onClick={() => setFilters({ ...filters, userId: p.userId })}>
-                        <td className="ps-4">
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="fw-bold text-white small">{p.username}</span>
-                            <TrendingUp size={12} className="text-primary opacity-0 hover-opacity-100" />
+                      <tr key={p.userId} className="table-row cursor-pointer border-white border-opacity-5" onClick={() => setFilters({ ...filters, userId: p.userId })}>
+                        <td className="ps-4 table-cell">
+                          <div className="d-flex align-items-center gap-3">
+                             <div className="bg-primary bg-opacity-10 text-primary rounded-pill p-1.5 fw-black small" style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {p.username.charAt(0).toUpperCase()}
+                             </div>
+                             <div className="d-flex flex-column">
+                               <span className="fw-black text-white small">{p.username}</span>
+                               <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>ASSOCIATE OPS</small>
+                             </div>
                           </div>
                         </td>
-                        <td className="text-center fw-bold">{p.totalLeads}</td>
-                        <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
-                        <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
-                        <td className="pe-4 text-end text-primary fw-bold">
-                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                        <td className="text-center table-cell fw-black text-white">{p.totalLeads}</td>
+                        <td className="text-center table-cell text-danger fw-black">{p.lostLeads}</td>
+                        <td className="text-center table-cell text-success fw-black">{p.convertedLeads}</td>
+                        <td className="pe-4 text-end table-cell">
+                           <div className="d-flex flex-column align-items-end">
+                              <span className="text-primary fw-black" style={{ fontSize: '12px' }}>
+                                 {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                              </span>
+                              <div className="progress w-100 bg-secondary bg-opacity-10 mt-1" style={{ height: '2px', maxWidth: '60px' }}>
+                                 <div 
+                                   className="progress-bar bg-primary" 
+                                   role="progressbar" 
+                                   style={{ width: `${p.totalLeads > 0 ? (p.convertedLeads / p.totalLeads) * 100 : 0}%` }}
+                                 />
+                              </div>
+                           </div>
                         </td>
                       </tr>
                     ))}
@@ -257,9 +326,10 @@ const TeamLeaderDashboard = () => {
               </div>
             </div>
 
-            <div className="premium-card overflow-hidden">
+            <div className="card overflow-hidden border border-white border-opacity-5">
                <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                   <h5 className="fw-semibold mb-0 text-white small">Team Assignment Matrix</h5>
+                   <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Team Assignment Matrix</h5>
+                   <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Associate Operation Management</p>
                </div>
                <div className="card-body p-0">
                    <LeadList 

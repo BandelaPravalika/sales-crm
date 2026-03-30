@@ -76,7 +76,9 @@ const LeadsTable = ({
                 onChange={(e) => setBulkAssignTlId(e.target.value)}
               >
                 <option value="">Bulk Assign To...</option>
-                {teamLeaders.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                {teamLeaders
+                  .filter(tl => tl.role === 'TEAM_LEADER')
+                  .map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
               </select>
               <button 
                 onClick={() => handleBulkAssign(bulkAssignTlId, teamLeaders)}
@@ -161,7 +163,9 @@ const LeadsTable = ({
                     value={lead.assignedToId || ''}
                   >
                     <option value="">Move To...</option>
-                    {teamLeaders.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                    {teamLeaders
+                      .filter(tl => tl.role === 'TEAM_LEADER')
+                      .map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
                   </select>
                 </td>
               </tr>

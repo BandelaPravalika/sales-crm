@@ -36,7 +36,8 @@ const AdminDashboard = () => {
   const [availablePermissions, setAvailablePermissions] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('stats');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [leads, setLeads] = useState([]);
 
   const [dateRange, setDateRange] = useState({
     start: new Date().toISOString().split('T')[0] + 'T00:00:00',
@@ -51,12 +52,13 @@ const AdminDashboard = () => {
       const statsFilters = { start: dateRange.start, end: dateRange.end };
       const trendFilters = { from: dateRange.start.split('T')[0], to: dateRange.end.split('T')[0] };
 
-      const [statsRes, perfRes, trendRes, usersRes, permsRes] = await Promise.all([
+      const [statsRes, perfRes, trendRes, usersRes, permsRes, leadsRes] = await Promise.all([
         adminService.fetchDashboardStats(statsFilters),
         adminService.fetchMemberPerformance(statsFilters),
         adminService.fetchTrendData(trendFilters),
         adminService.fetchUsers(),
-        adminService.fetchPermissions()
+        adminService.fetchPermissions(),
+        adminService.fetchLeads()
       ]);
 
       setStats(statsRes.data);
@@ -64,6 +66,7 @@ const AdminDashboard = () => {
       setTrendData(trendRes.data);
       setUsers(usersRes.data);
       setAvailablePermissions(permsRes.data);
+      setLeads(leadsRes.data);
     } catch (err) {
       toast.error('System synchronization failed');
     } finally {
@@ -94,15 +97,12 @@ const AdminDashboard = () => {
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
-    console.log(">>> Submitting User Update:", editingUser);
     try {
       const res = await adminService.updateUser(editingUser.id, editingUser);
-      console.log(">>> Update Success Response:", res.data);
       toast.success('User profile updated');
       setIsEditModalOpen(false);
       fetchData();
     } catch (err) {
-      console.error(">>> Update Failed Error:", err.response?.data || err.message);
       toast.error('Update failed');
     }
   };
@@ -119,14 +119,12 @@ const AdminDashboard = () => {
 
   return (
     <DashboardLayout
-      title="System Architecture"
-      subtitle="Admin Operational Console"
       activeTab={activeTab}
       onTabChange={setActiveTab}
       role="ADMIN"
     >
       <div className="animate-fade-in">
-        {activeTab === 'stats' && (
+        {activeTab === 'overview' && (
           <>
             <div className="d-flex flex-column flex-md-row justify-content-end align-items-md-center mb-4 gap-3">
               <div className="d-flex gap-2 align-items-center bg-dark bg-opacity-50 p-2 rounded-pill px-3 border border-white border-opacity-5 shadow-sm">
@@ -136,7 +134,7 @@ const AdminDashboard = () => {
                   className="form-control form-control-sm border-0 bg-transparent text-white shadow-none px-2"
                   value={dateRange.start.split('T')[0]}
                   onChange={(e) => setDateRange({...dateRange, start: e.target.value + 'T00:00:00'})}
-                  style={{ width: '130px', fontSize: '11px' }}
+                  style={{ width: '130px', fontSize: '11px', colorScheme: 'dark' }}
                 />
                 <span className="text-muted opacity-25">|</span>
                 <input 
@@ -144,7 +142,7 @@ const AdminDashboard = () => {
                   className="form-control form-control-sm border-0 bg-transparent text-white shadow-none px-2"
                   value={dateRange.end.split('T')[0]}
                   onChange={(e) => setDateRange({...dateRange, end: e.target.value + 'T23:59:59'})}
-                  style={{ width: '130px', fontSize: '11px' }}
+                  style={{ width: '130px', fontSize: '11px', colorScheme: 'dark' }}
                 />
               </div>
             </div>
@@ -331,7 +329,7 @@ const AdminDashboard = () => {
              </div>
              <div className="card-body p-0">
                 <LeadTable 
-                    leads={[]} 
+                    leads={leads} 
                     role="ADMIN" 
                     showActions={false}
                     theme={theme}

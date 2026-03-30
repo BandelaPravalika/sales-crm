@@ -41,6 +41,13 @@ const RevenueTrendChart = ({ data, theme }) => {
             </div>
             <div className="d-flex align-items-center justify-content-between gap-4 border-top pt-1 mt-1">
               <span className="small d-flex align-items-center gap-2">
+                <div className="rounded-circle bg-danger" style={{ width: 8, height: 8 }}></div>
+                Lost Leads
+              </span>
+              <span className="fw-black text-danger">{payload[2]?.value || 0}</span>
+            </div>
+            <div className="d-flex align-items-center justify-content-between gap-4 border-top pt-1 mt-1">
+              <span className="small d-flex align-items-center gap-2">
                 <div className="rounded-circle bg-success" style={{ width: 8, height: 8 }}></div>
                 Revenue Value
               </span>
@@ -78,6 +85,10 @@ const RevenueTrendChart = ({ data, theme }) => {
                 <stop offset="5%" stopColor="#198754" stopOpacity={0.1}/>
                 <stop offset="95%" stopColor="#198754" stopOpacity={0}/>
               </linearGradient>
+              <linearGradient id="colorLost" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#dc3545" stopOpacity={0.1}/>
+                <stop offset="95%" stopColor="#dc3545" stopOpacity={0}/>
+              </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#444' : '#eee'} />
             <XAxis 
@@ -111,6 +122,18 @@ const RevenueTrendChart = ({ data, theme }) => {
               fillOpacity={1} 
               fill="url(#colorLeads)" 
               name="Leads"
+              activeDot={{ r: 6, stroke: '#0d6efd', strokeWidth: 2, fill: '#fff' }}
+            />
+            <Area 
+              yAxisId="left"
+              type="monotone" 
+              dataKey="lostCount" 
+              stroke="#dc3545" 
+              strokeWidth={3}
+              fillOpacity={1} 
+              fill="url(#colorLost)" 
+              name="Lost"
+              activeDot={{ r: 6, stroke: '#dc3545', strokeWidth: 2, fill: '#fff' }}
             />
             <Area 
               yAxisId="right"
@@ -121,6 +144,7 @@ const RevenueTrendChart = ({ data, theme }) => {
               fillOpacity={1} 
               fill="url(#colorRev)" 
               name="Revenue"
+              activeDot={{ r: 6, stroke: '#198754', strokeWidth: 2, fill: '#fff' }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -133,7 +157,11 @@ const RevenueTrendChart = ({ data, theme }) => {
           </div>
           <div className="d-flex align-items-center gap-2">
             <div className="rounded-circle bg-success" style={{ width: 10, height: 10 }}></div>
-            <span className="small fw-bold text-muted">Monetary Conversion</span>
+            <span className="small fw-bold text-muted">Conversion Value</span>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <div className="rounded-circle bg-danger" style={{ width: 10, height: 10 }}></div>
+            <span className="small fw-bold text-muted">Lost Leads</span>
           </div>
         </div>
       </div>

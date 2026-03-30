@@ -1,7 +1,6 @@
 package com.lms.www.leadmanagement.service;
 
 import com.lms.www.leadmanagement.dto.BulkUploadResponseDTO;
-import com.lms.www.leadmanagement.dto.LeadDTO;
 import com.lms.www.leadmanagement.entity.Lead;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.repository.LeadRepository;
@@ -43,10 +42,11 @@ public class LeadBulkUploadService {
                 try {
                     userRepository.findById(Long.parseLong(idStr.trim()))
                             .ifPresent(assignees::add);
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException ignored) {
+                }
             }
         }
-        
+
         User creator = leadService.getCurrentUser();
         int assigneeIndex = 0;
 
@@ -61,12 +61,13 @@ public class LeadBulkUploadService {
                     firstLine = false;
                     continue;
                 }
-                
-                if (line.trim().isEmpty()) continue;
+
+                if (line.trim().isEmpty())
+                    continue;
                 total++;
 
                 String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-                
+
                 if (data.length >= 2) {
                     String name = data[0].trim().replace("\"", "");
                     String email = "";
@@ -100,7 +101,7 @@ public class LeadBulkUploadService {
                     } else {
                         finalAssignee = creator;
                     }
-                    
+
                     // Duplicate Check
                     boolean isDuplicate = false;
                     if (!email.isEmpty() && leadRepository.existsByEmailAndAssignedTo(email, finalAssignee)) {

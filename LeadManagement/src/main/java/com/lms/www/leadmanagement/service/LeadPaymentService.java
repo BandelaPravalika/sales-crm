@@ -207,6 +207,32 @@ public class LeadPaymentService {
     }
 
     @Transactional
+    public Map<String, Object> initiatePaymentProcess(Long leadId, com.lms.www.leadmanagement.dto.LeadPaymentRequestDTO request) {
+        BigDecimal initialAmount = request.getInitialAmount() != null ? request.getInitialAmount() : new BigDecimal("499");
+        String note = request.getNote();
+
+        // Update lead status to INTERESTED before generating link
+        leadRepository.findById(leadId).ifPresent(lead -> {
+            lead.setStatus(Lead.Status.INTERESTED);
+            if (note != null) lead.setNote(note);
+            leadRepository.save(lead);
+        });
+
+        com.lms.www.leadmanagement.dto.PaymentSplitRequest split = null;
+        if ("PART".equals(request.getPaymentType())) {
+            split = request.toSplitRequest();
+        }
+
+        Map<String, String> cfResponse = createPaymentLink(leadId, initialAmount, request.getTotalAmount(), split);
+        
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("payment_url", cfResponse.get("payment_url"));
+        response.put("payment_session_id", cfResponse.get("payment_session_id"));
+        
+        return response;
+    }
+
+    @Transactional
     public void markAsPaid(Long leadId) {
         if (leadId == null) throw new IllegalArgumentException("Lead ID cannot be null");
         Lead lead = leadRepository.findById(leadId)

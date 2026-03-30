@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 import java.util.List;
 import java.util.Map;
@@ -71,16 +74,16 @@ public class AdminController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/users")
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        System.out.println("API CALL: GET /api/admin/users");
-        return ResponseEntity.ok(adminService.getAllUsers());
+    public ResponseEntity<Page<UserDTO>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
+        System.out.println("API CALL: GET /api/admin/users?page=" + pageable.getPageNumber());
+        return ResponseEntity.ok(adminService.getAllUsers(pageable));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/leads")
-    public ResponseEntity<List<LeadDTO>> getAllLeads() {
-        System.out.println("API CALL: GET /api/admin/leads");
-        return ResponseEntity.ok(adminService.getAllLeads());
+    public ResponseEntity<Page<LeadDTO>> getAllLeads(@PageableDefault(size = 20) Pageable pageable) {
+        System.out.println("API CALL: GET /api/admin/leads?page=" + pageable.getPageNumber());
+        return ResponseEntity.ok(adminService.getAllLeads(pageable));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
@@ -109,6 +112,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getMemberPerformanceFiltered(start, end, requester));
     }
 
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/payments/history")
     public ResponseEntity<List<PaymentDTO>> getPaymentHistory(
             @RequestParam(value = "tlId", required = false) Long tlId,
@@ -119,6 +123,7 @@ public class AdminController {
         return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(tlId, associateId, startDate, endDate, status));
     }
 
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/payments/invoice/{leadId}")
     public ResponseEntity<PaymentDTO> getInvoice(@PathVariable Long leadId) {
         return ResponseEntity.ok(leadPaymentService.generateInvoice(leadId));

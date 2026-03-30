@@ -57,10 +57,13 @@ public class ManagerService {
 
     public List<UserDTO> getAllManagedUsers() {
         User manager = getCurrentUser();
-        // Sync any users created by this manager that might be missing the manager link
-        syncOrphanedSubordinates(manager);
-        
         List<User> subordinates = userRepository.findByManager(manager);
+        
+        // Only sync if no subordinates are found, to avoid overhead on every fetch
+        if (subordinates.isEmpty()) {
+            syncOrphanedSubordinates(manager);
+            subordinates = userRepository.findByManager(manager);
+        }
         
         // Include the manager themselves in the list so they are visible and selectable in the UI
         java.util.List<User> allVisible = new java.util.ArrayList<>();

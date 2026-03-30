@@ -9,6 +9,7 @@ import com.lms.www.leadmanagement.repository.LeadRepository;
 import com.lms.www.leadmanagement.repository.PaymentRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,7 @@ public class ReportService {
         return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    @PreAuthorize("hasAuthority('VIEW_REPORTS')")
     public LeadStatsDTO getFilteredStats(ReportFilterDTO filter) {
         User loggedInUser = getCurrentUser();
         Collection<User> allowedUsers = determineAllowedUsers(loggedInUser, filter);
@@ -45,19 +47,27 @@ public class ReportService {
         LocalDateTime start = filter.getFromDate() != null ? filter.getFromDate().atStartOfDay() : LocalDate.now().minusDays(30).atStartOfDay();
         LocalDateTime end = filter.getToDate() != null ? filter.getToDate().atTime(LocalTime.MAX) : LocalDateTime.now();
 
-        Map<String, Long> statsMap = leadRepository.getSummaryStats(allowedUsers, start, end);
+        Map<String, Long> statsMap = (allowedUsers == null || allowedUsers.isEmpty()) 
+                ? new java.util.HashMap<>() 
+                : leadRepository.getSummaryStats(allowedUsers, start, end);
 
         return LeadStatsDTO.builder()
-                .total(statsMap.getOrDefault("total", 0L))
-                .newCount(statsMap.getOrDefault("newCount", 0L))
-                .followUpCount(statsMap.getOrDefault("followUpCount", 0L))
-                .interestedCount(statsMap.getOrDefault("interestedCount", 0L))
-                .contactedCount(statsMap.getOrDefault("contactedCount", 0L))
-                .lostCount(statsMap.getOrDefault("lostCount", 0L))
-                .convertedCount(statsMap.getOrDefault("convertedCount", 0L))
+                .total(safeGetLong(statsMap, "total"))
+                .newCount(safeGetLong(statsMap, "newCount"))
+                .followUpCount(safeGetLong(statsMap, "followUpCount"))
+                .interestedCount(safeGetLong(statsMap, "interestedCount"))
+                .contactedCount(safeGetLong(statsMap, "contactedCount"))
+                .lostCount(safeGetLong(statsMap, "lostCount"))
+                .convertedCount(safeGetLong(statsMap, "convertedCount"))
                 .build();
     }
 
+    private long safeGetLong(Map<String, Long> map, String key) {
+        Long val = map.get(key);
+        return val != null ? val : 0L;
+    }
+
+    @PreAuthorize("hasAuthority('VIEW_REPORTS')")
     public List<TimeSeriesStatsDTO> getFilteredTrend(ReportFilterDTO filter) {
         User loggedInUser = getCurrentUser();
         Collection<User> allowedUsers = determineAllowedUsers(loggedInUser, filter);
@@ -121,6 +131,7 @@ public class ReportService {
         return result;
     }
 
+    @PreAuthorize("hasAuthority('VIEW_REPORTS')")
     public List<com.lms.www.leadmanagement.dto.LeadDTO> getTodayFollowups(ReportFilterDTO filter) {
         User loggedInUser = getCurrentUser();
         Collection<User> allowedUsers = determineAllowedUsers(loggedInUser, filter);
@@ -181,10 +192,22 @@ public class ReportService {
     }
 
     private void collectSubordinates(User user, Collection<User> collector) {
+        // Collect managerial subordinates
         if (user.getSubordinates() != null) {
             for (User sub : user.getSubordinates()) {
-                collector.add(sub);
-                collectSubordinates(sub, collector);
+                if (!collector.contains(sub)) {
+                    collector.add(sub);
+                    collectSubordinates(sub, collector);
+                }
+            }
+        }
+        // Collect supervisory associates (Team Leader -> Associates)
+        if (user.getManagedAssociates() != null) {
+            for (User assoc : user.getManagedAssociates()) {
+                if (!collector.contains(assoc)) {
+                    collector.add(assoc);
+                    collectSubordinates(assoc, collector);
+                }
             }
         }
     }

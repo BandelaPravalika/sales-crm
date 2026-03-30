@@ -110,26 +110,18 @@ const AssociateDashboard = () => {
 
   return (
     <DashboardLayout
-      title="Associate Workspace"
-      subtitle="My Daily Outreach"
       activeTab={activeTab}
       onTabChange={setActiveTab}
       role="ASSOCIATE"
     >
       <div className="animate-fade-in d-flex flex-column gap-4">
-        <FiltersBar 
-          filters={filters} 
-          onChange={setFilters} 
-          theme={theme} 
-        />
-
         {activeTab === 'leads' && (
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-secondary bg-opacity-5">
             <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center">
               <h5 className="fw-semibold mb-0 text-white">My Lead Pool</h5>
               <button 
                 className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold d-flex align-items-center gap-2"
-                onClick={() => setActiveTab('add-leads')}
+                onClick={() => setActiveTab('ingestion')}
               >
                 <Upload size={14} /> Add Leads
               </button>
@@ -148,7 +140,7 @@ const AssociateDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'add-leads' && (
+        {activeTab === 'ingestion' && (
           <div className="row g-4 mb-4">
              <div className="col-12 col-lg-5 d-flex flex-column gap-4">
                <div className="card shadow-sm border-0 rounded-4 h-100 overflow-hidden">
@@ -186,51 +178,52 @@ const AssociateDashboard = () => {
         )}
 
         {activeTab === 'performance' && (
-          <>
+          <div className="d-flex flex-column gap-4">
+            <FiltersBar 
+              filters={filters} 
+              onChange={setFilters} 
+              theme={theme} 
+              title="Conversion Analytics"
+            />
+
             <div className="row g-4 mb-2">
-              <div className="col-12">
-                <div className="card shadow-sm border-0 rounded-4 overflow-hidden">
+              <div className="col-12 col-xl-8">
+                <div className="card shadow-sm border-0 rounded-4 overflow-hidden h-100">
                    <div className="card-body p-0">
                        <RevenueTrendChart data={trendData} theme={theme} />
                    </div>
                 </div>
               </div>
-            </div>
-
-            <div className="row g-3">
-              <div className="col-12 col-sm-6 col-md-3">
-                <StatCard title="Total Leads" value={stats?.TOTAL || 0} sub="Assigned to me" icon={<Users />} color="primary" />
-              </div>
-              <div className="col-12 col-sm-6 col-md-3">
-                <StatCard title="Interested" value={stats?.INTERESTED || 0} sub="Hot Opportunities" icon={<TrendingUp />} color="warning" />
-              </div>
-              <div className="col-12 col-sm-6 col-md-3">
-                <StatCard title="Conversions" value={stats?.PAID || 0} sub="Successful" icon={<Zap />} color="success" />
-              </div>
-              <div className="col-12 col-sm-6 col-md-3">
-                <StatCard title="Activity" value={leads.filter(l => l.status !== 'NEW').length} sub="Contacted Total" icon={<MessageSquare />} color="info" />
+              <div className="col-12 col-xl-4">
+                 <div className="d-flex flex-column gap-3 h-100">
+                    <StatCard title="Total Leads" value={stats?.TOTAL || 0} sub="Assigned to me" icon={<Users />} color="primary" />
+                    <StatCard title="Interested" value={stats?.INTERESTED || 0} sub="Hot Opportunities" icon={<TrendingUp />} color="warning" />
+                    <StatCard title="Conversions" value={stats?.PAID || 0} sub="Successful" icon={<Zap />} color="success" />
+                    <StatCard title="Activity" value={leads.filter(l => l.status !== 'NEW').length} sub="Contacted Total" icon={<MessageSquare />} color="info" />
+                 </div>
               </div>
             </div>
 
-            <div className="card shadow-sm border-0 rounded-4 overflow-hidden mt-2 bg-secondary bg-opacity-5">
+            <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-secondary bg-opacity-5">
               <div className="card-header bg-transparent p-4 border-0">
-                <h5 className="fw-semibold mb-0 text-white">My Performance Analysis</h5>
+                <h5 className="fw-semibold mb-0 text-white small">Conversion Analytics</h5>
               </div>
               <div className="card-body">
-                <div className="d-flex align-items-center gap-4 p-4 bg-primary bg-opacity-10 rounded-4">
-                   <div className="p-4 bg-primary rounded-circle text-white shadow-sm">
-                      <TrendingUp size={48} />
+                <div className="d-flex align-items-center gap-4 p-4 bg-primary bg-opacity-10 rounded-4 border border-primary border-opacity-10">
+                   <div className="p-4 bg-primary rounded-pill text-white shadow-lg d-flex align-items-center justify-content-center">
+                      <TrendingUp size={32} />
                    </div>
                    <div>
-                      <h2 className="fw-bold mb-1">
+                       <div className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '9px' }}>Current Performance Index</div>
+                       <h2 className="fw-black mb-0 display-6">
                         {stats?.TOTAL > 0 ? ((stats?.PAID / stats?.TOTAL) * 100).toFixed(1) : 0}%
-                      </h2>
-                      <p className="text-muted small mb-0">Conversion Efficiency</p>
+                       </h2>
+                       <p className="text-muted small mb-0">Aggregate Conversion Efficiency</p>
                    </div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {activeTab === 'payments' && (

@@ -161,8 +161,6 @@ const ManagerDashboard = () => {
 
     return (
         <DashboardLayout
-            title="Strategic Operations"
-            subtitle="Manager Control Hub"
             activeTab={activeTab}
             onTabChange={setActiveTab}
             role="MANAGER"
@@ -178,6 +176,18 @@ const ManagerDashboard = () => {
                               onChange={setFilters} 
                               theme={theme} 
                           />
+                          {filters.userId && (
+                            <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
+                              <span className="label text-primary">Viewing:</span>
+                              <span className="value text-white me-2">Individual Performance Profile</span>
+                              <button 
+                                className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none"
+                                onClick={() => setFilters({...filters, userId: null})}
+                              >
+                                [ CLEAR FILTER ]
+                              </button>
+                            </div>
+                          )}
                        </div>
                     </div>
 
@@ -216,20 +226,27 @@ const ManagerDashboard = () => {
                                                  <th className="text-center">Lost</th>
                                                  <th className="pe-4 text-end">Success %</th>
                                              </tr>
-                                        </thead>
-                                        <tbody>
+                                         </thead>
+                                         <tbody>
                                              {performance.slice(0, 10).map(p => (
-                                                 <tr key={p.userId} className="border-white border-opacity-5">
-                                                     <td className="ps-4 fw-semibold text-primary">{p.username}</td>
-                                                     <td className="text-center fw-semibold">{p.totalLeads}</td>
-                                                     <td className="text-center text-success fw-semibold">{p.convertedLeads}</td>
-                                                     <td className="text-center text-danger fw-semibold">{p.lostLeads}</td>
-                                                     <td className="pe-4 text-end text-primary fw-semibold">
+                                                 <tr key={p.userId} className="table-row border-white border-opacity-5">
+                                                     <td 
+                                                        className="ps-4 table-cell fw-semibold text-primary" 
+                                                        onClick={() => setFilters({...filters, userId: p.userId})}
+                                                        style={{ cursor: 'pointer' }}
+                                                        title="Click to view detailed performance profile"
+                                                     >
+                                                       {p.username}
+                                                     </td>
+                                                     <td className="text-center table-cell fw-semibold">{p.totalLeads}</td>
+                                                     <td className="text-center table-cell text-success fw-semibold">{p.convertedLeads}</td>
+                                                     <td className="text-center table-cell text-danger fw-semibold">{p.lostLeads}</td>
+                                                     <td className="pe-4 table-cell text-end text-primary fw-semibold">
                                                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
                                                      </td>
                                                  </tr>
                                              ))}
-                                        </tbody>
+                                         </tbody>
                                     </table>
                                 </div>
                             </div>
@@ -332,22 +349,22 @@ const ManagerDashboard = () => {
                             <div className="table-responsive">
                                 <table className="table table-hover align-middle mb-0 text-white border-0">
                                     <thead className="table-dark">
-                                         <tr className="text-uppercase small fw-bold text-muted">
-                                             <th className="ps-4">Staff Member</th>
-                                             <th className="text-center">Leads</th>
-                                             <th className="text-center">Converted</th>
-                                             <th className="text-center">Lost</th>
-                                             <th className="pe-4 text-end">Conversion %</th>
+                                         <tr className="text-uppercase small fw-bold text-muted letter-spacing-05">
+                                             <th className="ps-4 table-cell">Staff Member</th>
+                                             <th className="text-center table-cell">Leads</th>
+                                             <th className="text-center table-cell">Converted</th>
+                                             <th className="text-center table-cell">Lost</th>
+                                             <th className="pe-4 text-end table-cell">Conversion %</th>
                                          </tr>
                                     </thead>
                                     <tbody>
                                          {performance.filter(p => !filters.userId || p.userId === filters.userId).map(p => (
-                                             <tr key={p.userId} className="border-white border-opacity-5">
-                                                 <td className="ps-4 fw-bold text-primary">{p.username}</td>
-                                                 <td className="text-center fw-bold">{p.totalLeads}</td>
-                                                 <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
-                                                 <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
-                                                 <td className="pe-4 text-end text-primary fw-bold">
+                                             <tr key={p.userId} className="table-row border-white border-opacity-5">
+                                                 <td className="ps-4 table-cell fw-bold text-primary">{p.username}</td>
+                                                 <td className="text-center table-cell fw-bold">{p.totalLeads}</td>
+                                                 <td className="text-center table-cell text-success fw-bold">{p.convertedLeads}</td>
+                                                 <td className="text-center table-cell text-danger fw-bold">{p.lostLeads}</td>
+                                                 <td className="pe-4 text-end table-cell text-primary fw-bold">
                                                      {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
                                                  </td>
                                              </tr>

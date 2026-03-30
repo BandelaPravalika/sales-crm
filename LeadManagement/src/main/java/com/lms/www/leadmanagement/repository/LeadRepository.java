@@ -2,42 +2,69 @@ package com.lms.www.leadmanagement.repository;
 
 import com.lms.www.leadmanagement.entity.Lead;
 import com.lms.www.leadmanagement.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
 public interface LeadRepository extends JpaRepository<Lead, Long> {
+
     List<Lead> findByAssignedTo(User assignedTo);
-    List<Lead> findByAssignedToIn(java.util.Collection<User> users);
+
+    List<Lead> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<Lead> findByCreatedAtBetweenAndAssignedToIn(
+            LocalDateTime start,
+            LocalDateTime end,
+            Collection<User> users);
+
+    Page<Lead> findByAssignedToIn(
+            Collection<User> users,
+            Pageable pageable);
+
+    @Query("SELECT l FROM Lead l WHERE l.assignedTo IN :users")
+    List<Lead> findByAssignedToIn(@Param("users") Collection<User> users);
+
+    Page<Lead> findByAssignedToInAndCreatedAtBetween(
+            Collection<User> users,
+            LocalDateTime start,
+            LocalDateTime end,
+            Pageable pageable);
+
     Optional<Lead> findByIdAndAssignedTo(Long id, User assignedTo);
-    List<Lead> findByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
-    boolean existsByEmailAndMobileAndAssignedTo(String email, String mobile, User assignedTo);
+
     boolean existsByEmailAndAssignedTo(String email, User assignedTo);
+
     boolean existsByMobileAndAssignedTo(String mobile, User assignedTo);
-    List<Lead> findByCreatedAtBetweenAndAssignedToIn(java.time.LocalDateTime start, java.time.LocalDateTime end, java.util.Collection<User> users);
 
-    @org.springframework.data.jpa.repository.Query("SELECT " +
-        "COUNT(l) as total, " +
-        "COUNT(CASE WHEN l.status = 'NEW' THEN 1 END) as newCount, " +
-        "COUNT(CASE WHEN l.status = 'FOLLOW_UP' THEN 1 END) as followUpCount, " +
-        "COUNT(CASE WHEN l.status = 'INTERESTED' THEN 1 END) as interestedCount, " +
-        "COUNT(CASE WHEN l.status = 'CONTACTED' THEN 1 END) as contactedCount, " +
-        "COUNT(CASE WHEN l.status = 'LOST' THEN 1 END) as lostCount, " +
-        "COUNT(CASE WHEN l.status = 'CONVERTED' OR l.status = 'PAID' THEN 1 END) as convertedCount " +
-        "FROM Lead l " +
-        "WHERE l.assignedTo IN :users AND l.createdAt BETWEEN :start AND :end")
-    java.util.Map<String, Long> getSummaryStats(@org.springframework.data.repository.query.Param("users") java.util.Collection<User> users, 
-                                               @org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, 
-                                               @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
+    @Query("SELECT new map(" +
+            "count(l) as total, " +
+            "coalesce(sum(case when l.status = 'NEW' then 1 else 0 end), 0) as newCount, " +
+            "coalesce(sum(case when l.status = 'INTERESTED' then 1 else 0 end), 0) as interestedCount, " +
+            "coalesce(sum(case when l.status = 'CONTACTED' then 1 else 0 end), 0) as contactedCount, " +
+            "coalesce(sum(case when l.status = 'FOLLOW_UP' then 1 else 0 end), 0) as followUpCount, " +
+            "coalesce(sum(case when l.status = 'CONVERTED' then 1 else 0 end), 0) as convertedCount, " +
+            "coalesce(sum(case when l.status = 'LOST' then 1 else 0 end), 0) as lostCount) " +
+            "FROM Lead l WHERE l.assignedTo IN :users AND l.createdAt BETWEEN :start AND :end")
+    Map<String, Long> getSummaryStats(
+            @Param("users") Collection<User> users,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT DATE(created_at) as date, COUNT(*) as count " +
-        "FROM leads " +
-        "WHERE assigned_to IN (:userIds) AND created_at BETWEEN :start AND :end " +
-        "GROUP BY DATE(created_at)", nativeQuery = true)
-    List<java.util.Map<String, Object>> getDailyLeadTrend(@org.springframework.data.repository.query.Param("userIds") java.util.Collection<Long> userIds, 
-                                                        @org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, 
-                                                        @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
+    @Query("SELECT new map(cast(l.createdAt as localdate) as date, count(l) as count) " +
+            "FROM Lead l WHERE l.assignedTo.id IN :userIds AND l.createdAt BETWEEN :start AND :end " +
+            "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
+    List<Map<String, Object>> getDailyLeadTrend(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }

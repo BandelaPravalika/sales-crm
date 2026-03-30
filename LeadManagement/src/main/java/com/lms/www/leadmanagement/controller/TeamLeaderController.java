@@ -3,6 +3,7 @@ package com.lms.www.leadmanagement.controller;
 import com.lms.www.leadmanagement.dto.BulkUploadResponseDTO;
 import com.lms.www.leadmanagement.dto.LeadDTO;
 import com.lms.www.leadmanagement.dto.PaymentDTO;
+import com.lms.www.leadmanagement.dto.UserDTO;
 import com.lms.www.leadmanagement.service.LeadPaymentService;
 import com.lms.www.leadmanagement.service.LeadService;
 import lombok.RequiredArgsConstructor;
@@ -145,6 +146,7 @@ public class TeamLeaderController {
         return ResponseEntity.ok(leadService.updatePaymentLink(id, body.get("link")));
     }
 
+    @PreAuthorize("hasAnyAuthority('VIEW_LEADS', 'ROLE_TEAM_LEADER', 'ROLE_MANAGER')")
     @GetMapping("/payments/history")
     public ResponseEntity<List<PaymentDTO>> getPaymentHistory(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -160,11 +162,13 @@ public class TeamLeaderController {
         return ResponseEntity.ok(leadService.assignLead(leadId, associateId));
     }
 
+    @PreAuthorize("hasAnyAuthority('VIEW_LEADS', 'ROLE_TEAM_LEADER', 'ROLE_MANAGER')")
     @GetMapping("/subordinates")
-    public ResponseEntity<List<com.lms.www.leadmanagement.dto.UserDTO>> getMySubordinates() {
+    public ResponseEntity<List<UserDTO>> getMySubordinates() {
         return ResponseEntity.ok(leadService.getCurrentUserSubordinates());
     }
 
+    @PreAuthorize("hasAnyAuthority('VIEW_LEADS', 'ROLE_TEAM_LEADER', 'ROLE_MANAGER')")
     @GetMapping("/dashboard/stats")
     public ResponseEntity<java.util.Map<String, Object>> getDashboardStats(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -176,6 +180,7 @@ public class TeamLeaderController {
         return ResponseEntity.ok(adminService.getDashboardStats(start, end, tl, userId));
     }
 
+    @PreAuthorize("hasAnyAuthority('VIEW_LEADS', 'ROLE_TEAM_LEADER', 'ROLE_MANAGER')")
     @GetMapping("/reports/member-performance")
     public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getMemberPerformance(
             @AuthenticationPrincipal UserDetails userDetails,

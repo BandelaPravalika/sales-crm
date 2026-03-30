@@ -33,8 +33,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                System.out.println(">>> AUTHENTICATED USER: " + username + " with authorities: " + userDetails.getAuthorities());
-                
+                System.out.println(
+                        ">>> AUTHENTICATED USER: " + username + " with authorities: " + userDetails.getAuthorities());
+
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -42,8 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-             System.err.println(">>> JWT FIX Authentication Error: " + e.getMessage());
-             e.printStackTrace();
+            System.err.println(">>> JWT FIX Authentication Error: " + e.getMessage());
+            e.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
