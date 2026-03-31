@@ -12,6 +12,7 @@ import RevenueTrendChart from './dashboard/components/RevenueTrendChart';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import TaskBoard from '../components/TaskBoard';
 import FiltersBar from './dashboard/components/FiltersBar';
+import CallLogDashboard from './dashboard/components/CallLogDashboard';
 
 const TeamLeaderDashboard = () => {
   const { user, logout } = useAuth();
@@ -52,7 +53,7 @@ const TeamLeaderDashboard = () => {
         tlService.fetchSubordinates(),
         tlService.fetchTrendData(trendFilters)
       ]);
-      setLeads(leadsRes.data);
+      setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : (leadsRes.data?.content || []));
       setStats(statsRes.data);
       setPerformance(perfRes.data);
       setAssociates(subordinatesRes.data);
@@ -104,7 +105,7 @@ const TeamLeaderDashboard = () => {
     try {
       const res = await tlService.sendPaymentLink(leadId, paymentData);
       toast.success('Payment link generated!');
-      
+
       const lead = res.data.lead;
       if (!lead.email) {
         toast.info('No email found. Please use the WhatsApp button to share the link.', { autoClose: 6000 });
@@ -120,13 +121,15 @@ const TeamLeaderDashboard = () => {
 
   const handleAssignLead = async (leadId, associateId) => {
     try {
+      toast.info('Assigning lead to associate...');
       await tlService.assignLead(leadId, associateId);
-      toast.success('Lead assigned to associate');
+      toast.success('Assignment confirmed');
       fetchData();
     } catch (err) {
-      toast.error('Assignment failed');
+      toast.error('Assignment synchronization failed');
     }
   };
+
 
   return (
     <DashboardLayout
@@ -138,11 +141,11 @@ const TeamLeaderDashboard = () => {
     >
       <div className="animate-fade-in d-flex flex-column gap-3">
         {/* Operational Scope Filters */}
-        { (activeTab === 'performance' || activeTab === 'team' || activeTab === 'leads') && (
-          <FiltersBar 
-            filters={filters} 
-            onChange={setFilters} 
-            theme={theme} 
+        {(activeTab === 'performance' || activeTab === 'team' || activeTab === 'leads') && (
+          <FiltersBar
+            filters={filters}
+            onChange={setFilters}
+            theme={theme}
           />
         )}
 
@@ -150,9 +153,9 @@ const TeamLeaderDashboard = () => {
           <div className="d-flex align-items-center gap-2 mb-4 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
             <span className="label text-primary" style={{ fontSize: '10px', textTransform: 'uppercase' }}>Focus Node:</span>
             <span className="value text-white me-2 small fw-bold">{associates.find(a => a.id === filters.userId)?.name || 'Associate'}</span>
-            <button 
+            <button
               className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
-              onClick={() => setFilters({...filters, userId: null})}
+              onClick={() => setFilters({ ...filters, userId: null })}
               style={{ fontSize: '9px' }}
             >
               [ CLEAR FOCUS ]
@@ -162,54 +165,54 @@ const TeamLeaderDashboard = () => {
 
         {activeTab === 'ingestion' && (
           <div className="animate-fade-in row g-4 mb-4">
-             <div className="col-12 col-xl-4">
-                <div className="premium-card p-4 h-100">
-                    <LeadForm onSubmit={handleAddLead} title="Quick Lead Add" />
-                </div>
-             </div>
-             <div className="col-12 col-xl-8">
-                <div className="h-100">
-                   <BulkUpload 
-                     isOpen={true}
-                     isInline={true}
-                     onClose={() => setActiveTab('leads')}
-                     onSuccess={fetchData}
-                     teamLeaders={associates.filter(a => a.role === 'ASSOCIATE')}
-                   />
-                </div>
-             </div>
+            <div className="col-12 col-xl-4">
+              <div className="premium-card p-4 h-100">
+                <LeadForm onSubmit={handleAddLead} title="Quick Lead Add" />
+              </div>
+            </div>
+            <div className="col-12 col-xl-8">
+              <div className="h-100">
+                <BulkUpload
+                  isOpen={true}
+                  isInline={true}
+                  onClose={() => setActiveTab('leads')}
+                  onSuccess={fetchData}
+                  teamLeaders={associates.filter(a => a.role === 'ASSOCIATE')}
+                />
+              </div>
+            </div>
           </div>
         )}
 
         {activeTab === 'leads' && (
           <div className="card overflow-hidden border border-white border-opacity-5 animate-fade-in">
-             <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Lead Pipeline Management</h5>
-                <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Assigned Working Set</p>
-             </div>
-               <div className="card-body p-0">
-                   <LeadList 
-                     leads={leads} 
-                     onUpdateStatus={handleUpdateStatus} 
-                     onSendPaymentLink={handleSendPaymentLink} 
-                     onAssignLead={handleAssignLead}
-                     onRecordCallOutcome={handleRecordCallOutcome}
-                     associates={associates.filter(a => a.role === 'ASSOCIATE')}
-                     role="TEAM_LEADER" 
-                     fetchLeads={fetchData} 
-                     theme={theme}
-                   />
-               </div>
+            <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
+              <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Lead Pipeline Management</h5>
+              <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Assigned Working Set</p>
+            </div>
+            <div className="card-body p-0">
+              <LeadList
+                leads={leads}
+                onUpdateStatus={handleUpdateStatus}
+                onSendPaymentLink={handleSendPaymentLink}
+                onAssignLead={handleAssignLead}
+                onRecordCallOutcome={handleRecordCallOutcome}
+                associates={associates.filter(a => a.role === 'ASSOCIATE')}
+                role="TEAM_LEADER"
+                fetchLeads={fetchData}
+                theme={theme}
+              />
+            </div>
           </div>
         )}
 
         {activeTab === 'tasks' && (
-          <TaskBoard 
-            leads={leads} 
-            theme={theme} 
-            onUpdateStatus={handleUpdateStatus} 
+          <TaskBoard
+            leads={leads}
+            theme={theme}
+            onUpdateStatus={handleUpdateStatus}
             onSendPaymentLink={handleSendPaymentLink}
-            fetchLeads={fetchData} 
+            fetchLeads={fetchData}
           />
         )}
 
@@ -223,9 +226,9 @@ const TeamLeaderDashboard = () => {
                 lost: acc.lost + (p.lostLeads || 0),
                 revenue: acc.revenue + (p.revenue || 0)
               }), { leads: 0, converted: 0, lost: 0, revenue: 0 });
-              
-              const squadConversion = squadStats.leads > 0 
-                ? ((squadStats.converted / squadStats.leads) * 100).toFixed(1) 
+
+              const squadConversion = squadStats.leads > 0
+                ? ((squadStats.converted / squadStats.leads) * 100).toFixed(1)
                 : "0.0";
 
               return (
@@ -233,7 +236,7 @@ const TeamLeaderDashboard = () => {
                   <div className="col-12 col-md-3">
                     <div className="premium-card p-4 border border-white border-opacity-5 relative overflow-hidden h-100">
                       <div className="position-absolute top-0 end-0 p-3 opacity-10">
-                         <BarChart2 size={40} className="text-primary" />
+                        <BarChart2 size={40} className="text-primary" />
                       </div>
                       <p className="text-muted small fw-bold text-uppercase tracking-widest mb-1" style={{ fontSize: '10px' }}>Squad Conversion</p>
                       <h3 className="fw-black mb-0 text-white">{squadConversion}%</h3>
@@ -269,13 +272,13 @@ const TeamLeaderDashboard = () => {
 
             <div className="card overflow-hidden border border-white border-opacity-5">
               <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5 d-flex justify-content-between align-items-center">
-                 <div>
-                    <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Associate Performance Snapshot</h5>
-                    <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Operational Node Status</p>
-                 </div>
-                 <div className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-3 py-1 fw-bold">
-                    {performance.length} TOTAL ASSOCIATES
-                 </div>
+                <div>
+                  <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Associate Performance Snapshot</h5>
+                  <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Current Operational Node Status</p>
+                </div>
+                <div className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-3 py-1 fw-bold">
+                  {performance.length} TOTAL ASSOCIATES
+                </div>
               </div>
               <div className="table-responsive">
                 <table className="table table-hover align-middle mb-0">
@@ -293,31 +296,31 @@ const TeamLeaderDashboard = () => {
                       <tr key={p.userId} className="table-row cursor-pointer border-white border-opacity-5" onClick={() => setFilters({ ...filters, userId: p.userId })}>
                         <td className="ps-4 table-cell">
                           <div className="d-flex align-items-center gap-3">
-                             <div className="bg-primary bg-opacity-10 text-primary rounded-pill p-1.5 fw-black small" style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {p.username.charAt(0).toUpperCase()}
-                             </div>
-                             <div className="d-flex flex-column">
-                               <span className="fw-black text-white small">{p.username}</span>
-                               <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>ASSOCIATE OPS</small>
-                             </div>
+                            <div className="bg-primary bg-opacity-10 text-primary rounded-pill p-1.5 fw-black small" style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {p.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="d-flex flex-column">
+                              <span className="fw-black text-white small">{p.username}</span>
+                              <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>ASSOCIATE OPS</small>
+                            </div>
                           </div>
                         </td>
                         <td className="text-center table-cell fw-black text-white">{p.totalLeads}</td>
                         <td className="text-center table-cell text-danger fw-black">{p.lostLeads}</td>
                         <td className="text-center table-cell text-success fw-black">{p.convertedLeads}</td>
                         <td className="pe-4 text-end table-cell">
-                           <div className="d-flex flex-column align-items-end">
-                              <span className="text-primary fw-black" style={{ fontSize: '12px' }}>
-                                 {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                              </span>
-                              <div className="progress w-100 bg-secondary bg-opacity-10 mt-1" style={{ height: '2px', maxWidth: '60px' }}>
-                                 <div 
-                                   className="progress-bar bg-primary" 
-                                   role="progressbar" 
-                                   style={{ width: `${p.totalLeads > 0 ? (p.convertedLeads / p.totalLeads) * 100 : 0}%` }}
-                                 />
-                              </div>
-                           </div>
+                          <div className="d-flex flex-column align-items-end">
+                            <span className="text-primary fw-black" style={{ fontSize: '12px' }}>
+                              {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                            </span>
+                            <div className="progress w-100 bg-secondary bg-opacity-10 mt-1" style={{ height: '2px', maxWidth: '60px' }}>
+                              <div
+                                className="progress-bar bg-primary"
+                                role="progressbar"
+                                style={{ width: `${p.totalLeads > 0 ? (p.convertedLeads / p.totalLeads) * 100 : 0}%` }}
+                              />
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -327,23 +330,23 @@ const TeamLeaderDashboard = () => {
             </div>
 
             <div className="card overflow-hidden border border-white border-opacity-5">
-               <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                   <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Team Assignment Matrix</h5>
-                   <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Associate Operation Management</p>
-               </div>
-               <div className="card-body p-0">
-                   <LeadList 
-                     leads={leads} 
-                     onUpdateStatus={handleUpdateStatus} 
-                     onSendPaymentLink={handleSendPaymentLink} 
-                     onAssignLead={handleAssignLead}
-                     onRecordCallOutcome={handleRecordCallOutcome}
-                     associates={associates.filter(a => a.role === 'ASSOCIATE')}
-                     role="TEAM_LEADER" 
-                     fetchLeads={fetchData} 
-                     theme={theme}
-                   />
-               </div>
+              <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
+                <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Team Assignment Matrix</h5>
+                <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Associate Operation Management</p>
+              </div>
+              <div className="card-body p-0">
+                <LeadList
+                  leads={leads}
+                  onUpdateStatus={handleUpdateStatus}
+                  onSendPaymentLink={handleSendPaymentLink}
+                  onAssignLead={handleAssignLead}
+                  onRecordCallOutcome={handleRecordCallOutcome}
+                  associates={associates.filter(a => a.role === 'ASSOCIATE')}
+                  role="TEAM_LEADER"
+                  fetchLeads={fetchData}
+                  theme={theme}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -353,9 +356,9 @@ const TeamLeaderDashboard = () => {
             <div className="row g-4">
               <div className="col-12">
                 <div className="card shadow-sm border-0 rounded-4 overflow-hidden">
-                   <div className="card-body p-0">
-                       <RevenueTrendChart data={trendData} theme={theme} />
-                   </div>
+                  <div className="card-body p-0">
+                    <RevenueTrendChart data={trendData} theme={theme} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -386,16 +389,20 @@ const TeamLeaderDashboard = () => {
 
         {activeTab === 'payments' && (
           <div className="d-flex flex-column gap-4">
-             <h5 className="fw-semibold mb-0 px-2 text-primary">Team Conversion History</h5>
-             <PaymentHistory role="TEAM_LEADER" />
+            <h5 className="fw-semibold mb-0 px-2 text-primary">Team Conversion History</h5>
+            <PaymentHistory role="TEAM_LEADER" />
           </div>
+        )}
+
+        {activeTab === 'call-logs' && (
+          <CallLogDashboard />
         )}
       </div>
 
-      <BulkUpload 
+      <BulkUpload
         isOpen={isBulkUploadModalOpen}
         onClose={() => setIsBulkUploadModalOpen(false)}
-        onUploadSuccess={fetchData} 
+        onUploadSuccess={fetchData}
         uploadUrl={null} // Default handles it
       />
     </DashboardLayout>

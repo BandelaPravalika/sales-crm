@@ -11,14 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
-import java.math.BigDecimal;
-import lombok.extern.slf4j.Slf4j;
 import com.lms.www.leadmanagement.dto.BulkUploadResponseDTO;
-import com.lms.www.leadmanagement.service.LeadPaymentService;
 import com.lms.www.leadmanagement.service.LeadBulkUploadService;
 
-@Slf4j
+
 @RestController
+
 @RequestMapping("/api/leads")
 public class LeadController {
 
@@ -27,9 +25,10 @@ public class LeadController {
 
     @Autowired
     private LeadBulkUploadService bulkUploadService;
-    
+
     @Autowired
-    private LeadPaymentService leadPaymentService;
+    private com.lms.www.leadmanagement.service.LeadPaymentService leadPaymentService;
+
 
     @GetMapping("/stats")
     @PreAuthorize("hasAuthority('VIEW_LEADS')")
@@ -61,7 +60,14 @@ public class LeadController {
         return ResponseEntity.ok(bulkUploadService.uploadLeads(file, null));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('VIEW_LEADS')")
+    public ResponseEntity<LeadDTO> updateLead(@PathVariable Long id, @RequestBody LeadDTO leadDTO) {
+        return ResponseEntity.ok(leadService.updateLead(id, leadDTO));
+    }
+
     @PutMapping("/{id}/status")
+
     @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
     public ResponseEntity<LeadDTO> updateStatus(
             @PathVariable Long id,
@@ -89,15 +95,15 @@ public class LeadController {
         return ResponseEntity.ok(leadService.recordCallOutcome(id, status, note, followUpDate));
     }
 
-    @PreAuthorize("hasAuthority('SEND_PAYMENT')")
+    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS') or hasAuthority('ADMIN') or hasAuthority('MANAGER')")
     @PostMapping("/{id}/send-payment-link")
     public ResponseEntity<Map<String, Object>> sendPaymentLink(
             @PathVariable Long id,
             @RequestBody com.lms.www.leadmanagement.dto.LeadPaymentRequestDTO request) {
         
-        BigDecimal initialAmount = request.getInitialAmount();
+        java.math.BigDecimal initialAmount = request.getInitialAmount();
         if (initialAmount == null) {
-            initialAmount = new BigDecimal("499");
+            initialAmount = new java.math.BigDecimal("499");
         }
         
         String note = request.getNote();
@@ -120,4 +126,5 @@ public class LeadController {
         
         return ResponseEntity.ok(response);
     }
+
 }

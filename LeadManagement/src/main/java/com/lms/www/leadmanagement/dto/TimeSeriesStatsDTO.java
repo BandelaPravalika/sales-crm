@@ -14,5 +14,6 @@ import java.time.LocalDate;
 public class TimeSeriesStatsDTO {
     private LocalDate date;
     private long leadsCount;
+    private long lostCount;
     private BigDecimal revenue;
 }

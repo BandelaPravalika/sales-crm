@@ -71,8 +71,12 @@ const LeadForm = ({ onSubmit, title = "Add New Lead", initialData = {} }) => {
             </div>
           </div>
           
-          <button type="submit" className="btn btn-primary w-100 py-3 fw-bold text-uppercase d-flex align-items-center justify-content-center gap-2 mt-auto">
-             <UserPlus size={18} /> Create Lead Entry
+          <button 
+            type="submit" 
+            className="btn btn-primary w-100 py-3 fw-black text-uppercase d-flex align-items-center justify-content-center gap-2 mt-auto shadow-glow border-0 transition-smooth"
+            style={{ letterSpacing: '1px' }}
+          >
+             <UserPlus size={18} /> CREATE LEAD ENTRY
           </button>
         </form>
       </div>

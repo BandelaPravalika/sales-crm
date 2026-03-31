@@ -58,6 +58,29 @@ public class AdminService {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private LeadService leadService;
+
+    public UserDTO getGlobalTeamTree() {
+        // Find top level users (Managers/Admins with no supervisor/manager)
+        List<User> roots = userRepository.findAll().stream()
+                .filter(u -> u.getManager() == null && u.getSupervisor() == null)
+                .collect(Collectors.toList());
+        
+        if (roots.isEmpty()) return null;
+        
+        // Return the first root's tree (usually the primary Admin)
+        return UserDTO.fromEntityWithTree(roots.get(0));
+    }
+
+    public LeadDTO assignLead(Long leadId, Long tlId) {
+        return leadService.assignLead(leadId, tlId);
+    }
+
+    public List<LeadDTO> bulkAssignLeads(List<Long> leadIds, Long tlId) {
+        return leadService.bulkAssignLeads(leadIds, tlId);
+    }
+
     public UserDTO createManager(UserDTO userDTO) {
         Role managerRole = roleRepository.findByName("MANAGER")
                 .orElseThrow(() -> new RuntimeException("Role MANAGER not found"));

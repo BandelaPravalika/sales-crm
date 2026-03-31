@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import CallOutcomeModal from './CallOutcomeModal';
 import GeneratePaymentLinkModal from './GeneratePaymentLinkModal';
 
-const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutcome, onAssignLead, associates = [], role, showActions = true, theme }) => {
+const LeadTable = ({ leads, onSendPaymentLink, onViewInvoice, onUpdateStatus, onRecordCallOutcome, onAssignLead, associates = [], role, showActions = true, theme }) => {
   const [selectedOutcomeLead, setSelectedOutcomeLead] = useState(null);
   const [selectedRejectionLead, setSelectedRejectionLead] = useState(null);
   const [selectedLinkLead, setSelectedLinkLead] = useState(null);
@@ -55,19 +55,19 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
     <div className="w-100 animate-fade-in">
       <div className="p-0">
         <div className="table-responsive">
-          <table className={`table table-hover align-middle mb-0 table-dark border-0`}>
+          <table className={`table table-hover align-middle mb-0 table-dark border-0 glass-table`}>
             <thead>
-              <tr className="text-muted small fw-semibold border-bottom border-white border-opacity-5">
-                <th className="ps-4">Lead Info</th>
-                <th>Status</th>
-                <th>Assigned Node</th>
-                <th>Note/Remarks</th>
-                {showActions && <th className="pe-4 text-end">Actions</th>}
+              <tr className="text-muted small fw-bold text-uppercase tracking-widest border-bottom border-white border-opacity-5">
+                <th className="ps-4 py-3">Lead Entity</th>
+                <th className="py-3">Current Status</th>
+                <th className="py-3">Assignment Node</th>
+                <th className="py-3">Operational Notes</th>
+                {showActions && <th className="pe-4 text-end py-3">Engagement</th>}
               </tr>
             </thead>
             <tbody>
               {leads.map((lead) => (
-                <tr key={lead.id} className="table-row border-bottom border-white border-opacity-5">
+                <tr key={lead.id} className="table-row border-bottom border-white border-opacity-5 transition-all">
                   <td className="ps-4 table-cell">
                     <div className="d-flex flex-column">
                       <span className="value">{lead.name}</span>
@@ -97,7 +97,7 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
                       </select>
                     ) : (
                       <span className="badge bg-secondary bg-opacity-25 text-muted px-2 py-1" style={{ fontSize: '10px' }}>
-                        {lead.assignedToName || 'Unassigned'}
+                        {lead.assignedToName || (lead.assignedToId ? 'Assigned' : 'Unassigned')}
                       </span>
                     )}
                   </td>
@@ -113,15 +113,28 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
                       />
                     </div>
                   </td>
-                  {showActions && role !== 'ASSOCIATE' && (
+                  {showActions && (
                     <td className="text-end pe-4 table-cell">
                       <div className="d-flex align-items-center justify-content-end gap-2">
-                        <button className="btn btn-outline-primary btn-sm border-0 p-1" onClick={() => setSelectedOutcomeLead(lead)}>
+                        <button 
+                          className="btn btn-outline-primary btn-sm border-0 p-1 rounded-circle hover-bg-primary hover-text-white transition-smooth" 
+                          onClick={() => setSelectedOutcomeLead(lead)}
+                          title="Log Interaction"
+                        >
                           <Phone size={14} />
                         </button>
                         <button className="btn btn-primary btn-sm rounded-pill px-3" onClick={() => setSelectedLinkLead(lead)} style={{ fontSize: '10px', height: '24px', display: 'flex', alignItems: 'center' }}>
                           <Zap size={10} className="me-1" /> Link
                         </button>
+                        {lead.status === 'PAID' && (
+                          <button 
+                            className="btn btn-success btn-sm rounded-pill px-3 border-0 shadow-sm" 
+                            style={{ fontSize: '10px', height: '24px', display: 'flex', alignItems: 'center', backgroundColor: '#10b981' }}
+                            onClick={() => onViewInvoice && onViewInvoice(lead)}
+                          >
+                            <BookOpen size={10} className="me-1" /> Invoice
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
@@ -142,7 +155,7 @@ const LeadTable = ({ leads, onSendPaymentLink, onUpdateStatus, onRecordCallOutco
           isOpen={!!selectedOutcomeLead}
           onClose={() => setSelectedOutcomeLead(null)}
           lead={selectedOutcomeLead}
-          theme={theme}
+          theme={theme || 'dark'}
           onSendPaymentLink={onSendPaymentLink}
           onSubmit={async (data) => {
             if (onRecordCallOutcome) {

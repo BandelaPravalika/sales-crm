@@ -17,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -72,28 +73,28 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllPermissions());
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     @GetMapping("/users")
     public ResponseEntity<Page<UserDTO>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
         System.out.println("API CALL: GET /api/admin/users?page=" + pageable.getPageNumber());
         return ResponseEntity.ok(adminService.getAllUsers(pageable));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     @GetMapping("/leads")
     public ResponseEntity<Page<LeadDTO>> getAllLeads(@PageableDefault(size = 20) Pageable pageable) {
         System.out.println("API CALL: GET /api/admin/leads?page=" + pageable.getPageNumber());
         return ResponseEntity.ok(adminService.getAllLeads(pageable));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Long>> getLeadStats() {
         System.out.println("API CALL: GET /api/admin/stats");
         return ResponseEntity.ok(adminService.getLeadStats());
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     @GetMapping("/dashboard/stats")
     public ResponseEntity<Map<String, Object>> getDashboardStats(
             @RequestParam(value = "start", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime start,
@@ -130,6 +131,14 @@ public class AdminController {
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PutMapping("/payments/{id}")
+    public ResponseEntity<PaymentDTO> updatePaymentStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        return ResponseEntity.ok(leadPaymentService.updatePaymentStatus(id, payload));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/team-leaders")
     public ResponseEntity<List<UserDTO>> getTeamLeaders() {
         return ResponseEntity.ok(leadPaymentService.getTeamLeaders());
@@ -139,6 +148,28 @@ public class AdminController {
     @GetMapping("/associates/{tlId}")
     public ResponseEntity<List<UserDTO>> getAssociates(@PathVariable Long tlId) {
         return ResponseEntity.ok(adminService.getAssociatesByTl(tlId));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @GetMapping("/team-tree")
+    public ResponseEntity<UserDTO> getTeamTree() {
+        return ResponseEntity.ok(adminService.getGlobalTeamTree());
+    }
+
+    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
+    @PostMapping("/assign-lead/{leadId}/{tlId}")
+    public ResponseEntity<LeadDTO> assignLead(@PathVariable Long leadId, @PathVariable Long tlId) {
+        return ResponseEntity.ok(adminService.assignLead(leadId, tlId));
+    }
+
+    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
+    @PostMapping("/leads/bulk-assign")
+    public ResponseEntity<List<LeadDTO>> bulkAssignLeads(@RequestBody java.util.Map<String, Object> body) {
+        List<Long> leadIds = ((List<?>) body.get("leadIds")).stream()
+                .map(id -> Long.valueOf(id.toString()))
+                .collect(Collectors.toList());
+        Long tlId = Long.valueOf(body.get("tlId").toString());
+        return ResponseEntity.ok(adminService.bulkAssignLeads(leadIds, tlId));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")

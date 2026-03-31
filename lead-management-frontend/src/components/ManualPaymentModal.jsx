@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, IndianRupee, Calendar, CreditCard, MessageSquare, ShieldCheck, AlertCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
   const [actualPaidAmount, setActualPaidAmount] = useState(payment?.amount || '');
@@ -14,44 +15,50 @@ const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isPartial && !nextDueDate) return;
+    if (isPartial && !nextDueDate) {
+      toast.error('Please select a next due date for the partial payment.');
+      return;
+    }
     
+    toast.info('Processing manual clearance...');
     onConfirm(payment.id, {
       status: 'PAID',
       paymentMethod,
       note,
       actualPaidAmount: parseFloat(actualPaidAmount),
-      nextDueDate: nextDueDate ? `${nextDueDate}T23:59:59` : null
+      nextDueDate: nextDueDate ? `${nextDueDate}T23:59:59` : null,
+      paymentType: isPartial ? 'EMI' : 'FULL'
     });
   };
 
+
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)', zIndex: 11000 }}>
-      <div className="modal-dialog modal-dialog-centered">
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)', zIndex: 11000, overflowY: 'auto' }}>
+      <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden" style={{ background: '#131826', color: '#fff' }}>
           {/* Header */}
-          <div className="modal-header border-bottom border-secondary border-opacity-10 bg-dark bg-opacity-50 p-4 d-flex justify-content-between align-items-center">
+          <div className="modal-header border-bottom border-secondary border-opacity-10 bg-dark bg-opacity-50 p-3 d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-3">
-              <div className="bg-success bg-opacity-20 p-3 rounded-4 text-success shadow-sm">
-                <CheckCircle size={24} />
+              <div className="bg-success bg-opacity-20 p-2 rounded-4 text-success shadow-sm">
+                <CheckCircle size={20} />
               </div>
               <div>
-                <h4 className="fw-black text-white mb-0 tracking-tight">Manual Clearance</h4>
-                <p className="text-secondary small fw-bold mb-0 text-uppercase tracking-widest">Resolving Ledger UID: <span className="text-success">{payment.paymentGatewayId || payment.id}</span></p>
+                <h5 className="fw-black text-white mb-0 tracking-tight">Manual Clearance</h5>
+                <p className="text-secondary small fw-bold mb-0 text-uppercase tracking-widest" style={{ fontSize: '10px' }}>UID: <span className="text-success">{payment.paymentGatewayId || payment.id}</span></p>
               </div>
             </div>
             <button type="button" className="btn btn-dark rounded-circle p-2 shadow-sm border-secondary border-opacity-25" onClick={onClose}>
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
           
-          <div className="modal-body p-4 custom-scroll">
+          <div className="modal-body p-3 p-md-4 custom-scroll">
             <form onSubmit={handleSubmit}>
-              <div className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-10 mb-4 text-center shadow-inner">
-                 <label className="fw-black text-uppercase text-secondary small mb-2 tracking-widest">Expected Revenue</label>
+              <div className="bg-dark bg-opacity-50 p-3 rounded-4 border border-secondary border-opacity-10 mb-4 text-center shadow-inner">
+                 <label className="fw-black text-uppercase text-secondary small mb-1 tracking-widest">Expected Revenue</label>
                  <div className="d-flex align-items-center justify-content-center gap-2">
-                    <IndianRupee size={32} className="text-success" />
-                    <h1 className="fw-black text-white mb-0" style={{ fontSize: '3.5rem' }}>{payment.amount.toLocaleString()}</h1>
+                    <IndianRupee size={28} className="text-success" />
+                    <h2 className="fw-black text-white mb-0 display-4">{payment.amount.toLocaleString()}</h2>
                  </div>
               </div>
 
@@ -62,7 +69,7 @@ const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
                     <span className="input-group-text bg-transparent border-0 text-secondary ps-3"><IndianRupee size={18} /></span>
                     <input 
                       type="number" 
-                      className="form-control bg-transparent border-0 text-white py-3 shadow-none fw-black fs-4" 
+                      className="form-control bg-transparent border-0 text-white py-2 shadow-none fw-black fs-4" 
                       value={actualPaidAmount}
                       onChange={(e) => setActualPaidAmount(e.target.value)}
                       max={payment.amount}
@@ -73,13 +80,13 @@ const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
 
                 <div className="col-12 col-md-6">
                   <label className="form-label small fw-black text-secondary text-uppercase mb-2 tracking-wider">Payment Method</label>
-                  <div className="input-group bg-dark bg-opacity-50 rounded-4 overflow-hidden border border-secondary border-opacity-25">
-                    <span className="input-group-text bg-transparent border-0 text-secondary ps-3"><CreditCard size={18} /></span>
+                  <div className="input-group bg-dark bg-opacity-50 rounded-4 overflow-hidden border border-secondary border-opacity-25 h-100">
+                    <span className="input-group-text bg-transparent border-0 text-secondary ps-3 w-auto"><CreditCard size={18} /></span>
                     <select 
-                      className="form-select bg-transparent border-0 text-white py-2 shadow-none fw-bold"
+                      className="form-select bg-transparent border-0 text-white shadow-none fw-bold"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', outline: 'none' }}
                     >
                       <option value="UPI" style={{ background: '#1a1f2e' }}>Liquid Cash</option>
                       <option value="CASH" style={{ background: '#1a1f2e' }}>Cash Deposit</option>
@@ -91,20 +98,20 @@ const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
 
                 <div className="col-12 col-md-6">
                   <label className="form-label small fw-black text-secondary text-uppercase mb-2 tracking-wider">Identity/Lead</label>
-                  <div className="bg-secondary bg-opacity-10 rounded-4 px-4 py-2 border border-secondary border-opacity-10 h-100 d-flex align-items-center">
+                  <div className="bg-secondary bg-opacity-10 rounded-4 px-3 py-2 border border-secondary border-opacity-10 h-100 d-flex align-items-center" style={{ minHeight: '42px' }}>
                      <span className="fw-bold text-white small text-truncate">{payment.leadName || 'System Record'}</span>
                   </div>
                 </div>
               </div>
 
               {isPartial && (
-                <div className="mb-4 p-4 rounded-4 bg-warning bg-opacity-10 border border-warning border-opacity-20 animate-slide-up shadow-sm">
-                  <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="mb-4 p-3 rounded-4 bg-warning bg-opacity-10 border border-warning border-opacity-20 animate-slide-up shadow-sm">
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                      <div className="d-flex align-items-center gap-2 text-warning">
                         <AlertCircle size={18} />
-                        <span className="fw-black text-uppercase small tracking-widest">Partial Payment Sync</span>
+                        <span className="fw-black text-uppercase small tracking-widest">Partial Setup</span>
                      </div>
-                     <span className="badge bg-warning bg-opacity-20 text-warning px-3 py-2 fw-black text-uppercase small border border-warning border-opacity-25">Balance: ₹{balance.toLocaleString()}</span>
+                     <span className="badge bg-warning bg-opacity-20 text-warning px-2 py-1 fw-black text-uppercase border border-warning border-opacity-25" style={{ fontSize: '11px' }}>Bal: ₹{balance.toLocaleString()}</span>
                   </div>
                   
                   <label className="form-label small fw-black text-warning text-uppercase mb-2 tracking-wider">Next Installment Due Date</label>
@@ -112,14 +119,14 @@ const ManualPaymentModal = ({ show, onClose, onConfirm, payment }) => {
                     <span className="input-group-text bg-transparent border-0 text-warning ps-3"><Calendar size={18} /></span>
                     <input 
                       type="date" 
-                      className="form-control bg-transparent border-0 text-white fw-bold py-3 shadow-none h-auto" 
+                      className="form-control bg-transparent border-0 text-white fw-bold py-2 shadow-none h-auto" 
                       value={nextDueDate}
                       min={new Date().toISOString().split('T')[0]}
                       onChange={(e) => setNextDueDate(e.target.value)}
                       required
                     />
                   </div>
-                  <p className="text-secondary mt-3 mb-0 fw-bold italic small">A new trackable task will be created for the balance amount.</p>
+                  <p className="text-secondary mt-2 mb-0 fw-bold italic" style={{ fontSize: '11px' }}>A new trackable task will be created for the balance amount.</p>
                 </div>
               )}
 

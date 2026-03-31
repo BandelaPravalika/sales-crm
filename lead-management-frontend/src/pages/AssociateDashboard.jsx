@@ -24,6 +24,8 @@ import PaymentHistory from '../components/PaymentHistory';
 import TaskBoard from '../components/TaskBoard';
 import RevenueTrendChart from './dashboard/components/RevenueTrendChart';
 import FiltersBar from './dashboard/components/FiltersBar';
+import InvoiceModal from './dashboard/components/InvoiceModal';
+import paymentService from '../services/paymentService';
 
 const AssociateDashboard = () => {
   const { user, logout } = useAuth();
@@ -35,9 +37,13 @@ const AssociateDashboard = () => {
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
   const [trendData, setTrendData] = useState([]);
   const [filters, setFilters] = useState({
-    from: new Date().toISOString().split('T')[0] + 'T00:00:00',
+    from: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0] + 'T00:00:00',
     to: new Date().toISOString().split('T')[0] + 'T23:59:59'
   });
+
+  // Invoice state
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -51,7 +57,7 @@ const AssociateDashboard = () => {
         associateService.fetchTrendData(trendFilters)
       ]);
       setStats(statsRes.data);
-      setLeads(leadsRes.data);
+      setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : (leadsRes.data?.content || []));
       setTrendData(trendRes.data);
     } catch (err) {
       toast.error('Failed to load dashboard data');
@@ -96,6 +102,17 @@ const AssociateDashboard = () => {
     }
   };
 
+  const handleViewInvoice = async (lead) => {
+    try {
+      toast.info('Retrieving official receipt...');
+      const res = await paymentService.generateInvoice(lead.id);
+      setSelectedInvoiceData(res.data);
+      setIsInvoiceModalOpen(true);
+    } catch (err) {
+      toast.error('Failed to retrieve invoice - no confirmed payment found');
+    }
+  };
+
   const handleAddLead = async (leadData) => {
     try {
       await associateService.addLead(leadData);
@@ -132,6 +149,7 @@ const AssociateDashboard = () => {
                 onUpdateStatus={handleUpdateStatus} 
                 onRecordCallOutcome={handleRecordCallOutcome}
                 onSendPaymentLink={handleSendPaymentLink}
+                onViewInvoice={handleViewInvoice}
                 role="ASSOCIATE" 
                 showActions={true}
                 theme={theme}
@@ -242,6 +260,12 @@ const AssociateDashboard = () => {
           toast.success("Pool initialized. Refreshing data...");
           fetchData();
         }} 
+      />
+
+      <InvoiceModal 
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        invoiceData={selectedInvoiceData}
       />
     </DashboardLayout>
   );

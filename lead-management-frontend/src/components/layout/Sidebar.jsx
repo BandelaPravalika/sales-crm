@@ -13,8 +13,10 @@ import {
   FileText,
   IndianRupee,
   Upload,
-  Menu
+  Menu,
+  Phone as PhoneIcon
 } from 'lucide-react';
+import AttendanceWidget from './AttendanceWidget';
 
 const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail, isCollapsed, onToggle }) => {
   const getNavItems = () => {
@@ -25,10 +27,14 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail, isC
 
     if (isAdmin) {
       return [
-        { id: 'overview', label: 'System Architecture', icon: LayoutDashboard },
-        { id: 'users', label: 'Users & Roles', icon: Users },
-        { id: 'pipeline', label: 'Pipeline Explorer', icon: Layers },
-        { id: 'revenue', label: 'Revenue & Payments', icon: TrendingUp },
+        { id: 'overview', label: 'Operational Intelligence', icon: LayoutDashboard },
+        { id: 'hierarchy', label: 'Global Team Hierarchy', icon: Layers },
+        { id: 'pipeline', label: 'Dynamic Lead Pipeline', icon: Target },
+        { id: 'users', label: 'Access & Identity Control', icon: Users },
+        { id: 'revenue', label: 'Financial Audit Trail', icon: TrendingUp },
+        { id: 'attendance-logs', label: 'Workforce Attendance', icon: FileText },
+        { id: 'attendance-settings', label: 'Governance Settings', icon: Settings },
+        { id: 'call-logs', label: 'Communication Archive', icon: PhoneIcon },
       ];
     }
 
@@ -40,6 +46,8 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail, isC
         { id: 'users', label: 'Staff Management', icon: Users },
         { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
         { id: 'payments', label: 'Payment Ledger', icon: IndianRupee },
+        { id: 'attendance-logs', label: 'Attendance Logs', icon: FileText },
+        { id: 'call-logs', label: 'Call Archive', icon: PhoneIcon },
         { id: 'reports', label: 'Strategic Reports', icon: FileText },
       ];
     }
@@ -52,6 +60,7 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail, isC
         { id: 'tasks', label: 'Follow-up Tasks', icon: FileText },
         { id: 'ingestion', label: 'Lead Ingestion', icon: Upload },
         { id: 'payments', label: 'Team Conversions', icon: IndianRupee },
+        { id: 'call-logs', label: 'Call Archive', icon: PhoneIcon },
       ];
     }
 
@@ -130,8 +139,9 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, userEmail, isC
             </div>
           </nav>
 
-          <div className="mt-auto px-4 py-3 opacity-25 d-sidebar-show">
-            <div className="h-px bg-white w-25"></div>
+          {/* Sidebar Footer with Widget */}
+          <div className="mt-auto border-top border-white border-opacity-5 pt-2">
+            <AttendanceWidget isCollapsed={isCollapsed} />
           </div>
         </div>
       </aside>

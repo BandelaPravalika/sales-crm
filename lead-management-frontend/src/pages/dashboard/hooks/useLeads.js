@@ -11,7 +11,7 @@ export const useLeads = () => {
         setLoading(true);
         try {
             const res = await managerService.fetchLeads();
-            setLeads(res.data);
+            setLeads(Array.isArray(res.data) ? res.data : (res.data?.content || []));
         } catch (err) {
             toast.error('Failed to sync leads');
         } finally {
@@ -27,18 +27,20 @@ export const useLeads = () => {
         if (!tlId) return;
         const tlName = teamLeaders.find(tl => tl.id === parseInt(tlId))?.name || 'Assigned';
         
+        toast.info(`Assignment: Provisioning to ${tlName}...`);
         // Optimistic UI update
         const originalLeads = [...leads];
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, assignedToId: parseInt(tlId), assignedToName: tlName } : l));
         
         try {
             await managerService.assignLead(leadId, tlId);
-            toast.success(`Assigned to ${tlName}`);
+            toast.success(`Success: Transfer to ${tlName} confirmed`);
         } catch (err) {
-            toast.error('Assignment failed');
+            toast.error('Sync Error: Pipeline update failed');
             setLeads(originalLeads);
         }
     };
+
 
     const handleBulkAssign = async (tlId, teamLeaders) => {
         if (!tlId) {

@@ -1,11 +1,11 @@
 package com.lms.www.leadmanagement.dto;
 
-import com.lms.www.leadmanagement.entity.Payment;
+import com.lms.www.leadmanagement.entity.Lead;
+
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -27,9 +27,16 @@ public class PaymentDTO {
     private java.time.LocalDateTime createdAt;
     private java.time.LocalDateTime updatedAt;
     private Long updatedById;
+    
+    // Business Details for Invoice
+    private String businessName;
+    private String businessAddress;
+    private String businessContact;
+    private String businessEmail;
+    private String taxId;
 
-    public static PaymentDTO fromEntity(com.lms.www.leadmanagement.entity.Payment payment) {
-        return PaymentDTO.builder()
+    public static PaymentDTO fromEntity(com.lms.www.leadmanagement.entity.Payment payment, Lead lead) {
+        PaymentDTOBuilder builder = PaymentDTO.builder()
                 .id(payment.getId())
                 .leadId(payment.getLeadId())
                 .amount(payment.getAmount())
@@ -44,6 +51,23 @@ public class PaymentDTO {
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .updatedById(payment.getUpdatedBy() != null ? payment.getUpdatedBy().getId() : null)
-                .build();
+                
+                // Hardcoded Business Details for Invoice
+                .businessName("Nexus Lead Management")
+                .businessAddress("Techno Park, Hub 7, Bangalore, India")
+                .businessContact("+91 98765 43210")
+                .businessEmail("finance@nexuslms.com")
+                .taxId("GSTIN: 29AABCB1234F1Z5");
+
+        if (lead != null) {
+            builder.leadName(lead.getName())
+                   .leadEmail(lead.getEmail());
+            if (lead.getAssignedTo() != null) {
+                builder.assignedTlName(lead.getAssignedTo().getName());
+            }
+        }
+
+        return builder.build();
     }
+
 }

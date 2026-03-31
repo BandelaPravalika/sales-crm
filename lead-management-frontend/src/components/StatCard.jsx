@@ -1,47 +1,42 @@
 import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 const StatCard = ({ title, value, sub, icon, color = 'primary' }) => {
-  const colorMap = {
-    primary: 'text-primary bg-primary bg-opacity-10 border-primary border-opacity-10',
-    success: 'text-success bg-success bg-opacity-10 border-success border-opacity-10',
-    warning: 'text-warning bg-warning bg-opacity-10 border-warning border-opacity-10',
-    error: 'text-danger bg-danger bg-opacity-10 border-danger border-opacity-10',
-    info: 'text-info bg-info bg-opacity-10 border-info border-opacity-10',
-  };
-
-  const currentColor = colorMap[color] || colorMap.primary;
-
-  const bgClass = {
-    primary: 'bg-primary',
-    success: 'bg-success',
-    warning: 'bg-warning',
-    error: 'bg-danger',
-    info: 'bg-info'
-  }[color] || 'bg-primary';
+  const { isDarkMode } = useTheme();
+  
+  const colorToken = {
+    primary: 'var(--primary)',
+    success: 'var(--success)',
+    warning: 'var(--warning)',
+    error: 'var(--danger)',
+    info: 'var(--info)'
+  }[color] || 'var(--primary)';
 
   return (
-    <div className="card h-100 overflow-hidden transition-all hover-translate-y">
-      <div className="card-body p-4 d-flex flex-column">
+    <div className="premium-card h-100 overflow-hidden transition-all hover-translate-y border-0">
+      <div className="card-body p-3 d-flex flex-column">
         <div className="d-flex justify-content-between align-items-start mb-4">
-          <div className={`p-3 rounded-3 d-flex align-items-center justify-content-center border ${currentColor}`} style={{ width: '48px', height: '48px' }}>
-            {React.cloneElement(icon, { size: 22, strokeWidth: 2 })}
+          <div className={`p-2.5 rounded-3 d-flex align-items-center justify-content-center border`} 
+               style={{ width: '42px', height: '42px', borderColor: `${colorToken}20`, backgroundColor: `${colorToken}10`, color: colorToken }}>
+            {React.cloneElement(icon, { size: 18, strokeWidth: 2.5 })}
           </div>
           <div className="text-end">
-            <div className="text-muted fw-bold opacity-50 mb-1" style={{ fontSize: '10px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{title}</div>
-            <h4 className="fw-black mb-0 text-white" style={{ letterSpacing: '-0.02em' }}>{value}</h4>
+            <div className="text-muted fw-bold opacity-50 mb-0" style={{ fontSize: '9px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{title}</div>
+            <h4 className="fw-black mb-0" style={{ letterSpacing: '-0.02em', fontSize: '1.25rem' }}>{value}</h4>
           </div>
         </div>
         
         <div className="mt-auto">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <span className="fw-medium text-muted small opacity-75">{sub}</span>
-            <span className={`badge ${bgClass} bg-opacity-10 ${bgClass.replace('bg-', 'text-')} small rounded-pill fw-bold`} style={{ fontSize: '10px' }}>Active</span>
+            <span className={`badge bg-opacity-10 small rounded-pill fw-bold`} 
+                  style={{ fontSize: '10px', backgroundColor: `${colorToken}20`, color: colorToken }}>Active</span>
           </div>
           <div className="progress rounded-pill bg-white bg-opacity-5" style={{ height: '4px' }}>
             <div 
-              className={`progress-bar rounded-pill shadow-sm transition-all duration-1000 ${bgClass}`} 
+              className={`progress-bar rounded-pill shadow-sm transition-all duration-1000`} 
               role="progressbar" 
-              style={{ width: '100%', boxShadow: `0 0 10px var(--primary-glow)` }}
+              style={{ width: '100%', backgroundColor: colorToken, boxShadow: `0 0 10px ${colorToken}40` }}
             ></div>
           </div>
         </div>

@@ -28,6 +28,16 @@ const FiltersBar = ({ filters, onChange, theme, title = "Operational Scope" }) =
             </div>
           </div>
           
+          {filters.userId && (
+            <button 
+              className="btn btn-primary d-flex align-items-center justify-content-center gap-2 shadow-glow animate-fade-in"
+              style={{ fontSize: '10px', borderRadius: '8px', fontWeight: '800' }}
+              onClick={() => onChange({...filters, userId: null})}
+            >
+              [ CLEAR INDIVIDUAL FILTER ]
+            </button>
+          )}
+
           <button 
             className="btn btn-outline-secondary py-2 px-3 d-flex align-items-center justify-content-center border-white border-opacity-10 hover-bg-danger transition-all opacity-50 hover-opacity-100"
             style={{ fontSize: '10px', borderRadius: '8px' }}

@@ -3,7 +3,7 @@ import { X, Upload, FileText, CheckCircle2, AlertCircle, Download } from 'lucide
 import { toast } from 'react-toastify';
 import managerService from '../../../services/managerService';
 
-const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = false }) => {
+const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline = false }) => {
     const [file, setFile] = useState(null);
     const [assignedToIds, setAssignedToIds] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -106,10 +106,10 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = f
                             <div className="flex-grow-1 d-flex flex-column gap-3 h-100">
                                 <div 
                                     className={`p-5 rounded-4 border-2 border-dashed d-flex flex-column align-items-center justify-content-center transition-smooth flex-grow-1 ${
-                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 bg-dark bg-opacity-30'
+                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 bg-black bg-opacity-40'
                                     }`}
                                     onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
-                                    style={{ minHeight: '250px' }}
+                                    style={{ minHeight: '250px', backgroundColor: '#090a11' }}
                                 >
                                     <input type="file" className="d-none" id="csvFile" accept=".csv" onChange={handleFileChange} />
                                     {!file ? (
@@ -119,7 +119,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = f
                                             </div>
                                             <h6 className="text-white fw-bold mb-1">Upload CSV Data</h6>
                                             <p className="text-muted small mb-3">Drag and drop file here</p>
-                                            <label htmlFor="csvFile" className="btn btn-primary btn-sm px-4 rounded-pill fw-bold">Browse</label>
+                                            <label htmlFor="csvFile" className="btn btn-primary btn-sm px-4 rounded-pill fw-black shadow-glow border-0 text-uppercase" style={{ fontSize: '10px' }}>Browse Files</label>
                                         </div>
                                     ) : (
                                         <div className="text-center animate-fade-in">
@@ -142,10 +142,10 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = f
                         <div className="col-lg-6">
                             <div className="bg-dark bg-opacity-40 p-4 rounded-4 border border-white border-opacity-5 h-100 d-flex flex-column">
                                 <div className="d-flex justify-content-between align-items-center mb-3">
-                                    <label className="small fw-bold text-muted text-uppercase mb-0">Assignment Strategy</label>
-                                    <div className="btn-group btn-group-sm rounded-pill p-1 bg-black bg-opacity-30 border border-white border-opacity-5">
-                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-0 small ${assignMode === 'SINGLE' ? 'btn-primary' : 'text-muted'}`} onClick={() => {setAssignMode('SINGLE'); setAssignedToIds([]);}} style={{fontSize: '10px'}}>Single</button>
-                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-0 small ${assignMode === 'DISTRIBUTE' ? 'btn-primary' : 'text-muted'}`} onClick={() => {setAssignMode('DISTRIBUTE'); setAssignedToIds([]);}} style={{fontSize: '10px'}}>Split</button>
+                                    <label className="small fw-bold text-muted text-uppercase mb-0" style={{ fontSize: '10px', letterSpacing: '1px' }}>Assignment Strategy</label>
+                                    <div className="btn-group btn-group-sm rounded-pill p-1 bg-black bg-opacity-50 border border-white border-opacity-5 shadow-sm">
+                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'SINGLE' ? 'btn-primary' : 'text-muted hover-text-white'}`} onClick={() => {setAssignMode('SINGLE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SINGLE</button>
+                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'DISTRIBUTE' ? 'btn-primary' : 'text-muted hover-text-white'}`} onClick={() => {setAssignMode('DISTRIBUTE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SPLIT</button>
                                     </div>
                                 </div>
 
@@ -153,24 +153,26 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = f
                                     <button 
                                         type="button"
                                         onClick={() => setAssignedToIds([])}
-                                        className={`w-100 text-start p-2 rounded-3 border mb-2 transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary' : 'border-white border-opacity-5 text-muted'}`}
+                                        className={`w-100 text-start p-3 rounded-4 border mb-2 transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary glow-border' : 'border-white border-opacity-5 bg-black bg-opacity-30 text-muted'}`}
+                                        style={{ backgroundColor: assignedToIds.length === 0 ? '' : '#0d111b' }}
                                     >
                                         <div className="d-flex align-items-center justify-content-between">
-                                            <span>Direct Pool (Unassigned)</span>
-                                            {assignedToIds.length === 0 && <CheckCircle2 size={14} />}
+                                            <span className="fw-bold">Direct Pool (Unassigned)</span>
+                                            {assignedToIds.length === 0 && <CheckCircle2 size={16} />}
                                         </div>
                                     </button>
 
-                                    {teamLeaders.map(tl => (
+                                    {assignees.map(user => (
                                         <button 
-                                            key={tl.id} 
+                                            key={user.id} 
                                             type="button"
-                                            onClick={() => toggleAssociate(tl.id)}
-                                            className={`w-100 text-start p-2 rounded-3 border mb-2 transition-smooth small ${assignedToIds.includes(tl.id) ? 'border-primary bg-primary bg-opacity-10 text-primary' : 'border-white border-opacity-5 text-muted'}`}
+                                            onClick={() => toggleAssociate(user.id)}
+                                            className={`w-100 text-start p-3 rounded-4 border mb-2 transition-smooth small ${assignedToIds.includes(user.id) ? 'border-primary bg-primary bg-opacity-10 text-primary glow-border' : 'border-white border-opacity-5 bg-black bg-opacity-30 text-muted'}`}
+                                            style={{ backgroundColor: assignedToIds.includes(user.id) ? '' : '#0d111b' }}
                                         >
                                             <div className="d-flex align-items-center justify-content-between">
-                                                <span className="text-truncate">{tl.name} ({tl.role.replace('_', ' ')})</span>
-                                                {assignedToIds.includes(tl.id) && <CheckCircle2 size={14} />}
+                                                <span className="fw-bold text-truncate">{user.name} <small className="opacity-50 ms-1 fw-normal text-uppercase" style={{fontSize: '8px'}}>{user.role?.replace('_', ' ') || 'User'}</small></span>
+                                                {assignedToIds.includes(user.id) && <CheckCircle2 size={16} />}
                                             </div>
                                         </button>
                                     ))}
@@ -191,14 +193,19 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, teamLeaders, isInline = f
                         </div>
                     </div>
 
-                    <div className="mt-4 d-flex justify-content-between align-items-center pt-3 border-top border-white border-opacity-5">
-                        <button type="button" className="btn btn-link text-muted text-decoration-none d-flex align-items-center gap-2 small fw-bold" onClick={downloadTemplate}>
-                            <Download size={14} /> Sample Template
+                    <div className="mt-4 d-flex justify-content-between align-items-center pt-4 border-top border-white border-opacity-5">
+                        <button type="button" className="btn btn-link text-info text-decoration-none d-flex align-items-center gap-2 small fw-black tracking-widest p-0" onClick={downloadTemplate}>
+                            <Download size={14} /> SAMPLE TEMPLATE
                         </button>
-                        <div className="d-flex gap-2">
+                        <div className="d-flex gap-3">
                             {!isInline && <button type="button" className="btn btn-outline-white btn-sm px-4 rounded-pill fw-bold" onClick={onClose} disabled={uploading}>Cancel</button>}
-                            <button type="submit" className="btn btn-primary btn-sm px-5 rounded-pill fw-bold d-flex align-items-center gap-2 shadow-glow" disabled={uploading || !file}>
-                                {uploading ? <span className="spinner-border spinner-border-sm"></span> : <Upload size={16} />}
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary btn-md px-5 rounded-pill fw-black d-flex align-items-center gap-2 shadow-glow border-0 transition-smooth text-uppercase tracking-wider" 
+                                style={{ fontSize: '12px' }}
+                                disabled={uploading || !file}
+                            >
+                                {uploading ? <span className="spinner-border spinner-border-sm"></span> : <Upload size={18} />}
                                 {uploading ? 'Processing...' : 'Execute Ingestion'}
                             </button>
                         </div>

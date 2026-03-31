@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import associateService from '../services/associateService';
+import adminService from '../services/adminService';
 
 const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymentLink }) => {
   const [outcome, setOutcome] = useState('CONTACTED');
@@ -16,6 +17,13 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
   const [showAddNote, setShowAddNote] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('499');
   const [taskData, setTaskData] = useState({ title: '', taskType: 'FOLLOW_UP', dueDate: '', description: '' });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [isDurationLoading, setIsDurationLoading] = useState(false);
+  
+  const userRole = localStorage.getItem('role');
+  const isAdminOrManager = ['ADMIN', 'MANAGER'].includes(userRole);
 
   useEffect(() => {
     if (lead) {
@@ -58,26 +66,32 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
     }
   };
   
-  const handleGenerateLink = () => {
-    if (onSendPaymentLink) {
-      onSendPaymentLink(lead.id, paymentAmount, 'CRM Workspace Generated');
-    } else {
-      toast.error('Payment generation is tracking blocked in this view.');
+  // Online payment generation removed. 
+  // Manual payments are now the only supported workflow.
+
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return toast.warning('Please select an audio file first.');
+    
+    setIsUploading(true);
+    try {
+      await adminService.uploadCallRecord({
+        file: selectedFile,
+        leadId: lead.id,
+        phoneNumber: lead.mobile,
+        callType: 'OUTGOING',
+        status: outcome,
+        note: note || 'Individual manual upload from Lead Details',
+        duration: audioDuration
+      });
+      toast.success('Call record uploaded successfully!');
+      setSelectedFile(null);
+      setAudioDuration(0);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
     }
-  };
-
-  const handleWhatsAppShare = () => {
-    if (!lead.paymentLink) return toast.warning('Generate a payment link first.');
-    let mobile = lead.mobile.replace(/\D/g, '');
-    if (mobile.length === 10) mobile = '91' + mobile;
-    const msg = `Hello ${lead.name}, complete your admission payment here: ${lead.paymentLink.trim()}`;
-    window.open(`https://wa.me/${mobile}?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleCopyLink = () => {
-    if (!lead.paymentLink) return toast.warning('Generate a payment link first.');
-    navigator.clipboard.writeText(lead.paymentLink);
-    toast.success('Link copied to clipboard!');
   };
 
   const isDarkMode = theme === 'dark';
@@ -128,26 +142,28 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
       <div className="modal-dialog modal-fullscreen m-0 h-100" style={{ maxWidth: '100vw' }}>
         <div className={`modal-content border-0 rounded-0 h-100 bg-dark`} style={{ backgroundColor: '#0B0F1A', color: '#fff' }}>
           
-          {/* Top Header */}
-          <div className={`px-4 py-3 border-bottom border-secondary border-opacity-10 bg-dark bg-opacity-50 d-flex align-items-center justify-content-between`} style={{ minHeight: '70px', flexShrink: 0 }}>
+          {/* Top Header - Premium Glassmorphism */}
+          <div className="px-4 py-3 border-bottom border-white border-opacity-5 glass-header d-flex align-items-center justify-content-between sticky-top" style={{ zIndex: 10 }}>
             <div className="d-flex align-items-center gap-3">
               <button 
                 type="button" 
-                className={`btn btn-dark p-2 text-decoration-none rounded-circle transition-all border-secondary border-opacity-25 hover-bg-secondary`} 
+                className="btn btn-dark p-2 text-decoration-none rounded-circle transition-all border-white border-opacity-10 hover-bg-primary hover-text-white shadow-soft" 
                 onClick={onClose}
               >
-                <ArrowLeft size={20} className="text-white" />
+                <ArrowLeft size={20} />
               </button>
-              <h4 className={`fw-bold mb-0 d-flex align-items-center gap-2 text-white`}>
+              <h4 className="fw-black mb-0 d-flex align-items-center gap-3 text-white tracking-tighter">
                 {lead.name}
-                <span className="badge bg-primary bg-opacity-20 text-primary rounded-pill small" style={{ fontSize: '0.7em', padding: '0.4em 0.8em' }}>L-{lead.id || '1000'}</span>
+                <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill small fw-black ls-1" style={{ fontSize: '0.6em', padding: '0.4em 1em', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                  ALPHA-NODE-{lead.id || '1000'}
+                </span>
               </h4>
             </div>
             
-            <div className="d-flex align-items-center gap-3">
-              <div className="d-flex flex-column align-items-end me-3">
-                <span className="fw-black small text-primary text-uppercase tracking-widest">Associate Portal</span>
-                <span className="text-secondary" style={{ fontSize: '10px' }}>Lead Workspace</span>
+            <div className="d-flex align-items-center gap-4">
+              <div className="text-end d-none d-md-block">
+                <span className="fw-black small text-primary text-uppercase tracking-widest d-block ls-2">Interaction Portal</span>
+                <span className="text-muted small fw-bold opacity-50">Operational Intelligence Module</span>
               </div>
             </div>
           </div>
@@ -222,6 +238,64 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                     >
                       <MessageSquare size={16} /> WhatsApp
                     </a>
+                  </div>
+
+                  <div className="mt-4 border-top border-secondary border-opacity-10 pt-3">
+                    <h6 className={`fw-bold text-uppercase mb-2 tracking-wider small ${isDarkMode ? 'text-white text-opacity-50' : 'text-muted'}`}>Upload Call Recording</h6>
+                    <div className="d-flex flex-column gap-2">
+                      <label className="small text-muted mb-1">MP3 / WAV file</label>
+                      <input 
+                        type="file" 
+                        accept="audio/*"
+                        className="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          setSelectedFile(file);
+                          setIsDurationLoading(true);
+                          
+                          // Auto-detect duration from audio metadata
+                          const url = URL.createObjectURL(file);
+                          const audio = new Audio(url);
+                          audio.addEventListener('loadedmetadata', () => {
+                            const secs = Math.round(audio.duration) || 0;
+                            setAudioDuration(secs);
+                            setIsDurationLoading(false);
+                            URL.revokeObjectURL(url);
+                          });
+                          audio.addEventListener('error', () => {
+                            setIsDurationLoading(false);
+                            toast.error("Could not read audio duration");
+                          });
+                        }}
+                      />
+                      {selectedFile && (
+                        <div className="d-flex align-items-center gap-2 mt-1">
+                          <Clock size={12} className="text-muted" />
+                          <input
+                            type="number"
+                            min="0"
+                            className="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25"
+                            style={{ maxWidth: '120px' }}
+                            value={audioDuration}
+                            onChange={(e) => setAudioDuration(parseInt(e.target.value) || 0)}
+                          />
+                          <span className="small text-muted">seconds</span>
+                        </div>
+                      )}
+                        <button 
+                        className="btn btn-sm btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-2 py-2 mt-2 shadow-glow border-0"
+                        disabled={!selectedFile || isUploading || isDurationLoading}
+                        onClick={handleFileUpload}
+                      >
+                        {isUploading || isDurationLoading ? (
+                          <span className="spinner-border spinner-border-sm"></span>
+                        ) : (
+                          <ShieldCheck size={14} />
+                        )}
+                        {isDurationLoading ? 'Detecting Length...' : 'Finalize Record Upload'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

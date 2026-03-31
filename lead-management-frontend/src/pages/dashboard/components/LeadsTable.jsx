@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Users, ShieldHalf } from 'lucide-react';
+import { Search, Users, ShieldHalf, Phone, FileText } from 'lucide-react';
 
 const LeadsTable = ({ 
   leads, 
@@ -15,6 +15,8 @@ const LeadsTable = ({
   setBulkAssignTlId,
   handleBulkAssign,
   handleAssignLead,
+  onLogCall,
+  onViewInvoice,
   teamLeaders
 }) => {
   return (
@@ -77,8 +79,9 @@ const LeadsTable = ({
               >
                 <option value="">Bulk Assign To...</option>
                 {teamLeaders
-                  .filter(tl => tl.role === 'TEAM_LEADER')
-                  .map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                  .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
+                  .map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+
               </select>
               <button 
                 onClick={() => handleBulkAssign(bulkAssignTlId, teamLeaders)}
@@ -127,17 +130,17 @@ const LeadsTable = ({
                     </div>
                   )}
                 </td>
-                <td className="py-4">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="p-2 bg-surface rounded shadow-sm border border-white border-opacity-5 d-flex align-items-center justify-content-center" style={{ width: '36px', height: '36px' }}>
-                        <ShieldHalf size={16} className="text-muted" />
-                    </div>
-                    <div>
-                        <p className="fw-bold mb-0 text-white" style={{ fontSize: '14px' }}>{lead.name}</p>
-                        <small className="text-muted fw-medium font-monospace" style={{ fontSize: '11px' }}>{lead.mobile}</small>
-                    </div>
-                  </div>
-                </td>
+                      <td className="py-3">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="p-2 bg-surface rounded-circle shadow-sm border border-white border-opacity-5 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: '36px', height: '36px' }}>
+                              <p className="mb-0 fw-black text-primary small">{lead.name.charAt(0).toUpperCase()}</p>
+                          </div>
+                          <div>
+                              <p className="fw-bold mb-0 text-main" style={{ fontSize: '13px' }}>{lead.name}</p>
+                              <small className="text-muted fw-medium font-monospace" style={{ fontSize: '10px' }}>{lead.mobile || 'No Contact Data'}</small>
+                          </div>
+                        </div>
+                      </td>
                 <td>
                   <span className={`badge rounded-sm text-uppercase px-2 py-1 ${
                     lead.status === 'PAID' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-20' :
@@ -150,23 +153,42 @@ const LeadsTable = ({
                 <td>
                   <div className="d-flex align-items-center gap-2">
                     {lead.assignedToId && <div className="p-1 bg-success rounded-circle" style={{ width: '6px', height: '6px' }}></div>}
-                    <span className={`small ${lead.assignedToId ? 'fw-bold text-white' : 'text-muted fst-italic opacity-50'}`}>
+                    <span className={`small ${lead.assignedToId ? 'fw-bold text-main' : 'text-muted fst-italic opacity-50'}`}>
                         {lead.assignedToName || 'Awaiting Assignment'}
                     </span>
                   </div>
                 </td>
                 <td className="pe-4 text-end">
-                  <select 
-                    className="glass-input py-1 border-0 text-primary fw-bold text-end" 
-                    style={{ width: '130px', fontSize: '12px', background: 'transparent' }}
-                    onChange={(e) => handleAssignLead(lead.id, e.target.value, teamLeaders)}
-                    value={lead.assignedToId || ''}
-                  >
-                    <option value="">Move To...</option>
-                    {teamLeaders
-                      .filter(tl => tl.role === 'TEAM_LEADER')
-                      .map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
-                  </select>
+                  <div className="d-flex align-items-center justify-content-end gap-2">
+                    <button 
+                      className="btn btn-link text-primary p-1 border-0 hover-opacity-100 transition-all"
+                      title="Log Manual Call"
+                      onClick={() => onLogCall && onLogCall(lead)}
+                    >
+                      <Phone size={16} />
+                    </button>
+                    {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
+                      <button 
+                        className="btn btn-link text-success p-1 border-0 hover-opacity-100 transition-all animate-fade-in"
+                        title="Generate/View Invoice"
+                        onClick={() => onViewInvoice && onViewInvoice(lead)}
+                      >
+                        <FileText size={16} />
+                      </button>
+                    )}
+                    <select 
+                      className="glass-select py-1 border-0 text-primary fw-bold text-end" 
+                      style={{ width: '130px', fontSize: '11px' }}
+                      onChange={(e) => handleAssignLead(lead.id, e.target.value, teamLeaders)}
+                      value={lead.assignedToId || ''}
+                    >
+                      <option value="">Move To...</option>
+                      {teamLeaders
+                        .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
+                        .map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+
+                    </select>
+                  </div>
                 </td>
               </tr>
             ))}

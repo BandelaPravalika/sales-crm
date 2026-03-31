@@ -106,6 +106,7 @@ public class TeamLeaderController {
         return ResponseEntity.ok(response);
     }
 
+
     @PreAuthorize("hasAuthority('SEND_PAYMENT')")
     @PostMapping("/leads/{id}/mark-paid")
     public ResponseEntity<Map<String, String>> markPaid(@PathVariable Long id) {

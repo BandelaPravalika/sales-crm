@@ -57,6 +57,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     private ReportScope reportScope;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "shift_id")
+    private AttendanceShift shift;
+
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(

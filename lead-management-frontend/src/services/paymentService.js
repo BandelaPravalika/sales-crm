@@ -28,6 +28,10 @@ const paymentService = {
 
   recordManualPayment: (data) => {
     return api.post('/payments/manual-record', data);
+  },
+
+  generateInvoice: (orderId) => {
+    return api.get('/public/payments/invoice', { params: { order_id: orderId } });
   }
 };
 

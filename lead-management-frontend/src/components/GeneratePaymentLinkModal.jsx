@@ -49,14 +49,14 @@ const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
   };
 
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10600 }}>
+    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10600, overflowY: 'auto' }}>
       <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden" style={{ background: '#131826', color: '#fff' }}>
           {/* Header */}
           <div className="modal-header border-bottom border-secondary border-opacity-10 p-4 d-flex justify-content-between align-items-center bg-dark bg-opacity-50">
             <div className="d-flex align-items-center gap-3">
-              <div className="bg-primary p-3 rounded-4 shadow-sm text-white">
-                <Send size={24} className="animate-pulse-slow" />
+              <div className="bg-primary bg-gradient p-3 rounded-4 shadow-sm text-white animate-pulse-slow">
+                <Send size={24} />
               </div>
               <div>
                 <h4 className="fw-black text-white mb-0 tracking-tight">Generate Payment Link</h4>
@@ -98,11 +98,11 @@ const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
                     <label className="form-label small fw-black text-secondary text-uppercase mb-3 tracking-wider d-flex align-items-center gap-2">
                        <Layers size={14} /> Total Package Amount
                     </label>
-                    <div className="input-group input-group-lg shadow-none border-bottom border-secondary border-opacity-25 bg-transparent">
+                    <div className="input-group input-group-lg shadow-none border-bottom border-secondary border-opacity-25 bg-transparent transition-all focus-within-primary">
                       <span className="input-group-text bg-transparent border-0 text-secondary ps-0"><IndianRupee size={20} /></span>
                       <input 
                         type="number" 
-                        className="form-control bg-transparent border-0 fw-black fs-2 p-0 shadow-none text-white" 
+                        className="form-control bg-transparent border-0 fw-black fs-2 p-0 shadow-none text-white tracking-tighter" 
                         placeholder="0.00"
                         value={totalAmount}
                         onChange={(e) => {
@@ -238,7 +238,8 @@ const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
                 className={`btn w-100 py-3 rounded-pill fw-black text-uppercase tracking-widest shadow-lg d-flex align-items-center justify-content-center gap-3 transition-smooth ${paymentType === 'PART' && !isMatch ? 'btn-outline-secondary opacity-50' : 'btn-primary'}`}
                 disabled={paymentType === 'PART' && !isMatch}
               >
-                <Send size={20} /> Generate & Blast Link
+                <Send size={20} className={paymentType === 'PART' && !isMatch ? 'opacity-25' : 'animate-bounce-right'} /> 
+                <span className="ls-1">Generate & Securely Dispatch Link</span>
               </button>
             </form>
           </div>

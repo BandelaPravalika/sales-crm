@@ -34,6 +34,10 @@ import PaymentHistory from '../components/PaymentHistory';
 import RevenueTrendChart from './dashboard/components/RevenueTrendChart';
 import StatCard from '../components/StatCard';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import AttendanceDashboard from '../components/pages/AttendanceDashboard';
+import CallLogDashboard from './dashboard/components/CallLogDashboard';
+import InvoiceModal from './dashboard/components/InvoiceModal';
+import paymentService from '../services/paymentService';
 
 const ManagerDashboard = () => {
     const { logout } = useAuth();
@@ -43,6 +47,10 @@ const ManagerDashboard = () => {
     const [filterUnassigned, setFilterUnassigned] = useState(false);
     const [bulkAssignTlId, setBulkAssignTlId] = useState('');
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+
+    // Invoice state
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
 
     const [filters, setFilters] = useState({
         from: new Date().toISOString().split('T')[0] + 'T00:00:00',
@@ -144,6 +152,17 @@ const ManagerDashboard = () => {
             reload();
         } catch (err) {
             toast.error('Sync failed');
+        }
+    };
+
+    const handleViewInvoice = async (lead) => {
+        try {
+            toast.info('Retrieving official invoice document...');
+            const res = await paymentService.generateInvoice(lead.id);
+            setSelectedInvoiceData(res.data);
+            setIsInvoiceModalOpen(true);
+        } catch (err) {
+            toast.error('Failed to retrieve invoice - no confirmed payment found');
         }
     };
 
@@ -289,7 +308,8 @@ const ManagerDashboard = () => {
                             handleBulkAssign={handleBulkAssign}
                             handleAssignLead={handleAssignLead}
                             onRecordCallOutcome={handleRecordCallOutcome}
-                            teamLeaders={teamLeaders.filter(u => u.role === 'TEAM_LEADER')} 
+                            onViewInvoice={handleViewInvoice}
+                            teamLeaders={teamLeaders.filter(u => u.role === 'TEAM_LEADER' || u.role === 'ASSOCIATE')} 
                         />
                     </div>
                 )}
@@ -301,7 +321,7 @@ const ManagerDashboard = () => {
                       isInline={true}
                       onClose={() => setActiveTab('leads')}
                       onSuccess={handleBulkUploadSuccess}
-                      teamLeaders={teamLeaders.filter(u => u.role === 'TEAM_LEADER')}
+                      assignees={teamLeaders.filter(u => u.role === 'TEAM_LEADER' || u.role === 'ASSOCIATE')}
                     />
                   </div>
                 )}
@@ -321,6 +341,15 @@ const ManagerDashboard = () => {
                             setActiveTab={setActiveTab}
                         />
                     </div>
+                )}
+
+                {/* Attendance Logs Tab */}
+                {activeTab === 'attendance-logs' && (
+                  <AttendanceDashboard role="MANAGER" />
+                )}
+
+                {activeTab === 'call-logs' && (
+                  <CallLogDashboard />
                 )}
 
                 {activeTab === 'payments' && (
@@ -395,9 +424,15 @@ const ManagerDashboard = () => {
                     isOpen={isBulkUploadModalOpen}
                     onClose={() => setIsBulkUploadModalOpen(false)}
                     onSuccess={handleBulkUploadSuccess}
-                    teamLeaders={teamLeaders}
+                    assignees={teamLeaders}
                 />
             )}
+
+            <InvoiceModal 
+                isOpen={isInvoiceModalOpen}
+                onClose={() => setIsInvoiceModalOpen(false)}
+                invoiceData={selectedInvoiceData}
+            />
         </DashboardLayout>
     );
 };

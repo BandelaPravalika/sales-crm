@@ -1,3 +1,4 @@
+import React from 'react';
 import { 
   Zap, 
   Search, 
@@ -12,13 +13,7 @@ import {
 const Navbar = ({ role, userEmail, onLogout, theme, onToggleTheme, onToggleSidebar, className }) => {
   return (
     <nav className={`navbar-minimal d-flex align-items-center justify-content-between px-3 px-md-4 ${className || ''}`}>
-      {/* Mobile Toggle Button (Visible only on < 850px) */}
-      <button 
-        className="btn btn-link text-white p-2 d-lg-none border-0 shadow-none me-2 h-fit"
-        onClick={onToggleSidebar}
-      >
-        <Menu size={20} className="text-primary" />
-      </button>
+      {/* Single Mobile Toggle Button - Moved to Sidebar for consistency */}
 
       {/* Left: Search Bar (Hidden on Mobile) */}
       <div className="d-none d-md-flex align-items-center flex-grow-1">
@@ -51,8 +46,9 @@ const Navbar = ({ role, userEmail, onLogout, theme, onToggleTheme, onToggleSideb
         </button>
         
         <button 
-          className="btn btn-link text-white opacity-50 p-2 border-0 hover-opacity-100 transition-all d-none d-sm-inline-block"
-          onClick={() => onToggleTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="btn btn-link opacity-50 p-2 border-0 hover-opacity-100 transition-all d-none d-sm-inline-block"
+          onClick={() => onToggleTheme()}
+          style={{ color: 'var(--text-main)' }}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>

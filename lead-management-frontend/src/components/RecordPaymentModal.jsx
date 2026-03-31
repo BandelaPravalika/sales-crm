@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, CreditCard, Layers, User, Search, Check } from 'lucide-react';
+import { toast } from 'react-toastify';
 import adminService from '../services/adminService';
 
 const RecordPaymentModal = ({ show, onClose, onConfirm }) => {
@@ -39,11 +40,21 @@ const RecordPaymentModal = ({ show, onClose, onConfirm }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.leadId) {
-      alert('Please select a student from the list');
+      toast.error('Please select a student from the list');
       return;
     }
-    onConfirm(formData);
+    
+    // Map category to paymentType for the backend
+    const paymentType = formData.category === 'Full Payment' ? 'FULL' : 'EMI';
+    
+    toast.info('Submitting payment record...');
+    onConfirm({
+      ...formData,
+      paymentType
+    });
   };
+
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

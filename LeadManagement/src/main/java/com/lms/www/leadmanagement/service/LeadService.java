@@ -1,26 +1,25 @@
 package com.lms.www.leadmanagement.service;
 
 import com.lms.www.leadmanagement.dto.LeadDTO;
-import com.lms.www.leadmanagement.dto.UserDTO;
+import com.lms.www.leadmanagement.entity.CallRecord;
 import com.lms.www.leadmanagement.entity.Lead;
 import com.lms.www.leadmanagement.entity.User;
+import com.lms.www.leadmanagement.repository.CallRecordRepository;
 import com.lms.www.leadmanagement.repository.LeadRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
+import com.lms.www.leadmanagement.security.UserDetailsImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class LeadService {
 
     @Autowired
@@ -29,230 +28,213 @@ public class LeadService {
     @Autowired
     private UserRepository userRepository;
 
-    public User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+    @Autowired
+    private CallRecordRepository callRecordRepository;
+
+    private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
+
+    private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) principal).getId();
+        }
+        throw new RuntimeException("User not authenticated");
     }
 
-    @PreAuthorize("hasAuthority('CREATE_LEADS')")
+    public Map<String, Object> getLeadStats() {
+        Long userId = getCurrentUserId();
+        List<Lead> myLeads = leadRepository.findAll().stream()
+                .filter(l -> l.getAssignedTo() != null && l.getAssignedTo().getId().equals(userId))
+                .collect(Collectors.toList());
+        Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("TOTAL", (long) myLeads.size());
+        stats.put("INTERESTED", myLeads.stream().filter(l -> Lead.Status.INTERESTED.equals(l.getStatus())).count());
+        stats.put("PAID", myLeads.stream().filter(l -> Lead.Status.PAID.equals(l.getStatus())).count());
+        stats.put("NOT_INTERESTED", myLeads.stream().filter(l -> Lead.Status.NOT_INTERESTED.equals(l.getStatus())).count());
+        return stats;
+    }
+
+    public List<LeadDTO> getMyLeads() {
+        Long userId = getCurrentUserId();
+        return leadRepository.findAll().stream()
+                .filter(l -> l.getAssignedTo() != null && l.getAssignedTo().getId().equals(userId))
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public LeadDTO getLeadById(java.lang.annotation.Annotation... annotations) { // Generic catch-all for potential lombok/spring issues
+        return null;
+    }
+
+    public LeadDTO getLeadById(Long id) {
+        if (id == null) throw new RuntimeException("Lead ID is required");
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
+        return convertToDTO(lead);
+    }
+
+    @Transactional
     public LeadDTO createLead(LeadDTO leadDTO) {
-        User currentUser = getCurrentUser();
+        User currentUser = userRepository.findById(getCurrentUserId())
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
         Lead lead = Lead.builder()
                 .name(leadDTO.getName())
                 .email(leadDTO.getEmail())
                 .mobile(leadDTO.getMobile())
                 .status(Lead.Status.NEW)
                 .assignedTo(currentUser)
-                .createdBy(currentUser)
                 .build();
-        return LeadDTO.fromEntity(leadRepository.save(lead));
+        return convertToDTO(leadRepository.save(lead));
     }
 
-    @PreAuthorize("hasAuthority('VIEW_LEADS')")
-    public LeadDTO getLeadById(Long id) {
-        return leadRepository.findById(id)
-                .map(LeadDTO::fromEntity)
-                .orElseThrow(() -> new RuntimeException("Lead not found: " + id));
+    @Transactional
+    public LeadDTO updateStatus(Long id, String status, String note) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
+        lead.setStatus(Lead.Status.valueOf(status.toUpperCase()));
+        lead.setNote(note);
+        return convertToDTO(leadRepository.save(lead));
     }
 
-    @PreAuthorize("hasAuthority('VIEW_LEADS')")
-    public List<LeadDTO> getMyLeads() {
-        User currentUser = getCurrentUser();
-        return leadRepository.findByAssignedTo(currentUser).stream()
-                .map(LeadDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    @PreAuthorize("hasAuthority('VIEW_LEADS')")
-    public Map<String, Object> getLeadStats() {
-        User currentUser = getCurrentUser();
-        List<Lead> myLeads = leadRepository.findByAssignedTo(currentUser);
+    @Transactional
+    public LeadDTO recordCallOutcome(Long leadId, String status, String note, String followUpDate) {
+        Lead lead = leadRepository.findById(leadId)
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
         
-        Map<String, Long> counts = myLeads.stream()
-                .collect(Collectors.groupingBy(l -> l.getStatus().name(), Collectors.counting()));
-        
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("total", (long) myLeads.size());
-        stats.put("statusCounts", counts);
-        return stats;
+        User user = userRepository.findById(getCurrentUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 1. Update Lead State
+        lead.setStatus(Lead.Status.valueOf(status.toUpperCase()));
+        lead.setNote(note);
+        if (followUpDate != null) {
+            lead.setFollowUpDate(LocalDateTime.parse(followUpDate));
+            lead.setFollowUpRequired(true);
+        }
+        leadRepository.save(lead);
+
+        // 2. Persistent Audit: Create CallRecord
+        CallRecord record = CallRecord.builder()
+                .lead(lead)
+                .user(user)
+                .phoneNumber(lead.getMobile())
+                .callType("OUTGOING")
+                .status(status)
+                .note(note)
+                .startTime(LocalDateTime.now(INDIA_ZONE))
+                .endTime(LocalDateTime.now(INDIA_ZONE))
+                .build();
+        callRecordRepository.save(record);
+
+        return convertToDTO(lead);
     }
 
-    @PreAuthorize("hasAuthority('VIEW_LEADS')")
+    private LeadDTO convertToDTO(Lead lead) {
+        return LeadDTO.builder()
+                .id(lead.getId())
+                .name(lead.getName())
+                .email(lead.getEmail())
+                .mobile(lead.getMobile())
+                .status(lead.getStatus() != null ? lead.getStatus().name() : null)
+                .note(lead.getNote())
+                .paymentLink(lead.getPaymentLink())
+                .build();
+    }
+
+    @Transactional
+    public LeadDTO rejectLead(Long id, Map<String, Object> rejectionData) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
+        lead.setStatus(Lead.Status.LOST);
+        lead.setRejectionReason((String) rejectionData.get("reason"));
+        return convertToDTO(leadRepository.save(lead));
+    }
+
+    public User getCurrentUser() {
+        return userRepository.findById(getCurrentUserId())
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+    }
+
     public List<LeadDTO> getAllLeadsForManager() {
-        User currentUser = getCurrentUser();
-        List<User> subordinates = new ArrayList<>();
-        subordinates.add(currentUser); // Manager might have own leads
-        collectSubordinates(currentUser, subordinates);
+        User manager = getCurrentUser();
+        List<Long> subordinateIds = userRepository.findSubordinateIds(manager.getId());
+        subordinateIds.add(manager.getId()); // Include manager's own leads
         
-        return leadRepository.findByAssignedToIn(subordinates).stream()
-                .map(LeadDTO::fromEntity)
+        return leadRepository.findAll().stream()
+                .filter(l -> l.getAssignedTo() != null && subordinateIds.contains(l.getAssignedTo().getId()))
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    public List<UserDTO> getCurrentUserSubordinates() {
-        User currentUser = getCurrentUser();
-        List<User> subordinates = new ArrayList<>();
-        collectSubordinates(currentUser, subordinates);
-        return subordinates.stream()
-                .map(UserDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    private void collectSubordinates(User user, List<User> collector) {
-        // Collect managerial subordinates
-        if (user.getSubordinates() != null) {
-            for (User sub : user.getSubordinates()) {
-                if (!collector.contains(sub)) {
-                    collector.add(sub);
-                    collectSubordinates(sub, collector);
-                }
-            }
-        }
-        // Collect supervisory associates (Team Leader -> Associates)
-        if (user.getManagedAssociates() != null) {
-            for (User assoc : user.getManagedAssociates()) {
-                if (!collector.contains(assoc)) {
-                    collector.add(assoc);
-                    collectSubordinates(assoc, collector);
-                }
-            }
-        }
-    }
-
-    @PreAuthorize("hasAuthority('ASSIGN_LEADS') or hasAuthority('ASSIGN_TO_TL')")
+    @Transactional
     public LeadDTO assignLead(Long leadId, Long userId) {
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
-        User currentUser = getCurrentUser();
-        if (!isAuthorizedToAssign(currentUser, user)) {
-            throw new AccessDeniedException("You are not authorized to assign leads to this user: " + user.getName());
-        }
-        
         lead.setAssignedTo(user);
-        lead.setUpdatedBy(currentUser);
-        return LeadDTO.fromEntity(leadRepository.save(lead));
+        lead.setStatus(Lead.Status.WORKING);
+        return convertToDTO(leadRepository.save(lead));
     }
 
-    @PreAuthorize("hasAuthority('ASSIGN_LEADS') or hasAuthority('ASSIGN_TO_TL')")
+    @Transactional
     public List<LeadDTO> bulkAssignLeads(List<Long> leadIds, Long userId) {
-        User targetUser = userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        User currentUser = getCurrentUser();
-        
-        if (!isAuthorizedToAssign(currentUser, targetUser)) {
-            throw new AccessDeniedException("You are not authorized to assign leads to this user: " + targetUser.getName());
-        }
         
         List<Lead> leads = leadRepository.findAllById(leadIds);
-        for (Lead lead : leads) {
-            lead.setAssignedTo(targetUser);
-            lead.setUpdatedBy(currentUser);
-        }
+        leads.forEach(l -> {
+            l.setAssignedTo(user);
+            l.setStatus(Lead.Status.WORKING);
+        });
         return leadRepository.saveAll(leads).stream()
-                .map(LeadDTO::fromEntity)
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
-    private boolean isAuthorizedToAssign(User currentUser, User targetUser) {
-        String currentRole = currentUser.getRole().getName();
-
-        if ("ADMIN".equals(currentRole)) {
-            return true;
-        }
-
-        if ("MANAGER".equals(currentRole)) {
-            // Manager can assign to Team Leaders or Associates in their hierarchy
-            List<User> subordinates = new ArrayList<>();
-            collectSubordinates(currentUser, subordinates);
-            return subordinates.contains(targetUser);
-        }
-
-        if ("TEAM_LEADER".equals(currentRole)) {
-            // Team Leader can only assign to Associates they manage
-            return currentUser.getManagedAssociates() != null && currentUser.getManagedAssociates().contains(targetUser);
-        }
-
-        return false;
-    }
-
-    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
-    public LeadDTO updateStatus(Long id, String status, String note) {
-        Lead lead = leadRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lead not found"));
-        lead.setStatus(Lead.Status.valueOf(status));
-        if (note != null) {
-            lead.setNote(note);
-        }
-        lead.setUpdatedBy(getCurrentUser());
-        return LeadDTO.fromEntity(leadRepository.save(lead));
-    }
-
-    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
-    public LeadDTO rejectLead(Long id, Map<String, Object> data) {
-        Lead lead = leadRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lead not found"));
-        lead.setStatus(Lead.Status.LOST);
-        if (data.containsKey("rejectionReason")) {
-            lead.setRejectionReason((String) data.get("rejectionReason"));
-        }
-        if (data.containsKey("rejectionNote")) {
-            lead.setRejectionNote((String) data.get("rejectionNote"));
-        }
-        lead.setUpdatedBy(getCurrentUser());
-        return LeadDTO.fromEntity(leadRepository.save(lead));
-    }
-
-    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
-    public LeadDTO recordCallOutcome(Long id, String status, String note, String followUpDate) {
+    @Transactional
+    public LeadDTO updateLead(Long id, LeadDTO leadDTO) {
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
         
-        if (status != null) lead.setStatus(Lead.Status.valueOf(status));
-        if (note != null) lead.setNote(note);
+        if (leadDTO.getName() != null) lead.setName(leadDTO.getName());
+        if (leadDTO.getEmail() != null) lead.setEmail(leadDTO.getEmail());
+        if (leadDTO.getMobile() != null) lead.setMobile(leadDTO.getMobile());
+        if (leadDTO.getNote() != null) lead.setNote(leadDTO.getNote());
         
-        if (followUpDate != null && !followUpDate.trim().isEmpty()) {
-            try {
-                // Determine format
-                if (followUpDate.contains("T")) {
-                    lead.setFollowUpDate(LocalDateTime.parse(followUpDate));
-                } else {
-                    lead.setFollowUpDate(LocalDateTime.parse(followUpDate + "T10:00:00"));
-                }
-                lead.setFollowUpRequired(true);
-            } catch (Exception e) {
-                // If parsing fails, just ignore for now
-                System.err.println("!!! Failed to parse followUpDate: " + followUpDate);
-            }
-        }
-        
-        lead.setUpdatedBy(getCurrentUser());
-        return LeadDTO.fromEntity(leadRepository.save(lead));
+        return convertToDTO(leadRepository.save(lead));
     }
-
-    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
-    public LeadDTO updatePaymentLink(Long id, String link) {
-        Lead lead = leadRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lead not found"));
-        lead.setPaymentLink(link);
-        lead.setUpdatedBy(getCurrentUser());
-        return LeadDTO.fromEntity(leadRepository.save(lead));
-    }
-
-    @PreAuthorize("hasAuthority('UPDATE_LEAD_STATUS')")
+ 
+    @Transactional
     public LeadDTO updateNote(Long id, String note) {
+
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
         lead.setNote(note);
-        lead.setUpdatedBy(getCurrentUser());
-        return LeadDTO.fromEntity(leadRepository.save(lead));
+        return convertToDTO(leadRepository.save(lead));
     }
 
-    public Page<LeadDTO> getMyLeads(Pageable pageable) {
-        User currentUser = getCurrentUser();
-        return leadRepository.findByAssignedToIn(Collections.singletonList(currentUser), pageable)
-                .map(LeadDTO::fromEntity);
+    @Transactional
+    public LeadDTO updatePaymentLink(Long id, String paymentLink) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
+        lead.setPaymentLink(paymentLink);
+        return convertToDTO(leadRepository.save(lead));
+    }
+
+    public List<com.lms.www.leadmanagement.dto.UserDTO> getCurrentUserSubordinates() {
+        User user = getCurrentUser();
+        // Return direct subordinates and managed associates
+        java.util.Set<User> subordinates = new java.util.HashSet<>();
+        if (user.getSubordinates() != null) subordinates.addAll(user.getSubordinates());
+        if (user.getManagedAssociates() != null) subordinates.addAll(user.getManagedAssociates());
+        
+        // Include the current user to allow self-assignment
+        subordinates.add(user);
+        
+        return subordinates.stream()
+                .map(com.lms.www.leadmanagement.dto.UserDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 }

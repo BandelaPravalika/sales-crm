@@ -1,3 +1,4 @@
+/*
 package com.lms.www.leadmanagement.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/api/payment/webhook")
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentWebhookController {
@@ -19,13 +20,12 @@ public class PaymentWebhookController {
     private final LeadPaymentService leadPaymentService;
     private final ObjectMapper objectMapper;
 
-    @PostMapping("/webhook")
+    @PostMapping
     public ResponseEntity<String> handleCashfreeWebhook(
             @RequestHeader("x-webhook-signature") String signature,
             @RequestHeader("x-webhook-timestamp") String timestamp,
             @RequestBody String payload) {
 
-        log.info(">>> HIT CORRECT WEBHOOK");
         log.info(">>> Received Cashfree Webhook: {}", payload);
 
         if (!cashfreeService.verifyWebhookSignature(signature, timestamp, payload)) {
@@ -56,3 +56,4 @@ public class PaymentWebhookController {
         }
     }
 }
+*/

@@ -2,7 +2,7 @@ import api from '../api/api';
 
 const associateService = {
   fetchMyLeads: () => api.get('/leads/my'),
-  fetchPerformanceStats: () => api.get('/leads/stats'),
+  fetchPerformanceStats: (filters) => api.get('/leads/stats', { params: filters }),
   updateStatus: (leadId, status, note) => api.put(`/leads/${leadId}/status`, null, { 
     params: { status, note } 
   }),

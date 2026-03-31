@@ -3,6 +3,7 @@ import { Search, Filter, Clock, AlertCircle, Calendar, User, AlignLeft, CheckSqu
 import CallOutcomeModal from './CallOutcomeModal';
 import ManualTaskModal from './ManualTaskModal';
 import associateService from '../services/associateService';
+import { toast } from 'react-toastify';
 
 const TaskBoard = ({ leads, theme, onUpdateStatus, fetchLeads }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -280,25 +281,25 @@ const TaskBoard = ({ leads, theme, onUpdateStatus, fetchLeads }) => {
                            {task.status === 'PENDING' && (
                              <>
                                <button 
-                                 className="btn btn-sm btn-outline-success rounded-pill fw-bold px-3 d-flex align-items-center gap-1"
-                                 style={{ fontSize: '10px' }}
+                                 className="btn btn-sm btn-success rounded-pill fw-black px-4 d-flex align-items-center gap-2 shadow-glow border-0 transition-smooth"
+                                 style={{ fontSize: '10px', backgroundColor: '#10b981' }}
                                  onClick={(e) => {
                                    e.stopPropagation();
                                    handleUpdateTaskStatus(task.id, 'COMPLETED');
                                  }}
                                >
-                                 <CheckSquare size={12} /> Complete
+                                 <CheckSquare size={14} /> COMPLETE
                                </button>
                                <button 
-                                 className="btn btn-sm btn-outline-warning rounded-pill fw-bold px-3 d-flex align-items-center gap-1"
-                                 style={{ fontSize: '10px' }}
+                                 className="btn btn-sm btn-warning rounded-pill fw-black px-4 d-flex align-items-center gap-2 shadow-glow border-0 transition-smooth text-dark"
+                                 style={{ fontSize: '10px', backgroundColor: '#f59e0b' }}
                                  onClick={(e) => {
                                    e.stopPropagation();
                                    setReschedulingTask(task);
                                    setShowTaskModal(true);
                                  }}
                                >
-                                 <Calendar size={12} /> Reschedule
+                                 <Calendar size={14} /> RESCHEDULE
                                </button>
                              </>
                            )}

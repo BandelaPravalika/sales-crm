@@ -3,21 +3,22 @@ package com.lms.www.leadmanagement.controller;
 import com.lms.www.leadmanagement.dto.BulkUploadResponseDTO;
 import com.lms.www.leadmanagement.dto.LeadDTO;
 import com.lms.www.leadmanagement.dto.PaymentDTO;
+import com.lms.www.leadmanagement.dto.RoleDTO;
 import com.lms.www.leadmanagement.dto.UserDTO;
 import com.lms.www.leadmanagement.entity.User;
-import com.lms.www.leadmanagement.service.LeadBulkUploadService;
-import com.lms.www.leadmanagement.service.LeadPaymentService;
-import com.lms.www.leadmanagement.service.LeadService;
-import com.lms.www.leadmanagement.service.ManagerService;
+import com.lms.www.leadmanagement.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/manager")
@@ -27,7 +28,7 @@ public class ManagerController {
     private ManagerService managerService;
 
     @Autowired
-    private com.lms.www.leadmanagement.service.AdminService adminService;
+    private AdminService adminService;
 
     @Autowired
     private LeadService leadService;
@@ -77,20 +78,20 @@ public class ManagerController {
         return ResponseEntity.ok(leadService.getAllLeadsForManager());
     }
 
-    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
-    @PostMapping("/assign-lead/{leadId}/{tlId}")
-    public ResponseEntity<LeadDTO> assignLead(@PathVariable Long leadId, @PathVariable Long tlId) {
-        return ResponseEntity.ok(leadService.assignLead(leadId, tlId));
+    @PreAuthorize("hasAuthority('ASSIGN_TO_TL') or hasAuthority('ASSIGN_TO_ASSOCIATE') or hasAuthority('ADMIN')")
+    @PostMapping("/assign-lead/{leadId}/{userId}")
+    public ResponseEntity<LeadDTO> assignLead(@PathVariable Long leadId, @PathVariable Long userId) {
+        return ResponseEntity.ok(leadService.assignLead(leadId, userId));
     }
 
-    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
+    @PreAuthorize("hasAuthority('ASSIGN_TO_TL') or hasAuthority('ASSIGN_TO_ASSOCIATE') or hasAuthority('ADMIN')")
     @PostMapping("/leads/bulk-assign")
-    public ResponseEntity<List<LeadDTO>> bulkAssignLeads(@RequestBody java.util.Map<String, Object> body) {
+    public ResponseEntity<List<LeadDTO>> bulkAssignLeads(@RequestBody Map<String, Object> body) {
         List<Long> leadIds = ((List<?>) body.get("leadIds")).stream()
                 .map(id -> Long.valueOf(id.toString()))
                 .collect(Collectors.toList());
-        Long tlId = Long.valueOf(body.get("tlId").toString());
-        return ResponseEntity.ok(leadService.bulkAssignLeads(leadIds, tlId));
+        Long userId = Long.valueOf(body.get("userId").toString());
+        return ResponseEntity.ok(leadService.bulkAssignLeads(leadIds, userId));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
@@ -114,35 +115,44 @@ public class ManagerController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/permissions")
-    public ResponseEntity<java.util.List<String>> getAllPermissions() {
+    public ResponseEntity<List<String>> getAllPermissions() {
         return ResponseEntity.ok(managerService.getAllPermissions());
     }
 
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/payments/history")
     public ResponseEntity<List<PaymentDTO>> getPaymentHistory(
             @RequestParam(value = "tlId", required = false) Long tlId,
             @RequestParam(value = "associateId", required = false) Long associateId,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "startDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
-            @RequestParam(value = "endDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate) {
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDate) {
         return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(tlId, associateId, startDate, endDate, status));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PutMapping("/payments/{id}")
+    public ResponseEntity<PaymentDTO> updatePaymentStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        return ResponseEntity.ok(leadPaymentService.updatePaymentStatus(id, payload));
     }
 
     @PreAuthorize("hasAuthority('VIEW_REPORTS')")
     @GetMapping("/dashboard/stats")
-    public ResponseEntity<java.util.Map<String, Object>> getDashboardStats(
+    public ResponseEntity<Map<String, Object>> getDashboardStats(
             @RequestParam(value = "userId", required = false) Long userId,
-            @RequestParam(value = "start", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime start,
-            @RequestParam(value = "end", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime end) {
+            @RequestParam(value = "start", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(value = "end", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime end) {
         User requester = managerService.getCurrentUser();
         return ResponseEntity.ok(adminService.getDashboardStats(start, end, requester, userId));
     }
 
     @PreAuthorize("hasAuthority('VIEW_REPORTS')")
     @GetMapping("/reports/member-performance")
-    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getMemberPerformance(
-            @RequestParam(value = "start", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime start,
-            @RequestParam(value = "end", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime end) {
+    public ResponseEntity<List<Map<String, Object>>> getMemberPerformance(
+            @RequestParam(value = "start", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(value = "end", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime end) {
         User manager = managerService.getCurrentUser();
         return ResponseEntity.ok(adminService.getMemberPerformanceFiltered(start, end, manager));
     }
@@ -155,7 +165,7 @@ public class ManagerController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/roles")
-    public ResponseEntity<List<com.lms.www.leadmanagement.dto.RoleDTO>> getAllRoles() {
+    public ResponseEntity<List<RoleDTO>> getAllRoles() {
         return ResponseEntity.ok(managerService.getAllRoles());
     }
 }

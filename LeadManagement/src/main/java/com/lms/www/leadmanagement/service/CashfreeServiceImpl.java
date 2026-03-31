@@ -8,7 +8,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.Mac;
@@ -22,7 +21,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
-@Service
+//@Service
 @RequiredArgsConstructor
 @Slf4j
 public class CashfreeServiceImpl implements CashfreeService {
@@ -78,11 +77,11 @@ public class CashfreeServiceImpl implements CashfreeService {
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         request.put("customer_details", customerDetails);
 
-        // Use the injected base URL for both redirect and real-time webhook notification
+        // Use the injected base URL for both redirect and real-time webhook
+        // notification
         request.put("order_meta", Map.of(
-            "return_url", baseUrl + "/payment-success?order_id={order_id}",
-            "notify_url", baseUrl + "/api/payment/webhook"
-        ));
+                "return_url", baseUrl + "/payment-success?order_id={order_id}",
+                "notify_url", baseUrl + "/api/payment/webhook"));
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
         try {
@@ -132,8 +131,9 @@ public class CashfreeServiceImpl implements CashfreeService {
                     url,
                     HttpMethod.GET,
                     entity,
-                    new ParameterizedTypeReference<Map<String, Object>>() {});
-            
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+
             return response.getBody();
         } catch (Exception e) {
             log.error("Exception fetching order status from Cashfree: {}", e.getMessage());

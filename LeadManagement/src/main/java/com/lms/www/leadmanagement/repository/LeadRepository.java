@@ -18,6 +18,8 @@ import java.util.Optional;
 @Repository
 public interface LeadRepository extends JpaRepository<Lead, Long> {
 
+    Optional<Lead> findByMobile(String mobile);
+
     List<Lead> findByAssignedTo(User assignedTo);
 
     List<Lead> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
@@ -64,6 +66,15 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             "FROM Lead l WHERE l.assignedTo.id IN :userIds AND l.createdAt BETWEEN :start AND :end " +
             "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
     List<Map<String, Object>> getDailyLeadTrend(
+            @Param("userIds") Collection<Long> userIds,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    @Query("SELECT new map(cast(l.createdAt as localdate) as date, count(l) as count) " +
+            "FROM Lead l WHERE l.assignedTo.id IN :userIds AND l.createdAt BETWEEN :start AND :end " +
+            "AND (l.status = 'LOST' OR l.status = 'NOT_INTERESTED') " +
+            "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
+    List<Map<String, Object>> getDailyLostTrend(
             @Param("userIds") Collection<Long> userIds,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
