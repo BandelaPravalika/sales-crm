@@ -130,6 +130,7 @@ public class LeadTaskController {
     private LeadTaskDTO convertToDTO(LeadTask task) {
         return LeadTaskDTO.builder()
                 .id(task.getId())
+                .lead(task.getLead() != null ? com.lms.www.leadmanagement.dto.LeadDTO.fromEntity(task.getLead()) : null)
                 .leadId(task.getLead() != null ? task.getLead().getId() : null)
                 .leadName(task.getLead() != null ? task.getLead().getName() : "General Task")
                 .title(task.getTitle())

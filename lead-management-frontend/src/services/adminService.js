@@ -6,6 +6,7 @@ const adminService = {
   fetchTrendData: (filters) => api.get('/reports/trend', { params: filters }),
   fetchUsers: () => api.get('/admin/users'),
   fetchPermissions: () => api.get('/admin/permissions'),
+  fetchShifts: () => api.get('/admin/shifts'),
   createUser: (userData) => api.post('/admin/users', userData),
   updateUser: (id, userData) => api.put(`/admin/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
@@ -19,12 +20,15 @@ const adminService = {
   // Attendance Management
   fetchOffices: () => api.get('/admin/attendance/offices'),
   createOffice: (data) => api.post('/admin/attendance/offices', data),
+  updateOffice: (id, data) => api.put(`/admin/attendance/offices/${id}`, data),
   deleteOffice: (id) => api.delete(`/admin/attendance/offices/${id}`),
   fetchPolicies: () => api.get('/admin/attendance/policies'),
   createPolicy: (data) => api.post('/admin/attendance/policies', data),
   updatePolicy: (id, data) => api.put(`/admin/attendance/policies/${id}`, data),
+  deletePolicy: (id) => api.delete(`/admin/attendance/policies/${id}`),
   fetchShifts: () => api.get('/admin/attendance/shifts'),
   createShift: (data) => api.post('/admin/attendance/shifts', data),
+  updateShift: (id, data) => api.put(`/admin/attendance/shifts/${id}`, data),
   deleteShift: (id) => api.delete(`/admin/attendance/shifts/${id}`),
 
   // Call Records Audit

@@ -60,6 +60,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("admin123"))
                     .role(adminRole)
                     .reportScope(ReportScope.ALL)
+                    .active(true)
                     .build();
             userRepository.save(admin);
             userRepository.flush();
@@ -78,6 +79,7 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.findByName("ADMIN").ifPresent(role -> {
                 admin.setRole(role);
                 admin.setReportScope(com.lms.www.leadmanagement.entity.ReportScope.ALL);
+                admin.setActive(true);
                 userRepository.save(admin);
                 userRepository.flush();
             });

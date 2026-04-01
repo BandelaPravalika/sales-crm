@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class AdminController {
 
     @Autowired
@@ -29,6 +28,9 @@ public class AdminController {
 
     @Autowired
     private LeadPaymentService leadPaymentService;
+
+    @Autowired
+    private com.lms.www.leadmanagement.service.AttendanceService attendanceService;
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @PostMapping("/manager")
@@ -56,8 +58,8 @@ public class AdminController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        adminService.deleteUser(id);
+    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
+        adminService.deactivateUser(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -67,7 +69,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.createRole(roleDTO));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/permissions")
     public ResponseEntity<java.util.List<String>> getAllPermissions() {
         return ResponseEntity.ok(adminService.getAllPermissions());
@@ -104,7 +106,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getDashboardStats(start, end, requester, userId));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/reports/member-performance")
     public ResponseEntity<List<Map<String, Object>>> getMemberPerformance(
             @RequestParam(value = "start", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime start,
@@ -138,6 +140,12 @@ public class AdminController {
         return ResponseEntity.ok(leadPaymentService.updatePaymentStatus(id, payload));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
+    @GetMapping("/leads/unassigned")
+    public ResponseEntity<java.util.List<LeadDTO>> getUnassignedLeads() {
+        return ResponseEntity.ok(adminService.getUnassignedLeads());
+    }
+
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/team-leaders")
     public ResponseEntity<List<UserDTO>> getTeamLeaders() {
@@ -150,19 +158,19 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAssociatesByTl(tlId));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/team-tree")
-    public ResponseEntity<UserDTO> getTeamTree() {
+    public ResponseEntity<List<UserDTO>> getTeamTree() {
         return ResponseEntity.ok(adminService.getGlobalTeamTree());
     }
 
-    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
+    @PreAuthorize("hasAuthority('ASSIGN_TO_TL') or hasAuthority('ADMIN') or hasAuthority('MANAGER')")
     @PostMapping("/assign-lead/{leadId}/{tlId}")
     public ResponseEntity<LeadDTO> assignLead(@PathVariable Long leadId, @PathVariable Long tlId) {
         return ResponseEntity.ok(adminService.assignLead(leadId, tlId));
     }
 
-    @PreAuthorize("hasAuthority('ASSIGN_TO_TL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/leads/bulk-assign")
     public ResponseEntity<List<LeadDTO>> bulkAssignLeads(@RequestBody java.util.Map<String, Object> body) {
         List<Long> leadIds = ((List<?>) body.get("leadIds")).stream()
@@ -172,7 +180,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.bulkAssignLeads(leadIds, tlId));
     }
 
-    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @GetMapping("/shifts")
+    public ResponseEntity<List<com.lms.www.leadmanagement.entity.AttendanceShift>> getAllShifts() {
+        return ResponseEntity.ok(attendanceService.getAllShifts());
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/test")
     public ResponseEntity<String> testAdmin() {
         return ResponseEntity.ok("Admin Connectivity OK");

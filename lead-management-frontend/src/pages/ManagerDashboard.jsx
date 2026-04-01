@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { Button, Card, Input, Table } from '../components/common/Components';
 import { 
   Users, 
   UserPlus, 
@@ -18,6 +18,8 @@ import {
 import { toast } from 'react-toastify';
 
 // Internal Hooks & Services
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useDashboardData } from './dashboard/hooks/useDashboardData';
 import { useLeads } from './dashboard/hooks/useLeads';
 import managerService from '../services/managerService';
@@ -41,7 +43,8 @@ import paymentService from '../services/paymentService';
 
 const ManagerDashboard = () => {
     const { logout } = useAuth();
-    const [theme] = useState(localStorage.getItem('theme') || 'dark');
+    const { isDarkMode } = useTheme();
+    const theme = isDarkMode ? 'dark' : 'light';
     const [activeTab, setActiveTab] = useState(localStorage.getItem('mgr_activeTab') || 'overview');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterUnassigned, setFilterUnassigned] = useState(false);
@@ -74,19 +77,22 @@ const ManagerDashboard = () => {
     const [teamLeaders, setTeamLeaders] = useState([]);
     const [roles, setRoles] = useState([]);
     const [permissions, setPermissions] = useState([]);
+    const [shifts, setShifts] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
 
     const fetchLookupData = async () => {
         try {
-            const [tlRes, rolesRes, permRes] = await Promise.all([
+            const [tlRes, rolesRes, permRes, shiftRes] = await Promise.all([
                 managerService.fetchTeamLeaders(),
                 managerService.fetchRoles(),
-                managerService.fetchPermissions()
+                managerService.fetchPermissions(),
+                managerService.fetchShifts()
             ]);
-            setTeamLeaders(tlRes.data);
-            setRoles(rolesRes.data);
-            setPermissions(permRes.data);
+            setTeamLeaders(Array.isArray(tlRes.data) ? tlRes.data : (tlRes.data?.data || []));
+            setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || []));
+            setPermissions(Array.isArray(permRes.data) ? permRes.data : (permRes.data?.data || []));
+            setShifts(Array.isArray(shiftRes.data) ? shiftRes.data : (shiftRes.data?.data || []));
         } catch (err) {
             toast.error('Lookup data sync failed');
         }
@@ -127,8 +133,14 @@ const ManagerDashboard = () => {
         try {
             await managerService.updateUser(editingUser.id, editingUser);
             toast.success('Profile updated');
+            
+            // Close first
             setIsEditModalOpen(false);
-            fetchLookupData();
+            
+            // Delay refresh
+            setTimeout(() => {
+                fetchLookupData();
+            }, 300);
         } catch (err) {
             toast.error('Update failed');
         }
@@ -179,123 +191,81 @@ const ManagerDashboard = () => {
     });
 
     return (
-        <DashboardLayout
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            role="MANAGER"
-        >
+        <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab} role="MANAGER">
             <div className="animate-fade-in d-flex flex-column gap-4">
-                {/* Strategic Overview Tab */}
                 {activeTab === 'overview' && (
                   <div className="d-flex flex-column gap-4">
-                    <div className="row g-4 mb-2">
-                       <div className="col-12">
-                          <FiltersBar 
-                              filters={filters} 
-                              onChange={setFilters} 
-                              theme={theme} 
-                          />
-                          {filters.userId && (
-                            <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
-                              <span className="label text-primary">Viewing:</span>
-                              <span className="value text-white me-2">Individual Performance Profile</span>
-                              <button 
-                                className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none"
-                                onClick={() => setFilters({...filters, userId: null})}
-                              >
-                                [ CLEAR FILTER ]
-                              </button>
-                            </div>
-                          )}
-                       </div>
-                    </div>
-
+                    <FiltersBar filters={filters} onChange={setFilters} onSync={reload} />
+                    {filters.userId && (
+                      <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
+                        <span className="label text-primary" style={{fontSize: '10px', textTransform: 'uppercase'}}>Focus Node:</span>
+                        <span className="value text-main me-2 small fw-bold">Individual Performance Profile</span>
+                        <button 
+                          className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
+                          onClick={() => setFilters({...filters, userId: null})}
+                          style={{fontSize: '9px'}}
+                        >
+                          [ CLEAR FOCUS ]
+                        </button>
+                      </div>
+                    )}
                     <div className="row g-4 animate-fade-in">
                         <div className="col-12 col-xl-8">
-                            <div className="card overflow-hidden h-100">
-                               <div className="card-header bg-transparent border-0 p-4">
-                                   <h5 className="fw-black mb-0 px-2 text-primary" style={{ fontSize: '16px' }}>Team Conversion History</h5>
-                               </div>
-                               <div className="card-body p-0">
-                                   <RevenueTrendChart data={trend} theme={theme} />
-                               </div>
-                            </div>
+                            <Card title="Team Conversion History" subtitle="Sales Performance Velocity" style={{ height: '100%' }}>
+                                <RevenueTrendChart data={trend} theme={theme} />
+                            </Card>
                         </div>
                         <div className="col-12 col-xl-4">
                              <div className="d-flex flex-column gap-3 h-100">
-                                <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Paid/Partial" icon={<CheckCircle />} color="success" />
-                                <StatCard title="Pending Revenue" value={stats?.pendingRevenue || 0} sub="Projected INR" icon={<IndianRupee />} color="info" />
-                                <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Disinterest" icon={<Phone />} color="danger" />
-                                <StatCard title="Revenue" value={stats?.totalPayments || 0} sub="Confirmed INR" icon={<IndianRupee />} color="primary" />
+                                <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Targets Synchronized" icon={<CheckCircle />} color="success" />
+                                <StatCard title="Revenue (INR)" value={stats?.totalPayments || 0} sub="Confirmed Transmission" icon={<IndianRupee />} color="primary" />
+                                <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Off-Pitch Segments" icon={<Phone />} color="danger" />
+                                <StatCard title="Pending Rev" value={stats?.pendingRevenue || 0} sub="Projected Margin" icon={<IndianRupee />} color="info" />
                              </div>
                         </div>
-
-                        <div className="col-12 col-xl-12">
-                             <div className="premium-card overflow-hidden">
-                                <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                                    <h5 className="fw-semibold mb-0 text-white small">Team Assignment Matrix</h5>
-                                </div>
-                                <div className="table-responsive">
-                                    <table className="table table-hover align-middle mb-0 table-dark border-0">
-                                        <thead className="bg-dark bg-opacity-50 border-0">
-                                             <tr className="small fw-semibold text-muted">
-                                                 <th className="ps-4">Staff Member</th>
-                                                 <th className="text-center">Leads</th>
-                                                 <th className="text-center">Converted</th>
-                                                 <th className="text-center">Lost</th>
-                                                 <th className="pe-4 text-end">Success %</th>
-                                             </tr>
-                                         </thead>
-                                         <tbody>
-                                             {performance.slice(0, 10).map(p => (
-                                                 <tr key={p.userId} className="table-row border-white border-opacity-5">
-                                                     <td 
-                                                        className="ps-4 table-cell fw-semibold text-primary" 
-                                                        onClick={() => setFilters({...filters, userId: p.userId})}
-                                                        style={{ cursor: 'pointer' }}
-                                                        title="Click to view detailed performance profile"
-                                                     >
-                                                       {p.username}
-                                                     </td>
-                                                     <td className="text-center table-cell fw-semibold">{p.totalLeads}</td>
-                                                     <td className="text-center table-cell text-success fw-semibold">{p.convertedLeads}</td>
-                                                     <td className="text-center table-cell text-danger fw-semibold">{p.lostLeads}</td>
-                                                     <td className="pe-4 table-cell text-end text-primary fw-semibold">
-                                                         {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                                                     </td>
-                                                 </tr>
-                                             ))}
-                                         </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                        <div className="col-12 text-main">
+                             <Card title="Operational Performance Snapshot" subtitle="Global User Efficiency Snapshot">
+                                <Table 
+                                    headers={['Staff Node', 'Designation', 'Load', 'Success', 'Risk', 'Sync Rate']}
+                                    data={performance.slice(0, 10)}
+                                    renderRow={(p) => (
+                                        <>
+                                            <td className="ps-4 fw-bold text-primary cursor-pointer" onClick={() => setFilters({...filters, userId: p.userId})}>{p.username}</td>
+                                            <td className="text-center fw-bold small text-muted"><span className="ui-badge bg-surface">{p.role}</span></td>
+                                            <td className="text-center fw-bold">{p.totalLeads}</td>
+                                            <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
+                                            <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
+                                            <td className="pe-4 text-end text-primary fw-black">
+                                                {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                                            </td>
+                                        </>
+                                    )}
+                                />
+                            </Card>
                         </div>
                     </div>
                   </div>
                 )}
 
-                {/* Staff Hierarchy Tab */}
                 {activeTab === 'hierarchy' && (
                     <div className="animate-fade-in row">
                         <div className="col-12">
-                            <TeamTree 
-                                data={teamTree} 
-                                onFocus={(id) => setFilters({...filters, userId: id})} 
-                                currentFocusId={filters.userId} 
-                            />
+                            <TeamTree data={teamTree} onFocus={(id) => setFilters({...filters, userId: id})} currentFocusId={filters.userId} />
                         </div>
                     </div>
                 )}
 
-                {/* Leads Pipeline Tab */}
                 {activeTab === 'pipeline' && (
-                    <div className="card overflow-hidden animate-fade-in">
+                    <div className="premium-card overflow-hidden animate-fade-in shadow-lg">
                         <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                            <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>My Pipeline Leads</h5>
+                            <div>
+                                <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Global Pipeline Ledger</h5>
+                                <p className="text-muted small mb-0 fw-bold opacity-50" style={{fontSize: '9px'}}>IDENTIFICATION & ASSIGNMENT NODE</p>
+                            </div>
+                            <button className="ui-btn ui-btn-primary btn-sm px-4 rounded-pill shadow-glow" onClick={() => loadLeads()}>SYNC DATA</button>
                         </div>
                         <LeadsTable 
                             leads={filteredLeadsList}
-                            theme={theme}
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
                             filterUnassigned={filterUnassigned}
@@ -315,14 +285,40 @@ const ManagerDashboard = () => {
                 )}
 
                 {activeTab === 'ingestion' && (
-                  <div className="animate-fade-in h-100">
+                  <div className="animate-fade-in d-flex flex-column gap-4">
                     <BulkUploadModal 
                       isOpen={true}
                       isInline={true}
-                      onClose={() => setActiveTab('leads')}
+                      onClose={() => setActiveTab('pipeline')}
                       onSuccess={handleBulkUploadSuccess}
-                      assignees={teamLeaders.filter(u => u.role === 'TEAM_LEADER' || u.role === 'ASSOCIATE')}
+                      assignees={teamLeaders.filter(u => u.role === 'ASSOCIATE')}
                     />
+
+                    {/* Unassigned Leads Pool Section */}
+                    <div className="premium-card overflow-hidden shadow-lg border-0 mt-4">
+                       <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
+                          <h6 className="fw-black mb-0 text-main tracking-widest small">UNASSIGNED LEADS POOL</h6>
+                          <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>ORPHAN DATA NODES AWAITING ASSIGNMENT</small>
+                       </div>
+                       <div className="card-body p-0">
+                          <LeadsTable 
+                            leads={leads.filter(l => !l.assignedToId)}
+                            searchTerm=""
+                            setSearchTerm={() => {}}
+                            filterUnassigned={true}
+                            setFilterUnassigned={() => {}}
+                            selectedLeadIds={selectedLeadIds}
+                            toggleSelection={toggleSelection}
+                            toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === leads.filter(l => !l.assignedToId).length ? [] : leads.filter(l => !l.assignedToId).map(l => l.id))}
+                            bulkAssignTlId={bulkAssignTlId}
+                            setBulkAssignTlId={setBulkAssignTlId}
+                            handleBulkAssign={handleBulkAssign}
+                            handleAssignLead={handleAssignLead}
+                            teamLeaders={teamLeaders}
+                            showFilters={false}
+                          />
+                       </div>
+                    </div>
                   </div>
                 )}
 
@@ -332,10 +328,13 @@ const ManagerDashboard = () => {
                             teamLeaders={teamLeaders}
                             roles={roles}
                             permissions={permissions}
-                            theme={theme}
                             handleCreateUser={handleCreateUser}
                             handleDeleteUser={handleDeleteUser}
-                            handleEditUser={(u) => { setEditingUser(u); setIsEditModalOpen(true); }}
+                            handleEditUser={(u) => { 
+                                // Deep clone for stability
+                                setEditingUser(JSON.parse(JSON.stringify(u))); 
+                                setIsEditModalOpen(true); 
+                            }}
                             handleAssignSupervisor={handleAssignSupervisor}
                             setSelectedPerfUserId={(id) => setFilters({...filters, userId: id})}
                             setActiveTab={setActiveTab}
@@ -343,71 +342,31 @@ const ManagerDashboard = () => {
                     </div>
                 )}
 
-                {/* Attendance Logs Tab */}
                 {activeTab === 'attendance-logs' && (
-                  <AttendanceDashboard role="MANAGER" />
+                  <div className="animate-fade-in">
+                    <AttendanceDashboard role="MANAGER" />
+                  </div>
                 )}
 
-                {activeTab === 'call-logs' && (
-                  <CallLogDashboard />
-                )}
+                {activeTab === 'call-logs' && <CallLogDashboard />}
 
                 {activeTab === 'payments' && (
-                    <div className="d-flex flex-column gap-4 animate-fade-in h-100">
-                        <div className="d-flex align-items-center gap-2 mb-1">
-                            <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
-                                <IndianRupee size={18} />
+                    <div className="d-flex flex-column gap-4 animate-fade-in">
+                        <div className="d-flex align-items-center gap-3 mb-1">
+                            <div className="p-2 bg-primary bg-opacity-10 rounded text-primary border border-primary border-opacity-10"><IndianRupee size={18} /></div>
+                            <div>
+                                <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Financial Transmission Ledger</h5>
+                                <p className="text-muted small mb-0 fw-bold opacity-50" style={{fontSize: '9px'}}>AGGREGATED TRANSACTIONAL ARCHIVE</p>
                             </div>
-                            <h5 className="fw-black mb-0 text-white">Financial Transmission Ledger</h5>
                         </div>
                         <PaymentHistory role="MANAGER" />
-                    </div>
-                )}
-
-                {activeTab === 'reports' && (
-                    <div className="animate-fade-in d-flex flex-column gap-4">
-                        <div className="card overflow-hidden mb-4">
-                            <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                                <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Associate Performance Snapshot</h5>
-                                {filters.userId && (
-                                    <button className="btn-premium btn-sm px-4" onClick={() => setFilters({...filters, userId: null})}>
-                                        Reset Context
-                                    </button>
-                                )}
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0 text-white border-0">
-                                    <thead className="table-dark">
-                                         <tr className="text-uppercase small fw-bold text-muted letter-spacing-05">
-                                             <th className="ps-4 table-cell">Staff Member</th>
-                                             <th className="text-center table-cell">Leads</th>
-                                             <th className="text-center table-cell">Converted</th>
-                                             <th className="text-center table-cell">Lost</th>
-                                             <th className="pe-4 text-end table-cell">Conversion %</th>
-                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                         {performance.filter(p => !filters.userId || p.userId === filters.userId).map(p => (
-                                             <tr key={p.userId} className="table-row border-white border-opacity-5">
-                                                 <td className="ps-4 table-cell fw-bold text-primary">{p.username}</td>
-                                                 <td className="text-center table-cell fw-bold">{p.totalLeads}</td>
-                                                 <td className="text-center table-cell text-success fw-bold">{p.convertedLeads}</td>
-                                                 <td className="text-center table-cell text-danger fw-bold">{p.lostLeads}</td>
-                                                 <td className="pe-4 text-end table-cell text-primary fw-bold">
-                                                     {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                                                 </td>
-                                             </tr>
-                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>
 
             {isEditModalOpen && (
                 <UserEditModal 
+                    key={editingUser?.id}
                     isOpen={isEditModalOpen} 
                     onClose={() => setIsEditModalOpen(false)} 
                     user={editingUser} 
@@ -416,6 +375,7 @@ const ManagerDashboard = () => {
                     roles={roles} 
                     permissions={permissions}
                     teamLeaders={teamLeaders}
+                    shifts={shifts}
                 />
             )}
 
@@ -428,11 +388,7 @@ const ManagerDashboard = () => {
                 />
             )}
 
-            <InvoiceModal 
-                isOpen={isInvoiceModalOpen}
-                onClose={() => setIsInvoiceModalOpen(false)}
-                invoiceData={selectedInvoiceData}
-            />
+            <InvoiceModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} invoiceData={selectedInvoiceData} />
         </DashboardLayout>
     );
 };

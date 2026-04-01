@@ -35,10 +35,26 @@ const AttendanceDashboard = ({ role }) => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const response = await attendanceService.getAdminSummaries(date, userId);
-      if (response.success) {
-        setLogs(response.data);
-        setError(null);
+      let response;
+      if (role === 'ASSOCIATE' || role === 'TEAM_LEADER') {
+        response = await attendanceService.getMyLogs();
+        if (response.success) {
+           // Map AttendanceDTOs to a format similar to Summary if needed
+           // Actually, getMyLogs returns List<AttendanceDTO>
+           setLogs(response.data.map(log => ({
+             ...log,
+             userName: 'Me',
+             date: log.checkInTime ? log.checkInTime.split('T')[0] : 'Today',
+             status: log.totalWorkMinutes >= 480 ? 'PRESENT' : (log.totalWorkMinutes >= 240 ? 'HALF_DAY' : 'ABSENT')
+           })));
+           setError(null);
+        }
+      } else {
+        response = await attendanceService.getAdminSummaries(date, userId);
+        if (response.success) {
+          setLogs(response.data);
+          setError(null);
+        }
       }
     } catch (err) {
       setError('Failed to fetch attendance logs');
@@ -82,142 +98,139 @@ const AttendanceDashboard = ({ role }) => {
       {/* Header Area */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h4 className="fw-bold text-white mb-1">Attendance Activity</h4>
-          <p className="text-white opacity-50 small mb-0">Monitor team productivity and daily work sessions</p>
+          <h4 className="fw-black text-main mb-1 text-uppercase tracking-widest">Attendance Activity</h4>
+          <p className="text-muted small fw-bold opacity-75 mb-0">Monitor team productivity and daily work sessions</p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2 rounded-3 shadow-sm px-4">
+        <button className="btn btn-primary d-flex align-items-center gap-2 rounded-pill shadow-glow px-4 fw-black text-uppercase small">
           <Download size={18} /> Export Logs
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="card border-0 shadow-sm glass-panel rounded-4 mb-4">
-        <div className="card-body p-3">
-          <div className="row g-3">
+      <div className="premium-card mb-4 border-0 shadow-lg">
+        <div className="card-body p-4">
+          <div className="row g-4 align-items-end">
             <div className="col-md-4">
-              <label className="small text-white opacity-50 mb-1 d-block">Filter by Date</label>
-              <div className="input-group input-group-sm">
-                <span className="input-group-text bg-white bg-opacity-10 border-0 text-white">
-                  <Calendar size={16} />
+              <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Filter by Date</label>
+              <div className="input-group">
+                <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
+                  <Calendar size={18} />
                 </span>
                 <input 
                   type="date" 
-                  className="form-control bg-white bg-opacity-10 border-0 text-white shadow-none"
+                  className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>
             </div>
             <div className="col-md-4">
-              <label className="small text-white opacity-50 mb-1 d-block">Search User ID</label>
-              <div className="input-group input-group-sm">
-                <span className="input-group-text bg-white bg-opacity-10 border-0 text-white">
-                  <Search size={16} />
+              <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Identity Propagation (Staff ID)</label>
+              <div className="input-group">
+                <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
+                  <Search size={18} />
                 </span>
                 <input 
                   type="text" 
-                  className="form-control bg-white bg-opacity-10 border-0 text-white shadow-none"
+                  className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
                   placeholder="Enter User ID..."
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
                 />
               </div>
             </div>
+            <div className="col-md-4 text-end">
+                <div className="d-flex align-items-center justify-content-end gap-3 text-muted small fw-bold opacity-50 mb-1">
+                   <div className="d-flex align-items-center gap-1"><div className="bg-success rounded-circle" style={{width: 8, height: 8}}></div> PRESENT</div>
+                   <div className="d-flex align-items-center gap-1"><div className="bg-warning rounded-circle" style={{width: 8, height: 8}}></div> HALF DAY</div>
+                   <div className="d-flex align-items-center gap-1"><div className="bg-danger rounded-circle" style={{width: 8, height: 8}}></div> ABSENT</div>
+                </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Logs Table */}
-      <div className="card border-0 shadow-sm glass-panel rounded-4 overflow-hidden">
+      <div className="premium-card border-0 shadow-lg overflow-hidden">
         <div className="table-responsive">
-          <table className="table table-hover table-borderless align-middle mb-0">
-            <thead className="premium-bg-surface border-bottom border-white border-opacity-5">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="bg-surface bg-opacity-30 border-bottom border-white border-opacity-5">
               <tr>
-                <th className="px-4 py-3 small fw-bold opacity-50">USER</th>
-                <th className="px-4 py-3 small fw-bold opacity-50 text-center">DATE</th>
-                <th className="px-4 py-3 small fw-bold opacity-50 text-center">WORK</th>
-                <th className="px-4 py-3 small fw-bold opacity-50 text-center">BREAK</th>
-                <th className="px-4 py-3 small fw-bold opacity-50 text-center">EXITS</th>
-                <th className="px-4 py-3 small fw-bold opacity-50 text-end">STATUS</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Staff Node</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Propagation Date</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Live Work</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Rest Stream</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Boundary Exits</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-end" style={{ fontSize: '10px' }}>Node Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
                   <td colSpan="6" className="text-center py-5">
-
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    <span className="opacity-50">Syncing logs...</span>
+                    <span className="text-muted fw-bold small opacity-75">POLING ATTENDANCE PROTOCOL...</span>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-5 opacity-25">
-                    No activities found for the selected filters
+                  <td colSpan="6" className="text-center py-5">
+                    <div className="d-flex flex-column align-items-center gap-3 opacity-25">
+                       <AlertCircle size={48} className="text-muted" />
+                       <span className="fw-black text-muted text-uppercase small tracking-widest">No nodes found for the selected temporal coordinates</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={`${log.userId}-${log.date}`} className="border-bottom border-white border-opacity-5">
-                    <td className="px-4 py-3">
+                  <tr key={`${log.userId}-${log.date}`} className="border-bottom border-white border-opacity-5 transition-smooth hover-bg-surface">
+                    <td className="px-4 py-4">
                       <div 
-                        className="d-flex align-items-center gap-3 cursor-pointer hover-translate-x" 
+                        className="d-flex align-items-center gap-3" 
                         style={{ cursor: 'pointer' }}
                         onClick={() => fetchUserHistory(log.user || { id: log.userId, name: log.userName })}
                       >
-                        <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary">
-                          <Users size={16} />
+                        <div className="p-2.5 bg-primary bg-opacity-10 rounded-circle text-primary shadow-glow">
+                          <Users size={18} />
                         </div>
                         <div>
-                          <div className="fw-bold small d-flex align-items-center gap-2">
-                             {log.userName || log.user?.name || `User ID: ${log.userId || log.user?.id || '?'}`}
-                             <ExternalLink size={12} className="opacity-50" />
+                          <div className="fw-black text-main d-flex align-items-center gap-2">
+                             {log.userName || log.user?.name || `ID: ${log.userId || log.user?.id || '?'}`}
+                             <ExternalLink size={12} className="text-primary opacity-50" />
                           </div>
-                          <div className="small opacity-25" style={{fontSize: '0.7rem'}}>{log.user?.email || 'N/A'}</div>
+                          <div className="small text-muted fw-bold opacity-50" style={{fontSize: '0.7rem'}}>{log.user?.email || 'OFFLINE ASSET'}</div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-4 py-3 text-center small text-white opacity-75">
+                    <td className="px-4 py-3 text-center small text-main fw-black opacity-75">
                       {log.date}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-success bg-opacity-10 text-success rounded-pill small border border-success border-opacity-25">
+                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-success bg-opacity-10 text-success rounded-pill small border border-success border-opacity-10 fw-black">
                         <Clock size={12} />
                         {formatMinutes(log.totalWorkMinutes)}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-warning bg-opacity-10 text-warning rounded-pill small border border-warning border-opacity-25">
+                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-warning bg-opacity-10 text-warning rounded-pill small border border-warning border-opacity-10 fw-black">
                         <Coffee size={12} />
                         {formatMinutes(log.totalBreakMinutes)}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-info bg-opacity-10 text-info rounded-pill small border border-info border-opacity-25">
+                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-info bg-opacity-10 text-info rounded-pill small border border-info border-opacity-10 fw-black">
                         <AlertCircle size={12} />
-                        {log.outsideCount || 0} Exits
+                        {log.outsideCount || 0} EXITS
                       </div>
                     </td>
                     <td className="px-4 py-3 text-end">
-                      <div className={`badge rounded-pill px-3 py-2 ${
-                        log.status === 'PRESENT' ? 'bg-success bg-opacity-25 text-success' : 
-                        log.status === 'HALF_DAY' ? 'bg-warning bg-opacity-25 text-warning' : 
-                        'bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25'
+                      <div className={`ui-badge ${
+                        log.status === 'PRESENT' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-20' : 
+                        log.status === 'HALF_DAY' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20' : 
+                        'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20'
                       }`}>
-                        {log.status === 'PRESENT' ? (
-                          <div className="d-flex align-items-center gap-1">
-                            <CheckCircle size={12} /> PRESENT
-                          </div>
-                        ) : log.status === 'HALF_DAY' ? (
-                          <div className="d-flex align-items-center gap-1">
-                            <Clock size={12} /> HALF DAY
-                          </div>
-                        ) : (
-                          <div className="d-flex align-items-center gap-1">
-                            <XCircle size={12} /> ABSENT
-                          </div>
-                        )}
+                        {log.status === 'PRESENT' ? 'PRESENT' : log.status === 'HALF_DAY' ? 'HALF DAY' : 'ABSENT'}
                       </div>
                     </td>
                   </tr>
@@ -225,7 +238,6 @@ const AttendanceDashboard = ({ role }) => {
               )}
             </tbody>
           </table>
-
         </div>
       </div>
 

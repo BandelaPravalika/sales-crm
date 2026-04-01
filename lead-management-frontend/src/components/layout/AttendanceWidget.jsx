@@ -185,15 +185,17 @@ const AttendanceWidget = ({ isCollapsed }) => {
 
   if (isCollapsed) {
     return (
-      <div className="d-flex justify-content-center py-3">
-        {status ? (
-          <div className={`pulse-dot ${
-            status.status === 'WORKING' ? 'bg-success' : 
-            status.status === 'ABSENT' ? 'bg-danger' : 'bg-warning'
-          }`} title={status.status}></div>
-        ) : (
-          <div className="pulse-dot bg-secondary opacity-50" title="Not Punched In"></div>
-        )}
+      <div className="d-flex flex-column align-items-center gap-2 py-3" style={{ width: 'var(--sidebar-collapsed-width)' }}>
+        <div className={`rounded-circle p-2 shadow-sm border border-opacity-10 transition-all ${
+          status ? (status.status === 'WORKING' ? 'bg-success bg-opacity-10 text-success border-success' : 'bg-warning bg-opacity-10 text-warning border-warning') : 'bg-muted bg-opacity-10 text-muted border-secondary'
+        }`} 
+        onClick={!status ? handleClockIn : (status.status === 'WORKING' ? handleClockOut : handleEndBreak)}
+        style={{ cursor: 'pointer', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center' }}>
+          {status ? (status.status === 'WORKING' ? <LogOut size={18} /> : <CheckCircle size={18} />) : <LogIn size={18} />}
+        </div>
+        <div className="status-indicator">
+            <div className={`pulse-dot ${status?.status === 'WORKING' ? 'bg-success' : (status ? 'bg-warning' : 'bg-muted opacity-50')}`} style={{ width: '8px', height: '8px' }}></div>
+        </div>
       </div>
     );
   }

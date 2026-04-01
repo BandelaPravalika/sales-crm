@@ -56,6 +56,10 @@ public class Lead {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "lead", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.List<LeadNote> notes = new java.util.ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -71,6 +75,6 @@ public class Lead {
     }
 
     public enum Status {
-        NEW, CONTACTED, INTERESTED, UNDER_REVIEW, CONVERTED, LOST, NOT_INTERESTED, PAID, PAYMENT_FAILED, FOLLOW_UP, EMI, CLOSED, RETRY, WORKING, PENDING_MESSAGES
+        NEW, CONTACTED, INTERESTED, UNDER_REVIEW, CONVERTED, LOST, NOT_INTERESTED, PAID, PAYMENT_FAILED, FOLLOW_UP, EMI, CLOSED, RETRY, WORKING, PENDING_MESSAGES, SUCCESS
     }
 }

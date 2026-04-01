@@ -1,10 +1,13 @@
 package com.lms.www.leadmanagement.service;
 
 import com.lms.www.leadmanagement.dto.LeadDTO;
+import com.lms.www.leadmanagement.dto.LeadNoteDTO;
 import com.lms.www.leadmanagement.entity.CallRecord;
 import com.lms.www.leadmanagement.entity.Lead;
+import com.lms.www.leadmanagement.entity.LeadNote;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.repository.CallRecordRepository;
+import com.lms.www.leadmanagement.repository.LeadNoteRepository;
 import com.lms.www.leadmanagement.repository.LeadRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
 import com.lms.www.leadmanagement.security.UserDetailsImpl;
@@ -15,9 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class LeadService {
@@ -31,6 +34,9 @@ public class LeadService {
     @Autowired
     private CallRecordRepository callRecordRepository;
 
+    @Autowired
+    private LeadNoteRepository leadNoteRepository;
+
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
     private Long getCurrentUserId() {
@@ -41,29 +47,57 @@ public class LeadService {
         throw new RuntimeException("User not authenticated");
     }
 
+    @Autowired
+    private com.lms.www.leadmanagement.repository.PaymentRepository paymentRepository;
+
     public Map<String, Object> getLeadStats() {
         Long userId = getCurrentUserId();
-        List<Lead> myLeads = leadRepository.findAll().stream()
-                .filter(l -> l.getAssignedTo() != null && l.getAssignedTo().getId().equals(userId))
-                .collect(Collectors.toList());
+        User currentUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        List<Lead> myLeads = leadRepository.findByAssignedTo(currentUser);
         Map<String, Object> stats = new java.util.HashMap<>();
-        stats.put("TOTAL", (long) myLeads.size());
-        stats.put("INTERESTED", myLeads.stream().filter(l -> Lead.Status.INTERESTED.equals(l.getStatus())).count());
-        stats.put("PAID", myLeads.stream().filter(l -> Lead.Status.PAID.equals(l.getStatus())).count());
-        stats.put("NOT_INTERESTED", myLeads.stream().filter(l -> Lead.Status.NOT_INTERESTED.equals(l.getStatus())).count());
+        
+        long total = myLeads.size();
+        long convertedCount = myLeads.stream()
+                .filter(l -> Lead.Status.PAID.equals(l.getStatus()) || Lead.Status.CONVERTED.equals(l.getStatus()) || Lead.Status.EMI.equals(l.getStatus()))
+                .count();
+        long lostCount = myLeads.stream()
+                .filter(l -> Lead.Status.LOST.equals(l.getStatus()) || Lead.Status.NOT_INTERESTED.equals(l.getStatus()))
+                .count();
+        
+        java.util.List<Long> leadIds = myLeads.stream().map(Lead::getId).collect(Collectors.toList());
+        java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
+        if (!leadIds.isEmpty()) {
+            List<com.lms.www.leadmanagement.entity.Payment> payments = paymentRepository.findByLeadIdIn(leadIds);
+            if (payments != null) {
+                totalRevenue = payments.stream()
+                        .filter(p -> p.getStatus() != null && (
+                                    com.lms.www.leadmanagement.entity.Payment.Status.PAID.equals(p.getStatus()) || 
+                                    com.lms.www.leadmanagement.entity.Payment.Status.SUCCESS.equals(p.getStatus()) ||
+                                    com.lms.www.leadmanagement.entity.Payment.Status.APPROVED.equals(p.getStatus())))
+                        .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
+                        .filter(java.util.Objects::nonNull)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            }
+        }
+
+        stats.put("total", total);
+        stats.put("convertedCount", convertedCount);
+        stats.put("lostCount", lostCount);
+        stats.put("totalRevenue", totalRevenue);
+        
+        // Backward compatibility
+        stats.put("TOTAL", total);
+        stats.put("PAID", convertedCount);
+        
         return stats;
     }
 
     public List<LeadDTO> getMyLeads() {
         Long userId = getCurrentUserId();
-        return leadRepository.findAll().stream()
-                .filter(l -> l.getAssignedTo() != null && l.getAssignedTo().getId().equals(userId))
+        User currentUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return leadRepository.findByAssignedTo(currentUser).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
-    }
-
-    public LeadDTO getLeadById(java.lang.annotation.Annotation... annotations) { // Generic catch-all for potential lombok/spring issues
-        return null;
     }
 
     public LeadDTO getLeadById(Long id) {
@@ -75,14 +109,24 @@ public class LeadService {
 
     @Transactional
     public LeadDTO createLead(LeadDTO leadDTO) {
+        if (leadDTO.getMobile() == null || leadDTO.getMobile().isEmpty()) {
+            throw new RuntimeException("Mobile number is required");
+        }
+        
+        String cleanMobile = leadDTO.getMobile().replaceAll("[^0-9]", "");
+        if (leadRepository.existsByMobile(cleanMobile)) {
+            throw new RuntimeException("Lead with this phone number already exists in the system");
+        }
+
         User currentUser = userRepository.findById(getCurrentUserId())
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
         Lead lead = Lead.builder()
                 .name(leadDTO.getName())
                 .email(leadDTO.getEmail())
-                .mobile(leadDTO.getMobile())
+                .mobile(cleanMobile)
                 .status(Lead.Status.NEW)
                 .assignedTo(currentUser)
+                .createdBy(currentUser)
                 .build();
         return convertToDTO(leadRepository.save(lead));
     }
@@ -91,8 +135,25 @@ public class LeadService {
     public LeadDTO updateStatus(Long id, String status, String note) {
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
+        User currentUser = userRepository.findById(getCurrentUserId()).orElse(null);
+        
         lead.setStatus(Lead.Status.valueOf(status.toUpperCase()));
         lead.setNote(note);
+        lead.setUpdatedBy(currentUser);
+        
+        if (note != null && !note.isEmpty()) {
+            LeadNote leadNote = LeadNote.builder()
+                    .content(note)
+                    .status(status)
+                    .lead(lead)
+                    .createdBy(currentUser)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            leadNoteRepository.save(leadNote);
+            if (lead.getNotes() == null) lead.setNotes(new java.util.ArrayList<>());
+            lead.getNotes().add(leadNote);
+        }
+        
         return convertToDTO(leadRepository.save(lead));
     }
 
@@ -107,13 +168,28 @@ public class LeadService {
         // 1. Update Lead State
         lead.setStatus(Lead.Status.valueOf(status.toUpperCase()));
         lead.setNote(note);
-        if (followUpDate != null) {
+        lead.setUpdatedBy(user);
+        if (followUpDate != null && !followUpDate.isEmpty()) {
             lead.setFollowUpDate(LocalDateTime.parse(followUpDate));
             lead.setFollowUpRequired(true);
         }
         leadRepository.save(lead);
 
-        // 2. Persistent Audit: Create CallRecord
+        // 2. Persistent History: LeadNote
+        if (note != null && !note.isEmpty()) {
+            LeadNote leadNote = LeadNote.builder()
+                    .content(note)
+                    .status(status)
+                    .lead(lead)
+                    .createdBy(user)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            leadNoteRepository.save(leadNote);
+            if (lead.getNotes() == null) lead.setNotes(new java.util.ArrayList<>());
+            lead.getNotes().add(leadNote);
+        }
+
+        // 3. Persistent Audit: Create CallRecord
         CallRecord record = CallRecord.builder()
                 .lead(lead)
                 .user(user)
@@ -130,15 +206,7 @@ public class LeadService {
     }
 
     private LeadDTO convertToDTO(Lead lead) {
-        return LeadDTO.builder()
-                .id(lead.getId())
-                .name(lead.getName())
-                .email(lead.getEmail())
-                .mobile(lead.getMobile())
-                .status(lead.getStatus() != null ? lead.getStatus().name() : null)
-                .note(lead.getNote())
-                .paymentLink(lead.getPaymentLink())
-                .build();
+        return LeadDTO.fromEntity(lead);
     }
 
     @Transactional
@@ -158,10 +226,11 @@ public class LeadService {
     public List<LeadDTO> getAllLeadsForManager() {
         User manager = getCurrentUser();
         List<Long> subordinateIds = userRepository.findSubordinateIds(manager.getId());
-        subordinateIds.add(manager.getId()); // Include manager's own leads
+        subordinateIds.add(manager.getId());
         
-        return leadRepository.findAll().stream()
-                .filter(l -> l.getAssignedTo() != null && subordinateIds.contains(l.getAssignedTo().getId()))
+        List<User> subordinates = userRepository.findAllById(subordinateIds);
+        
+        return leadRepository.findByAssignedToIn(subordinates).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -208,10 +277,26 @@ public class LeadService {
  
     @Transactional
     public LeadDTO updateNote(Long id, String note) {
-
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
+        User currentUser = userRepository.findById(getCurrentUserId()).orElse(null);
+        
         lead.setNote(note);
+        lead.setUpdatedBy(currentUser);
+        
+        if (note != null && !note.isEmpty()) {
+            LeadNote leadNote = LeadNote.builder()
+                    .content(note)
+                    .status(lead.getStatus() != null ? lead.getStatus().name() : "NEW")
+                    .lead(lead)
+                    .createdBy(currentUser)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            leadNoteRepository.save(leadNote);
+            if (lead.getNotes() == null) lead.setNotes(new java.util.ArrayList<>());
+            lead.getNotes().add(leadNote);
+        }
+        
         return convertToDTO(leadRepository.save(lead));
     }
 
@@ -225,14 +310,10 @@ public class LeadService {
 
     public List<com.lms.www.leadmanagement.dto.UserDTO> getCurrentUserSubordinates() {
         User user = getCurrentUser();
-        // Return direct subordinates and managed associates
         java.util.Set<User> subordinates = new java.util.HashSet<>();
         if (user.getSubordinates() != null) subordinates.addAll(user.getSubordinates());
         if (user.getManagedAssociates() != null) subordinates.addAll(user.getManagedAssociates());
-        
-        // Include the current user to allow self-assignment
         subordinates.add(user);
-        
         return subordinates.stream()
                 .map(com.lms.www.leadmanagement.dto.UserDTO::fromEntity)
                 .collect(Collectors.toList());

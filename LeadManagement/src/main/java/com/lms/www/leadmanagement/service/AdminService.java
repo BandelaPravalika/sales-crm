@@ -7,6 +7,8 @@ import com.lms.www.leadmanagement.entity.Permission;
 import com.lms.www.leadmanagement.entity.ReportScope;
 import com.lms.www.leadmanagement.entity.Role;
 import com.lms.www.leadmanagement.entity.User;
+import com.lms.www.leadmanagement.entity.AttendanceShift;
+import com.lms.www.leadmanagement.repository.AttendanceShiftRepository;
 import com.lms.www.leadmanagement.repository.PermissionRepository;
 import com.lms.www.leadmanagement.repository.RoleRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
@@ -55,22 +57,36 @@ public class AdminService {
     @Autowired
     private LeadRepository leadRepository;
 
+    public List<LeadDTO> getUnassignedLeads() {
+        return leadRepository.findByAssignedToIsNull().stream()
+                .map(LeadDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
     @Autowired
     private PaymentRepository paymentRepository;
 
     @Autowired
+    private MailService mailService;
+
+    @Autowired
     private LeadService leadService;
 
-    public UserDTO getGlobalTeamTree() {
+    @Autowired
+    private AttendanceShiftRepository attendanceShiftRepository;
+
+    public List<UserDTO> getGlobalTeamTree() {
         // Find top level users (Managers/Admins with no supervisor/manager)
         List<User> roots = userRepository.findAll().stream()
-                .filter(u -> u.getManager() == null && u.getSupervisor() == null)
+                .filter(u -> (u.getManager() == null && u.getSupervisor() == null) || "ADMIN".equals(u.getRole().getName()))
                 .collect(Collectors.toList());
         
-        if (roots.isEmpty()) return null;
+        // Use a set to avoid duplicates since some Admins might have no supervisor but we still want them as roots if unassigned
+        Set<User> uniqueRoots = new HashSet<>(roots);
         
-        // Return the first root's tree (usually the primary Admin)
-        return UserDTO.fromEntityWithTree(roots.get(0));
+        return uniqueRoots.stream()
+                .map(UserDTO::fromEntityWithTree)
+                .collect(Collectors.toList());
     }
 
     public LeadDTO assignLead(Long leadId, Long tlId) {
@@ -182,7 +198,20 @@ public class AdminService {
                 .role(role)
                 .reportScope(scope)
                 .build();
-        return UserDTO.fromEntity(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        
+        // Send Credentials to Mail
+        System.out.println(">>> ATTEMPTING TO SEND CREDENTIALS EMAIL TO: " + savedUser.getEmail());
+        try {
+            mailService.sendUserCredentials(savedUser.getEmail(), password, savedUser.getName());
+            System.out.println(">>> EMAIL SENT SUCCESSFULLY TO: " + savedUser.getEmail());
+        } catch (Exception e) {
+            System.err.println(">>> CRITICAL ERROR: FAILED TO SEND USER CREDENTIALS EMAIL TO " + savedUser.getEmail());
+            System.err.println(">>> ERROR MESSAGE: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return UserDTO.fromEntity(savedUser);
     }
 
     public Page<UserDTO> getAllUsers(Pageable pageable) {
@@ -233,6 +262,23 @@ public class AdminService {
             user.setReportScope(userDTO.getReportScope());
         }
 
+        if (userDTO.getSupervisorId() != null) {
+            User supervisor = userRepository.findById(userDTO.getSupervisorId())
+                    .orElseThrow(() -> new RuntimeException("Supervisor not found: " + userDTO.getSupervisorId()));
+            user.setSupervisor(supervisor);
+        } else if (userDTO.getRole() != null && "ASSOCIATE".equals(user.getRole().getName())) {
+            // If it's an associate and supervisor is explicitly null, we might want to unassign
+            // user.setSupervisor(null);
+        }
+
+        if (userDTO.getShiftId() != null) {
+            AttendanceShift shift = attendanceShiftRepository.findById(userDTO.getShiftId())
+                    .orElseThrow(() -> new RuntimeException("Shift not found: " + userDTO.getShiftId()));
+            user.setShift(shift);
+        } else {
+            user.setShift(null);
+        }
+
         if (userDTO.getPermissions() != null) {
             System.out.println(">>> Updating permissions for user: " + user.getEmail());
             System.out.println(">>> New Permissions Request: " + userDTO.getPermissions());
@@ -264,10 +310,12 @@ public class AdminService {
         return UserDTO.fromEntity(userRepository.save(user));
     }
 
-    public void deleteUser(Long id) {
+    public void deactivateUser(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
-        // Remove relationships if necessary
-        userRepository.delete(user);
+        
+        // Soft delete: toggle active state to preserve historical data
+        user.setActive(!user.isActive());
+        userRepository.save(user);
     }
 
     public Map<String, Object> getDashboardStats(LocalDateTime start, LocalDateTime end,
@@ -368,7 +416,8 @@ public class AdminService {
         long convertedToday = leads.stream()
                 .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID
                         || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED
-                        || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI)
+                        || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI
+                        || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.SUCCESS)
                 .count();
 
         stats.put("callsToday", callsToday);
@@ -391,7 +440,8 @@ public class AdminService {
 
         BigDecimal totalPayments = payments.stream()
                 .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID
-                        || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
+                        || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED
+                        || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.SUCCESS)
                 .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.put("totalPayments", totalPayments);
@@ -472,7 +522,9 @@ public class AdminService {
                             .count();
                     long convertedLeads = uLeads.stream()
                             .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID)
+                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID
+                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.SUCCESS
+                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI)
                             .count();
                     long lostLeads = uLeads.stream()
                             .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST

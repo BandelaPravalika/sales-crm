@@ -39,6 +39,9 @@ public class ManagerController {
     @Autowired
     private LeadPaymentService leadPaymentService;
 
+    @Autowired
+    private AttendanceService attendanceService;
+
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @PostMapping("/team-leader")
     public ResponseEntity<UserDTO> createTeamLeader(@RequestBody UserDTO userDTO) {
@@ -53,9 +56,9 @@ public class ManagerController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/team-tree")
-    public ResponseEntity<UserDTO> getTeamTree() {
+    public ResponseEntity<java.util.List<UserDTO>> getTeamTree() {
         User manager = managerService.getCurrentUser();
-        return ResponseEntity.ok(UserDTO.fromEntityWithTree(manager));
+        return ResponseEntity.ok(java.util.List.of(UserDTO.fromEntityWithTree(manager)));
     }
 
     @PreAuthorize("hasAuthority('VIEW_LEADS')")
@@ -64,7 +67,7 @@ public class ManagerController {
         return ResponseEntity.ok(leadService.createLead(leadDTO));
     }
 
-    @PreAuthorize("hasAuthority('BULK_UPLOAD')")
+    @PreAuthorize("hasAuthority('CREATE_LEADS')")
     @PostMapping("/leads/bulk-upload")
     public ResponseEntity<BulkUploadResponseDTO> bulkUploadLeads(
             @RequestParam("file") MultipartFile file,
@@ -167,5 +170,11 @@ public class ManagerController {
     @GetMapping("/roles")
     public ResponseEntity<List<RoleDTO>> getAllRoles() {
         return ResponseEntity.ok(managerService.getAllRoles());
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @GetMapping("/shifts")
+    public ResponseEntity<List<com.lms.www.leadmanagement.entity.AttendanceShift>> getAllShifts() {
+        return ResponseEntity.ok(attendanceService.getAllShifts());
     }
 }

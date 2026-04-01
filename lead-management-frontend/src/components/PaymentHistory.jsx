@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import paymentService from '../services/paymentService';
 import adminService from '../services/adminService';
 import managerService from '../services/managerService';
+import tlService from '../services/tlService';
 import { toast } from 'react-toastify';
 import { IndianRupee, CheckCircle, Scissors, PlusCircle, Clock, FileText } from 'lucide-react';
 import SplitInstallmentModal from './SplitInstallmentModal';
@@ -49,7 +50,7 @@ const PaymentHistory = ({ role }) => {
         const users = res.data.content || res.data;
         setTeamLeaders(role === 'ADMIN' ? users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER') : users);
       } catch (err) {
-        console.error('Failed to fetch TLs');
+        console.error('Failed to fetch team leaders');
       }
     }
   };
@@ -60,7 +61,7 @@ const PaymentHistory = ({ role }) => {
       const res = await paymentService.fetchHistory(role, filters);
       setPayments(res.data);
     } catch (err) {
-      toast.error('Failed to fetch history');
+      toast.error('Failed to sync financial history');
     } finally {
       setLoading(false);
     }
@@ -69,27 +70,23 @@ const PaymentHistory = ({ role }) => {
   const handleManualClear = async (paymentId, data) => {
     try {
       await paymentService.updatePaymentStatus(paymentId, data);
-      toast.success('Payment cleared successfully');
+      toast.success('Transaction neutralized successfully');
       setSelectedClearPayment(null);
       fetchHistory();
     } catch (err) {
-      toast.error('Failed to clear payment');
+      toast.error('Failed to update transaction state');
     }
   };
 
   const handleSplitConfirm = async (paymentId, splitData) => {
     try {
       await paymentService.splitPayment(paymentId, splitData);
-      toast.success('Payment split into installments');
+      toast.success('Invoiced amount distributed into installments');
       setSelectedSplitPayment(null);
       fetchHistory();
     } catch (err) {
-      toast.error('Failed to split payment');
+      toast.error('Distribution protocol failed');
     }
-  };
-
-  const handleRecordConfirm = async (formData) => {
-    // Feature removed per request
   };
 
   const fetchAssociates = async (tlId) => {
@@ -99,10 +96,17 @@ const PaymentHistory = ({ role }) => {
     }
     setFetchingAssociates(true);
     try {
-      const res = await adminService.fetchAssociatesByTl(tlId);
+      let res;
+      if (role === 'ADMIN') {
+        res = await adminService.fetchAssociatesByTl(tlId);
+      } else if (role === 'TEAM_LEADER') {
+        res = await tlService.fetchSubordinates();
+      } else {
+        res = await managerService.fetchAssociatesByTl ? await managerService.fetchAssociatesByTl(tlId) : { data: [] };
+      }
       setAssociates(res.data);
     } catch (err) {
-      console.error('Failed to fetch associates');
+      console.error('Failed to map associate nodes');
     } finally {
       setFetchingAssociates(false);
     }
@@ -135,10 +139,9 @@ const PaymentHistory = ({ role }) => {
   };
 
   if (loading && payments.length === 0) return (
-    <div className="d-flex justify-content-center p-5">
-      <div className="spinner-border text-primary" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
+    <div className="text-center py-5">
+      <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+      <p className="text-muted small fw-bold text-uppercase mt-3 tracking-widest" style={{ fontSize: '10px' }}>Synchronizing Ledger...</p>
     </div>
   );
 
@@ -152,93 +155,96 @@ const PaymentHistory = ({ role }) => {
   });
 
   return (
-    <div className="animate-fade-in mt-4">
-      {/* Page Header matching the screenshot context */}
-      <div className="mb-4">
-         <p className="text-muted small mb-0">Manage payment entries, approvals, and EMI collections.</p>
-      </div>
+    <div className="animate-fade-in mt-2">
+      <div className="mt-2"></div>
 
-      <div className="card shadow-sm border-0 rounded-4 overflow-hidden mb-5" style={{ backgroundColor: '#ffffff' }}>
-        <div className="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-2">
-            <Clock size={18} className="text-muted" />
-            <h5 className="fw-bold text-dark mb-0" style={{ letterSpacing: '-0.01em' }}>Active EMI Schedule</h5>
+      <div className="premium-card overflow-hidden">
+        <div className="card-header bg-transparent border-bottom border-white border-opacity-5 p-4 d-flex justify-content-between align-items-center">
+          <div className="d-flex align-items-center gap-3">
+            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-3 border border-primary border-opacity-10 shadow-sm">
+                <Clock size={18} />
+            </div>
+            <div>
+                <h6 className="fw-bold text-main mb-0 small text-uppercase tracking-wider">Active EMI Schedule</h6>
+                <p className="mb-0 text-muted fw-bold" style={{fontSize: '9px'}}>TOTAL {filteredPayments.length} ENTRIES MAPPED</p>
+            </div>
           </div>
-          <span className="text-muted small" style={{ fontSize: '12px' }}>Total {filteredPayments.length} Items</span>
         </div>
 
-        {/* Filters Wrapper (Collapsible or just inline if needed, simplified for aesthetic) */}
-        <div className="p-3 bg-light bg-opacity-50 border-bottom d-flex flex-wrap gap-3 align-items-end">
-          <div className="flex-grow-1" style={{ maxWidth: '200px' }}>
-            <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>STATUS</label>
-            <select className="form-select form-select-sm border-secondary border-opacity-25 shadow-none" name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="">All Statuses</option>
-              <option value="PAID">Cleared (Paid)</option>
-              <option value="PENDING">Upcoming EMIs (Pending)</option>
-              <option value="FAILED">Failed</option>
+        {/* Filters Wrapper */}
+        <div className="p-4 bg-surface bg-opacity-50 border-bottom border-white border-opacity-5 d-flex flex-wrap gap-4 align-items-end">
+          <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
+            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Operational Status</label>
+            <select className="ui-input py-1.5" name="status" value={filters.status} onChange={handleFilterChange}>
+              <option value="" className="text-dark">All Statuses</option>
+              <option value="PAID" className="text-dark">Cleared (Paid)</option>
+              <option value="PENDING" className="text-dark">Upcoming (Pending)</option>
+              <option value="FAILED" className="text-dark">Overdue (Failed)</option>
             </select>
           </div>
           {(role === 'ADMIN' || role === 'MANAGER') && (
-             <div className="flex-grow-1" style={{ maxWidth: '200px' }}>
-               <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>TEAM LEADER</label>
-               <select className="form-select form-select-sm border-secondary border-opacity-25 shadow-none" name="tlId" value={filters.tlId} onChange={handleFilterChange}>
-                 <option value="">All Team Leaders</option>
-                 {teamLeaders.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+             <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
+               <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Team Leader Focus</label>
+               <select className="ui-input py-1.5" name="tlId" value={filters.tlId} onChange={handleFilterChange}>
+                 <option value="" className="text-dark">Universal Access</option>
+                 {teamLeaders.map(tl => <option key={tl.id} value={tl.id} className="text-dark">{tl.name}</option>)}
                </select>
              </div>
           )}
           {(role === 'ADMIN' || role === 'MANAGER' || role === 'TEAM_LEADER') && filters.tlId && (
-            <div className="flex-grow-1" style={{ maxWidth: '200px' }}>
-              <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>ASSOCIATE</label>
-              <select className="form-select form-select-sm border-secondary border-opacity-25 shadow-none" name="associateId" value={filters.associateId} onChange={handleFilterChange} disabled={fetchingAssociates}>
-                 <option value="">All Associates</option>
-                 {associates.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
+              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Associate Node</label>
+              <select className="ui-input py-1.5" name="associateId" value={filters.associateId} onChange={handleFilterChange} disabled={fetchingAssociates}>
+                 <option value="" className="text-dark">All Sub-Nodes</option>
+                 {associates.map(a => <option key={a.id} value={a.id} className="text-dark">{a.name}</option>)}
               </select>
             </div>
           )}
           <div className="flex-grow-1" style={{ minWidth: '160px' }}>
-            <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>STUDENT NAME</label>
+            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Student Search</label>
             <input
               type="text"
-              className="form-control form-control-sm border-secondary border-opacity-25 shadow-none"
-              placeholder="Search by name..."
+              className="ui-input py-1.5"
+              placeholder="Filter by name..."
               value={studentSearch}
               onChange={e => setStudentSearch(e.target.value)}
             />
           </div>
           <div className="flex-grow-1" style={{ minWidth: '140px' }}>
-            <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>DUE FROM</label>
+            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Floor)</label>
             <input
               type="date"
-              className="form-control form-control-sm border-secondary border-opacity-25 shadow-none"
+              className="ui-input py-1.5"
               value={dueFrom}
               onChange={e => setDueFrom(e.target.value)}
             />
           </div>
           <div className="flex-grow-1" style={{ minWidth: '140px' }}>
-            <label className="form-label small text-muted mb-1 px-1 fw-bold" style={{ fontSize: '10px' }}>DUE TO</label>
+            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Ceiling)</label>
             <input
               type="date"
-              className="form-control form-control-sm border-secondary border-opacity-25 shadow-none"
+              className="ui-input py-1.5"
               value={dueTo}
               onChange={e => setDueTo(e.target.value)}
             />
           </div>
-          <button onClick={fetchHistory} className="btn btn-dark btn-sm px-3 fw-bold rounded-pill">Filter</button>
-          <button onClick={resetFilters} className="btn btn-outline-secondary btn-sm px-3 rounded-pill">Reset</button>
+          <div className="d-flex gap-2">
+            <button onClick={fetchHistory} className="ui-btn ui-btn-primary px-4 rounded-pill shadow-glow py-1.5" style={{fontSize: '11px'}}>SYNC</button>
+            <button onClick={resetFilters} className="ui-btn ui-btn-secondary px-4 rounded-pill py-1.5" style={{fontSize: '11px'}}>RESET</button>
+          </div>
         </div>
 
         {/* Desktop Table View */}
         <div className="table-responsive d-none d-md-block p-0">
-          <table className="table table-hover align-middle mb-0 border-0 bg-transparent">
+          <table className="table table-hover align-middle mb-0 border-0 bg-transparent text-main">
             <thead>
-              <tr className="border-bottom border-light">
-                <th className="ps-4 py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>EMI ID</th>
-                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Student</th>
-                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Amount</th>
-                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Due Date</th>
-                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Status</th>
-                <th className="pe-4 py-3 text-end text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Action</th>
+              <tr className="border-bottom border-white border-opacity-5">
+                <th className="ps-4 py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>EMI Identifier</th>
+                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Lead Asset</th>
+                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Amount (INR)</th>
+                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Target Date</th>
+                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Sync State</th>
+                <th className="pe-4 py-3 text-end text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Operations</th>
               </tr>
             </thead>
             <tbody>
@@ -253,34 +259,35 @@ const PaymentHistory = ({ role }) => {
                   : new Date(payment.createdAt).toLocaleDateString('en-CA');
 
                 return (
-                  <tr key={payment.id} className="border-bottom border-light transition-all">
+                  <tr key={payment.id} className="border-bottom border-white border-opacity-5 transition-all">
                     <td className="ps-4 py-4">
-                      <span className="fw-bold text-dark">{emiId}</span>
+                      <span className="fw-bold text-main small">{emiId}</span>
                     </td>
                     <td className="py-4">
-                      <span className="fw-medium text-dark">{payment.leadName || 'Student Name'}</span>
+                      <span className="fw-bold text-main small">{payment.leadName || 'System Target'}</span>
                     </td>
                     <td className="py-4">
-                      <span className="fw-bold text-dark">₹{payment.amount}</span>
+                      <span className="fw-black text-main">₹{payment.amount.toLocaleString()}</span>
                     </td>
                     <td className="py-4">
-                      <span className={`fw-medium ${isOverdue ? 'text-danger' : 'text-muted'}`}>{dueDate}</span>
+                      <span className={`fw-black small ${isOverdue ? 'text-danger' : 'text-muted opacity-75'}`}>{dueDate}</span>
                     </td>
                     <td className="py-4">
                        {isPaid && (
-                         <div className="d-flex align-items-center gap-1 text-success border border-success border-opacity-25 rounded-pill px-2 py-1 w-fit-content" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
-                           <CheckCircle size={12} className="opacity-75" />
-                           <span className="small fw-bold" style={{ fontSize: '11px' }}>Paid</span>
+                         <div className="ui-badge bg-success bg-opacity-10 text-success border border-success border-opacity-20">
+                           <CheckCircle size={10} />
+                           <span className="fw-black text-uppercase ms-1" style={{ fontSize: '9px' }}>Neutralized</span>
                          </div>
                        )}
                        {isPending && (
-                         <div className="d-flex align-items-center gap-1 text-warning border border-warning border-opacity-25 rounded-pill px-2 py-1 w-fit-content" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>
-                           <span className="small fw-bold px-1" style={{ fontSize: '11px' }}>Pending</span>
+                         <div className="ui-badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20">
+                           <Clock size={10} />
+                           <span className="fw-black text-uppercase ms-1" style={{ fontSize: '9px' }}>Live / Pending</span>
                          </div>
                        )}
                        {isOverdue && (
-                         <div className="d-flex align-items-center gap-1 text-danger border border-danger border-opacity-25 rounded-pill px-2 py-1 w-fit-content" style={{ backgroundColor: 'rgba(244, 63, 94, 0.1)' }}>
-                           <span className="small fw-bold px-1" style={{ fontSize: '11px' }}>Overdue</span>
+                         <div className="ui-badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20">
+                           <span className="fw-black text-uppercase" style={{ fontSize: '9px' }}>Overdue Breach</span>
                          </div>
                        )}
                     </td>
@@ -290,17 +297,17 @@ const PaymentHistory = ({ role }) => {
                            <>
                              <button 
                                onClick={() => setSelectedSplitPayment(payment)}
-                               className="btn btn-link text-muted p-0 text-decoration-none d-flex align-items-center gap-1 hover-text-primary transition-smooth"
-                               style={{ fontSize: '13px', fontWeight: '500' }}
+                               className="btn btn-link text-muted p-0 text-decoration-none d-flex align-items-center gap-2 hover-text-primary transition-all opacity-50 hover-opacity-100"
+                               style={{ fontSize: '11px', fontWeight: '900' }}
                              >
-                               <Scissors size={14} /> Split
+                               <Scissors size={12} /> SPLIT DIST
                              </button>
                              <button 
                                onClick={() => setSelectedClearPayment(payment)}
-                               className="btn btn-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                               style={{ fontSize: '12px', padding: '6px 16px' }}
+                               className="ui-btn ui-btn-primary btn-sm rounded-pill px-4 fw-black shadow-glow"
+                               style={{ fontSize: '10px' }}
                              >
-                               Approve
+                               APPROVE
                              </button>
                            </>
                          )}
@@ -308,12 +315,12 @@ const PaymentHistory = ({ role }) => {
                            <div className="d-flex flex-column align-items-end gap-1">
                              <button 
                                onClick={() => handleViewInvoice(payment)}
-                               className="btn btn-link text-muted p-0 text-decoration-none d-flex align-items-center gap-1 hover-text-primary transition-smooth"
-                               style={{ fontSize: '12px', fontWeight: '500' }}
+                               className="btn btn-link text-muted p-0 text-decoration-none d-flex align-items-center gap-2 hover-text-primary transition-all opacity-50 hover-opacity-100"
+                               style={{ fontSize: '11px', fontWeight: '900' }}
                              >
-                               <FileText size={14} /> Invoice
+                               <FileText size={12} /> ARCHIVE
                              </button>
-                             <span className="text-success small fw-bold" style={{ fontSize: '11px' }}>Approved</span>
+                             <span className="text-success fw-black opacity-25" style={{ fontSize: '8px', textTransform: 'uppercase' }}>Confirmed</span>
                            </div>
                          )}
                       </div>
@@ -325,13 +332,12 @@ const PaymentHistory = ({ role }) => {
           </table>
           
           {payments.length === 0 && !loading && (
-            <div className="text-center py-5">
-              <p className="fw-bold text-muted text-uppercase mb-0 tracking-widest">No EMI Schedules Found</p>
+            <div className="text-center py-5 d-flex flex-column align-items-center opacity-20">
+                <IndianRupee size={48} className="mb-3 text-muted" />
+                <p className="fw-black text-muted text-uppercase mb-0 tracking-widest small">FINANCIAL CLEARANCE NULL</p>
             </div>
           )}
         </div>
-
-        {/* Mobile View Omitted for exact alignment, but normally added here */}
       </div>
 
       <ManualPaymentModal 

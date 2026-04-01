@@ -25,6 +25,9 @@ public class UserDTO {
     private String supervisorName;
     private java.util.List<String> permissions;
     private com.lms.www.leadmanagement.entity.ReportScope reportScope;
+    private boolean active;
+    private Long shiftId;
+    private String shiftName;
     private java.util.List<UserDTO> subordinates;
 
     private static final ThreadLocal<java.util.Set<Long>> visitedIds = ThreadLocal.withInitial(java.util.HashSet::new);
@@ -72,6 +75,9 @@ public class UserDTO {
                 .supervisorId(user.getSupervisor() != null ? user.getSupervisor().getId() : null)
                 .supervisorName(user.getSupervisor() != null ? user.getSupervisor().getName() : null)
                 .reportScope(user.getReportScope())
+                .active(user.isActive())
+                .shiftId(user.getShift() != null ? user.getShift().getId() : null)
+                .shiftName(user.getShift() != null ? user.getShift().getName() : null)
                 .build();
 
         if (user.getDirectPermissions() != null && !user.getDirectPermissions().isEmpty()) {

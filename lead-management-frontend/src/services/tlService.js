@@ -11,6 +11,14 @@ const tlService = {
   recordCallOutcome: (leadId, outcomeData) => api.post(`/leads/${leadId}/record-outcome`, outcomeData),
   sendPaymentLink: (leadId, paymentData) => api.post(`/tl/leads/${leadId}/send-payment-link`, paymentData),
   assignLead: (leadId, associateId) => api.post(`/tl/leads/${leadId}/assign/${associateId}`),
+  bulkUploadLeads: (file, assignedToIds) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (assignedToIds) formData.append('assignedToIds', assignedToIds);
+    return api.post('/tl/leads/bulk-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   createTask: (taskData) => api.post('/tasks', taskData)
 };
 

@@ -37,24 +37,10 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const scheduledDate = (outcome === 'EMI' || outcome === 'FOLLOW_UP') ? followUpDate : null;
-      
       await onSubmit({
         status: outcome,
-        note: note,
-        followUpDate: scheduledDate
+        note: note
       });
-
-      // Also record as a Persistent Task if date is provided
-      if (scheduledDate) {
-        await associateService.addLeadTask(lead.id, {
-          title: outcome === 'EMI' ? 'EMI Collection' : 'Follow-up Call',
-          description: note,
-          dueDate: scheduledDate.includes('T') ? scheduledDate : `${scheduledDate}T10:00:00`,
-          taskType: outcome
-        });
-        toast.success('Task added to planner');
-      }
 
       setShowAddNote(false);
       setNote('');
@@ -99,9 +85,6 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
   // Define pipeline stages
   const pipelineStages = [
     { id: 'NEW', label: 'New', color: 'primary' },
-    { id: 'WORKING', label: 'Working', color: 'info' },
-    { id: 'PENDING_MESSAGES', label: 'Messages', color: 'primary' },
-    { id: 'RETRY', label: 'Retry', color: 'warning' },
     { id: 'CONTACTED', label: 'Contacted', color: 'info' },
     { id: 'INTERESTED', label: 'Interested', color: 'warning' },
     { id: 'FOLLOW_UP', label: 'Under Review', color: 'secondary' },
@@ -113,14 +96,11 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
   const getStageIndex = (status) => {
     switch(status) {
       case 'NEW': return 0;
-      case 'WORKING': return 1;
-      case 'PENDING_MESSAGES': return 2;
-      case 'RETRY': return 3;
-      case 'CONTACTED': return 4;
-      case 'INTERESTED': return 5;
-      case 'FOLLOW_UP': return 6;
-      case 'PAID': return 7;
-      case 'LOST': return 8;
+      case 'CONTACTED': return 1;
+      case 'INTERESTED': return 2;
+      case 'FOLLOW_UP': return 3;
+      case 'PAID': return 4;
+      case 'LOST': return 5;
       default: return 0;
     }
   };
@@ -140,19 +120,19 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
     <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10500, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Fullscreen modal with specific background color matching demo */}
       <div className="modal-dialog modal-fullscreen m-0 h-100" style={{ maxWidth: '100vw' }}>
-        <div className={`modal-content border-0 rounded-0 h-100 bg-dark`} style={{ backgroundColor: '#0B0F1A', color: '#fff' }}>
+        <div className={`modal-content border-0 rounded-0 h-100`} style={{ backgroundColor: 'var(--bg-body)', color: 'var(--text-main)' }}>
           
           {/* Top Header - Premium Glassmorphism */}
-          <div className="px-4 py-3 border-bottom border-white border-opacity-5 glass-header d-flex align-items-center justify-content-between sticky-top" style={{ zIndex: 10 }}>
+            <div className="px-4 py-3 border-bottom glass-header d-flex align-items-center justify-content-between sticky-top" style={{ zIndex: 10, borderColor: 'var(--border-color)' }}>
             <div className="d-flex align-items-center gap-3">
               <button 
                 type="button" 
-                className="btn btn-dark p-2 text-decoration-none rounded-circle transition-all border-white border-opacity-10 hover-bg-primary hover-text-white shadow-soft" 
+                className={`btn ${isDarkMode ? 'btn-dark' : 'btn-light'} p-2 text-decoration-none rounded-circle transition-all border shadow-soft`} 
                 onClick={onClose}
               >
                 <ArrowLeft size={20} />
               </button>
-              <h4 className="fw-black mb-0 d-flex align-items-center gap-3 text-white tracking-tighter">
+              <h4 className={`fw-black mb-0 d-flex align-items-center gap-3 tracking-tighter`}>
                 {lead.name}
                 <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill small fw-black ls-1" style={{ fontSize: '0.6em', padding: '0.4em 1em', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
                   ALPHA-NODE-{lead.id || '1000'}
@@ -247,7 +227,7 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                       <input 
                         type="file" 
                         accept="audio/*"
-                        className="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25"
+                        className={`form-control form-control-sm ${isDarkMode ? 'bg-dark text-white border-secondary border-opacity-25' : 'bg-light text-dark'}`}
                         onChange={(e) => {
                           const file = e.target.files[0];
                           if (!file) return;
@@ -275,7 +255,7 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                           <input
                             type="number"
                             min="0"
-                            className="form-control form-control-sm bg-dark text-white border-secondary border-opacity-25"
+                             className={`form-control form-control-sm ${isDarkMode ? 'bg-dark text-white border-secondary border-opacity-25' : 'bg-light text-dark'}`}
                             style={{ maxWidth: '120px' }}
                             value={audioDuration}
                             onChange={(e) => setAudioDuration(parseInt(e.target.value) || 0)}
@@ -296,70 +276,6 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                         {isDurationLoading ? 'Detecting Length...' : 'Finalize Record Upload'}
                       </button>
                     </div>
-                  </div>
-                </div>
-
-                {/* TASK SCHEDULER WIDGET - Replaced Payments as requested */}
-                <div className={`card shadow border-2 border-primary border-opacity-50 rounded-4 overflow-hidden animate-fade-in ${isDarkMode ? 'bg-secondary bg-opacity-10' : 'bg-white'}`}>
-                  <div className="card-header bg-primary bg-opacity-10 border-0 p-3">
-                    <h6 className="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
-                       <Calendar size={16} /> Schedule Next Activity
-                    </h6>
-                  </div>
-                  <div className="card-body p-4">
-                     <div className="d-flex flex-column gap-3">
-                        <div>
-                          <label className="form-label x-small fw-bold text-muted text-uppercase mb-1">Objective</label>
-                          <input 
-                            type="text" 
-                            className={`form-control form-control-sm rounded-3 ${isDarkMode ? 'bg-dark text-white border-secondary border-opacity-25' : 'bg-light border-0'}`}
-                            placeholder="e.g. Call for Admission"
-                            value={taskData.title}
-                            onChange={(e) => setTaskData({...taskData, title: e.target.value})}
-                          />
-                        </div>
-                        <div className="row g-2">
-                           <div className="col-6">
-                              <label className="form-label x-small fw-bold text-muted text-uppercase mb-1">Type</label>
-                              <select 
-                                className={`form-select form-select-sm rounded-3 ${isDarkMode ? 'bg-dark text-white border-secondary border-opacity-25' : 'bg-light border-0'}`}
-                                value={taskData.taskType}
-                                onChange={(e) => setTaskData({...taskData, taskType: e.target.value})}
-                              >
-                                <option value="FOLLOW_UP">Follow-up</option>
-                                <option value="EMI">EMI Call</option>
-                                <option value="INVITATION">Invite</option>
-                              </select>
-                           </div>
-                           <div className="col-6">
-                              <label className="form-label x-small fw-bold text-muted text-uppercase mb-1">Due Date</label>
-                              <input 
-                                type="date" 
-                                className={`form-control form-control-sm rounded-3 ${isDarkMode ? 'bg-dark text-white border-secondary border-opacity-25' : 'bg-light border-0'}`}
-                                value={taskData.dueDate}
-                                onChange={(e) => setTaskData({...taskData, dueDate: e.target.value})}
-                              />
-                           </div>
-                        </div>
-                        <button 
-                          className="btn btn-primary btn-sm w-100 rounded-pill fw-bold py-2 mt-2 shadow-sm"
-                          onClick={async () => {
-                            if (!taskData.title || !taskData.dueDate) return toast.error("Title & Date required");
-                            try {
-                              await associateService.addLeadTask(lead.id, {
-                                ...taskData,
-                                dueDate: `${taskData.dueDate}T10:00:00`
-                              });
-                              toast.success("Task scheduled successfully!");
-                              setTaskData({ title: '', taskType: 'FOLLOW_UP', dueDate: '', description: '' });
-                            } catch (err) {
-                              toast.error("Failed to schedule task");
-                            }
-                          }}
-                        >
-                          Confirm & Add Task
-                        </button>
-                     </div>
                   </div>
                 </div>
 
@@ -407,45 +323,6 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                   </div>
                 </div>
 
-                {/* Task Planner & Engagement Card */}
-                <div className={`card shadow-sm border-0 rounded-4 overflow-hidden p-4 mb-4 ${isDarkMode ? 'bg-secondary bg-opacity-10' : 'bg-white'}`}>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6 className={`fw-bold mb-0 text-uppercase small tracking-widest ${isDarkMode ? 'text-white text-opacity-50' : 'text-muted'}`}>
-                      Next Professional Engagement
-                    </h6>
-                    <div className="badge bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill small">Engagement Planner</div>
-                  </div>
-                  
-                  {/* Engagement Planner */}
-                  <div className={`p-3 rounded-4 mb-3 border ${isDarkMode ? 'bg-dark bg-opacity-50 border-secondary border-opacity-25' : 'bg-light border-light'}`}>
-                    {lead.followUpDate ? (
-                    <div className="p-3 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 animate-fade-in">
-                       <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div className="d-flex align-items-center gap-2 text-primary">
-                             <Clock size={16} />
-                             <span className="fw-bold small text-uppercase">Scheduled Follow-up</span>
-                          </div>
-                          <span className="badge bg-primary rounded-pill small">{lead.followUpType || 'ACTIVE'}</span>
-                       </div>
-                       <h5 className={`fw-black mb-1 ${isDarkMode ? 'text-white' : 'text-dark'}`}>{new Date(lead.followUpDate).toLocaleString()}</h5>
-                       <p className="small text-muted mb-3 italic">This task will appear in your main TaskBoard for focus tracking.</p>
-                       <button className="btn btn-sm btn-primary w-100 rounded-pill fw-bold py-2" onClick={() => setShowAddNote(true)}>
-                          Update / Reschedule
-                       </button>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center rounded-4 border border-dashed border-secondary border-opacity-25 opacity-75">
-                       <Calendar size={32} className="text-muted mb-3" />
-                       <h6 className="fw-bold text-muted mb-2">No Future Tasks</h6>
-                       <p className="x-small text-muted mb-3 px-3">Schedule a follow-up or EMI collection to ensure this lead doesn't go cold.</p>
-                       <button className="btn btn-sm btn-outline-primary rounded-pill px-4 fw-bold" onClick={() => setShowAddNote(true)}>
-                          <Plus size={14} className="me-1" /> Schedule Task
-                       </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
                 {/* Interaction Log Input - Shown when 'Add Note' is clicked or when changing state */}
                 {showAddNote && (
                   <div className={`card shadow border border-primary border-opacity-25 border-2 rounded-4 overflow-hidden animate-fade-in ${isDarkMode ? 'bg-dark' : 'bg-white'}`}>
@@ -470,23 +347,6 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                               </select>
                             </div>
 
-                            {(outcome === 'EMI' || outcome === 'FOLLOW_UP') && (
-                              <div className="col-12 col-md-6 animate-fade-in">
-                                <label className="form-label small fw-bold text-uppercase text-primary mb-2 tracking-wider">
-                                  {outcome === 'EMI' ? 'Next EMI Installment Date' : 'Scheduled Follow-up Date'}
-                                </label>
-                                <div className={`input-group rounded-3 overflow-hidden shadow-sm ${isDarkMode ? 'bg-secondary bg-opacity-25 border border-secondary border-opacity-50' : 'bg-light border'}`}>
-                                  <span className="input-group-text border-0 bg-transparent text-primary"><Calendar size={18} /></span>
-                                  <input 
-                                    type="datetime-local" 
-                                    className={`form-control border-0 bg-transparent shadow-none fw-bold ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                                    value={followUpDate}
-                                    onChange={(e) => setFollowUpDate(e.target.value)}
-                                    required
-                                  />
-                                </div>
-                              </div>
-                            )}
 
                             <div className="col-12 mt-3">
                               <label className="form-label small fw-bold text-uppercase text-muted mb-2 tracking-wider">Historical Note</label>
@@ -541,27 +401,51 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
                   </div>
                   
                   {/* Timeline Logic */}
-                  <div className="position-relative ps-4 py-2 h-100">
+                  <div className="position-relative ps-4 py-2 h-100 overflow-auto" style={{ maxHeight: '500px' }}>
                     {/* Vertical Timeline Bar */}
                     <div className="position-absolute bg-primary bg-opacity-25" style={{ width: '2px', top: '10px', bottom: '0', left: '11px' }}></div>
                     
-                    {/* Current Historical Note / Latest Note */}
-                    {lead.note ? (
-                      <div className="position-relative mb-4">
-                         <div className="position-absolute bg-primary rounded-circle shadow-sm" style={{ width: '10px', height: '10px', left: '-31px', top: '6px' }}></div>
-                         <div className={`p-3 rounded-3 shadow-sm border ${isDarkMode ? 'bg-dark border-secondary border-opacity-25' : 'bg-light border-light'}`} style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#fffdf3' }}>
-                            <h6 className="small fw-bold text-warning text-uppercase mb-2 d-flex align-items-center gap-2">
-                               <MessageSquare size={12} /> INTERNAL NOTE
-                            </h6>
-                            <p className={`mb-2 fw-medium ${isDarkMode ? 'text-white' : 'text-dark'}`}>{lead.note}</p>
-                            <div className="d-flex align-items-center gap-3 text-muted small">
-                              <span className="d-flex align-items-center gap-1"><User size={12} /> System Admin</span>
-                              <span className="d-flex align-items-center gap-1"><Calendar size={12} /> {formatDate(lead.updatedAt || lead.createdAt)}</span>
-                              <span className="badge bg-primary bg-opacity-10 text-primary rounded-pill">{lead.status}</span>
-                            </div>
-                         </div>
-                      </div>
-                    ) : null}
+                    {/* Historical Notes Loop */}
+                    {(lead.notes || []).length > 0 ? (
+                      [...lead.notes].sort((a, b) => {
+                        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+                        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+                        return dateB - dateA;
+                      }).map((note, index) => (
+                        <div key={note.id || index} className="position-relative mb-4 animate-fade-in">
+                           <div className={`position-absolute rounded-circle shadow-sm ${index === 0 ? 'bg-primary' : 'bg-secondary bg-opacity-50'}`} 
+                                style={{ width: '10px', height: '10px', left: '-31px', top: '6px' }}></div>
+                           <div className={`p-3 rounded-3 shadow-sm border ${isDarkMode ? 'bg-dark border-secondary border-opacity-25' : 'bg-light border-light'}`} 
+                                style={{ backgroundColor: index === 0 ? (isDarkMode ? '#1a2233' : '#f0f4ff') : (isDarkMode ? '#1a1a1a' : '#ffffff') }}>
+                              <h6 className={`small fw-bold ${index === 0 ? 'text-primary' : 'text-muted'} text-uppercase mb-2 d-flex align-items-center gap-2`}>
+                                 <MessageSquare size={12} /> {note.status} NOTE
+                              </h6>
+                              <p className={`mb-2 fw-medium ${isDarkMode ? 'text-white' : 'text-dark'}`}>{note.content}</p>
+                              <div className="d-flex align-items-center gap-3 text-muted small">
+                                <span className="d-flex align-items-center gap-1"><User size={12} /> {note.createdByName || 'System'}</span>
+                                <span className="d-flex align-items-center gap-1"><Calendar size={12} /> {formatDate(note.createdAt)}</span>
+                              </div>
+                           </div>
+                        </div>
+                      ))
+                    ) : (
+                      /* Fallback for single note if no history yet */
+                      lead.note && (
+                        <div className="position-relative mb-4">
+                           <div className="position-absolute bg-primary rounded-circle shadow-sm" style={{ width: '10px', height: '10px', left: '-31px', top: '6px' }}></div>
+                           <div className={`p-3 rounded-3 shadow-sm border ${isDarkMode ? 'bg-dark border-secondary border-opacity-25' : 'bg-light border-light'}`}>
+                              <h6 className="small fw-bold text-primary text-uppercase mb-2 d-flex align-items-center gap-2">
+                                 <MessageSquare size={12} /> INTERNAL NOTE
+                              </h6>
+                              <p className={`mb-2 fw-medium ${isDarkMode ? 'text-white' : 'text-dark'}`}>{lead.note}</p>
+                              <div className="d-flex align-items-center gap-3 text-muted small">
+                                <span className="d-flex align-items-center gap-1"><User size={12} /> {lead.updatedByName || 'System'}</span>
+                                <span className="d-flex align-items-center gap-1"><Calendar size={12} /> {formatDate(lead.updatedAt || lead.createdAt)}</span>
+                              </div>
+                           </div>
+                        </div>
+                      )
+                    )}
 
                     {/* Origination Log */}
                     <div className="position-relative">

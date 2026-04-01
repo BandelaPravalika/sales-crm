@@ -41,8 +41,8 @@ public class UserController {
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        adminService.deleteUser(id);
+    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
+        adminService.deactivateUser(id);
         return ResponseEntity.noContent().build();
     }
 

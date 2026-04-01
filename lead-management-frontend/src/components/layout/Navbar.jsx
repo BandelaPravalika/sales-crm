@@ -1,67 +1,72 @@
 import React from 'react';
-import { 
-  Zap, 
-  Search, 
-  Bell, 
-  LogOut, 
-  Sun,
-  Moon,
-  Menu,
-  Users
-} from 'lucide-react';
+import { LogOut, Sun, Moon, Bell, Search, User as UserIcon, Menu } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
-const Navbar = ({ role, userEmail, onLogout, theme, onToggleTheme, onToggleSidebar, className }) => {
+const Navbar = ({ isCollapsed, userEmail, onLogout, onToggleSidebar }) => {
+  const { isDarkMode, toggleTheme } = useTheme();
+
   return (
-    <nav className={`navbar-minimal d-flex align-items-center justify-content-between px-3 px-md-4 ${className || ''}`}>
-      {/* Single Mobile Toggle Button - Moved to Sidebar for consistency */}
-
-      {/* Left: Search Bar (Hidden on Mobile) */}
-      <div className="d-none d-md-flex align-items-center flex-grow-1">
-        <div className="position-relative search-container ms-1">
-          <Search className="position-absolute translate-middle-y text-muted opacity-50" size={14} style={{ top: '50%', left: '14px' }} />
-          <input 
-            type="search" 
-            className="glass-input ps-5 pe-3 py-2 text-white w-100" 
-            placeholder="Search leads, users..." 
-            style={{ fontSize: '13px' }} 
-          />
-        </div>
+    <nav 
+      className="position-fixed top-0 end-0 d-flex align-items-center justify-content-between px-4"
+      style={{ 
+        height: 'var(--header-height)', 
+        left: (window.innerWidth > 992) ? (isCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)') : '0',
+        width: 'auto',
+        backgroundColor: 'var(--nav-bg)',
+        borderBottom: '1px solid var(--border-color)',
+        zIndex: 1010,
+        backdropFilter: 'var(--glass-blur)',
+        transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
+      <div className="d-flex align-items-center gap-2">
+          <div className="d-none d-xl-flex align-items-center gap-3 bg-surface bg-opacity-50 px-3 py-1.5 rounded-pill border border-white border-opacity-5">
+            <Search size={14} className="text-muted" />
+            <input 
+              type="text" 
+              className="bg-transparent border-0 text-main fw-medium small" 
+              placeholder="Search identity node..." 
+              style={{outline: 'none', width: '200px', fontSize: '12px'}}
+            />
+         </div>
       </div>
 
-      {/* Right: Actions Grouped */}
-      <div className="header-right gap-2 gap-md-3">
-        {/* User Profile Chip - Inspired by User Screenshot */}
-        <div className="d-flex align-items-center gap-2 bg-dark bg-opacity-50 p-1 pe-3 rounded-pill border border-white border-opacity-10 shadow-sm d-none d-sm-flex transition-all hover-bg-opacity-70">
-           <div className="flex-shrink-0 p-2 bg-primary bg-opacity-20 rounded-circle border border-primary border-opacity-30 d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>
-              <Users size={14} className="text-primary" />
-           </div>
-           <div className="d-flex flex-column" style={{ lineHeight: '1.2' }}>
-              <span className="text-white fw-bold" style={{ fontSize: '11px' }}>{userEmail?.split('@')[0] || 'User'}</span>
-              <span className="text-muted text-uppercase fw-black" style={{ fontSize: '9px', letterSpacing: '0.05em' }}>{role?.replace(/_/g, ' ')}</span>
-           </div>
+      <div className="d-flex align-items-center gap-3 gap-md-4">
+        <div className="d-flex align-items-center gap-2 p-1 bg-surface bg-opacity-50 rounded-pill border border-white border-opacity-5">
+           <button 
+             className={`p-1.5 rounded-circle border-0 d-flex transition-all ${!isDarkMode ? 'bg-primary text-white shadow-sm' : 'bg-transparent text-muted opacity-50'}`}
+             onClick={() => isDarkMode && toggleTheme()}
+           >
+              <Sun size={12} />
+           </button>
+           <button 
+             className={`p-1.5 rounded-circle border-0 d-flex transition-all ${isDarkMode ? 'bg-primary text-white shadow-sm' : 'bg-transparent text-muted opacity-50'}`}
+             onClick={() => !isDarkMode && toggleTheme()}
+           >
+              <Moon size={12} />
+           </button>
         </div>
 
-        <button className="btn btn-link text-white opacity-50 p-2 border-0 hover-opacity-100 transition-all">
-          <Bell size={18} />
-        </button>
-        
-        <button 
-          className="btn btn-link opacity-50 p-2 border-0 hover-opacity-100 transition-all d-none d-sm-inline-block"
-          onClick={() => onToggleTheme()}
-          style={{ color: 'var(--text-main)' }}
-        >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-        
-        <div className="vr bg-white opacity-10 mx-1 d-none d-md-block" style={{ height: '20px' }}></div>
-
-        <button 
-          className="btn-premium px-3 px-md-4 py-2 small fw-bold text-uppercase"
-          style={{ fontSize: '10px' }}
-          onClick={onLogout}
-        >
-          Logout
-        </button>
+        <div className="d-flex align-items-center gap-2 gap-md-3">
+          <div className="text-end d-none d-md-block">
+             <p className="mb-0 fw-black text-main" style={{ fontSize: '11px', letterSpacing: '0.02em' }}>{userEmail?.split('@')[0].toUpperCase()}</p>
+             <p className="mb-0 text-muted fw-bold opacity-50" style={{fontSize: '8px', textTransform: 'uppercase'}}>Identity Node Active</p>
+          </div>
+          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill border border-primary border-opacity-10 shadow-glow">
+             <UserIcon size={16} />
+          </div>
+          
+          <div className="d-none d-sm-block bg-border-color" style={{width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 8px'}}></div>
+          
+          <button 
+            onClick={onLogout} 
+            className="ui-btn ui-btn-secondary py-1.5 px-3 rounded-pill"
+            style={{ fontSize: '10px' }}
+          >
+            <LogOut size={12} />
+            <span className="ms-1 d-none d-sm-inline">Logout</span>
+          </button>
+        </div>
       </div>
     </nav>
   );

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Search, Users, ShieldHalf, Phone, FileText } from 'lucide-react';
+import { Search, Users, ShieldHalf, Phone, FileText, Upload } from 'lucide-react';
+import { Button, Input, Table } from '../../../components/common/Components';
+import BulkUploadModal from './BulkUploadModal';
 
 const LeadsTable = ({ 
   leads, 
-  theme, 
   searchTerm, 
   setSearchTerm, 
   filterUnassigned, 
@@ -17,191 +18,183 @@ const LeadsTable = ({
   handleAssignLead,
   onLogCall,
   onViewInvoice,
-  teamLeaders
+  teamLeaders,
+  onBulkUploadSuccess
 }) => {
+  const [isBulkModalOpen, setIsBulkModalOpen] = React.useState(false);
+  const getStatusBadge = (status) => {
+    let variant = 'bg-surface text-muted';
+    if (['NEW', 'PENDING'].includes(status)) variant = 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10';
+    if (['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(status)) variant = 'bg-success bg-opacity-10 text-success border border-success border-opacity-10';
+    if (['WORKING', 'CONTACTED', 'INTERESTED'].includes(status)) variant = 'bg-info bg-opacity-10 text-info border border-info border-opacity-10';
+    if (['EMI', 'RETRY', 'FOLLOW_UP'].includes(status)) variant = 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10';
+    if (['LOST', 'NOT_INTERESTED', 'PAYMENT_FAILED'].includes(status)) variant = 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-10';
+
+    return (
+      <span className={`ui-badge ${variant}`} style={{ minWidth: '80px', textAlign: 'center', display: 'inline-block' }}>
+        {status || 'IDENTIFIED'}
+      </span>
+    );
+  };
+
   return (
-    <div className="bg-transparent overflow-hidden h-100 d-flex flex-column">
-      <div className="card-header bg-transparent p-4 border-0 d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-4">
+    <div className="d-flex flex-column h-100">
+      <div className="p-4 d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-4">
         <div className="d-flex align-items-center gap-3">
-          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-lg border border-primary border-opacity-10">
-            <Users size={20} />
+          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill">
+            <Users size={18} />
           </div>
           <div>
-            <h5 className="fw-black mb-0 text-white" style={{ letterSpacing: '-0.01em' }}>Leads Pipeline</h5>
-            <small className="text-muted fw-bold opacity-50 text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Live Inventory</small>
+            <h6 className="mb-0 text-main fw-black">Lead Pipeline</h6>
+            <small className="text-muted fw-bold opacity-50 text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Global Operational Registry</small>
           </div>
         </div>
         
-        <div className="d-flex flex-column flex-md-row gap-3 align-items-md-center">
-          <div className="position-relative" style={{ minWidth: '260px' }}>
-            <Search className="position-absolute translate-middle-y text-muted opacity-50" size={14} style={{ top: '50%', left: '14px' }} />
-            <input 
-              type="text" 
-              className="glass-input ps-5 pe-3 py-2 text-white w-100 shadow-sm" 
-              placeholder="Search leads..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ fontSize: '13px' }}
-            />
-          </div>
-          <div className="form-check form-switch mb-0 d-flex align-items-center gap-2 ps-0">
-            <div className="position-relative">
-                <input 
-                className="form-check-input ms-0" 
-                type="checkbox" 
-                role="switch"
-                id="unassignedSw" 
-                checked={filterUnassigned}
-                onChange={(e) => setFilterUnassigned(e.target.checked)}
-                style={{ width: '36px', height: '18px', cursor: 'pointer' }}
-                />
+          <div className="d-flex flex-column flex-md-row gap-3 align-items-md-center">
+            <div style={{ minWidth: '260px' }}>
+              <Input 
+                icon={<Search size={14} />}
+                placeholder="Search identity/contact..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="mb-0 py-2"
+              />
             </div>
-            <label className="text-muted fw-bold small text-uppercase tracking-wider cursor-pointer ms-1" htmlFor="unassignedSw" style={{ fontSize: '10px' }}>Unassigned Only</label>
+            
+            <div className="d-flex align-items-center gap-3">
+              <div className="form-check form-switch mb-0 d-flex align-items-center gap-2 ps-0 border-end border-white border-opacity-10 pe-3">
+                <input 
+                  className="form-check-input ms-0" 
+                  type="checkbox" 
+                  role="switch"
+                  id="unassignedSw" 
+                  checked={filterUnassigned}
+                  onChange={(e) => setFilterUnassigned(e.target.checked)}
+                  style={{ width: '36px', height: '18px', cursor: 'pointer' }}
+                />
+                <label className="text-muted fw-bold small text-uppercase tracking-wider cursor-pointer ms-1" htmlFor="unassignedSw" style={{ fontSize: '10px' }}>Unassigned</label>
+              </div>
+
+              <Button 
+                variant="primary" 
+                className="rounded-pill px-4 py-2 d-flex align-items-center gap-2 shadow-glow border-0"
+                style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '1px' }}
+                onClick={() => setIsBulkModalOpen(true)}
+              >
+                <Upload size={14} /> BULK INGESTION
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
       {selectedLeadIds.length > 0 && (
         <div className="px-4 py-3 bg-primary bg-opacity-5 border-top border-bottom border-white border-opacity-5 animate-fade-in">
           <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div className="d-flex align-items-center gap-2">
-                <div className="p-1 bg-primary rounded-circle"></div>
-                <span className="text-white fw-bold small">
-                {selectedLeadIds.length} leads selected for bulk action
+                <div className="p-1 bg-primary rounded-circle animate-pulse"></div>
+                <span className="text-main fw-bold small">
+                  {selectedLeadIds.length} Nodes Locked for Batch Operation
                 </span>
             </div>
             <div className="d-flex gap-2">
               <select 
-                className="glass-input py-1.5 fw-bold border-0" 
-                style={{ width: '180px', fontSize: '12px' }}
+                className="ui-input py-1 px-3" 
+                style={{ width: '200px', fontSize: '11px' }}
                 value={bulkAssignTlId}
                 onChange={(e) => setBulkAssignTlId(e.target.value)}
               >
-                <option value="">Bulk Assign To...</option>
+                <option value="">Bulk Redirect To...</option>
                 {teamLeaders
                   .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
                   .map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-
               </select>
-              <button 
+              <Button 
                 onClick={() => handleBulkAssign(bulkAssignTlId, teamLeaders)}
-                className="btn-premium py-1.5 px-4 small fw-bold text-uppercase"
+                variant="primary"
+                className="py-1.5"
                 style={{ fontSize: '10px' }}
               >
-                Execute
-              </button>
+                EXECUTE
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="table-responsive flex-grow-1 custom-scroll">
-        <table className="table table-hover align-middle mb-0 table-dark">
-          <thead>
-            <tr className="text-uppercase fw-bold text-muted border-bottom border-white border-opacity-5" style={{ fontSize: '10px', letterSpacing: '0.05em' }}>
-              <th className="ps-4 py-3" style={{ width: '60px' }}>
-                <div className="form-check custom-checkbox">
-                  <input 
-                    className="form-check-input shadow-none" 
-                    type="checkbox" 
-                    checked={selectedLeadIds.length === leads.length && leads.length > 0}
-                    onChange={toggleSelectAll}
-                  />
+      <Table 
+        headers={[
+          <div className="form-check mb-0">
+            <input className="form-check-input" type="checkbox" checked={selectedLeadIds.length === leads.length && leads.length > 0} onChange={toggleSelectAll} />
+          </div>,
+          'Staff Identity', 'Pipeline Status', 'Lead Owner', 'Management'
+        ]}
+        data={leads}
+        renderRow={(lead) => (
+          <>
+            <td>
+              {!lead.assignedToId && (
+                <div className="form-check">
+                  <input className="form-check-input" type="checkbox" checked={selectedLeadIds.includes(lead.id)} onChange={() => toggleSelection(lead.id)} />
                 </div>
-              </th>
-              <th className="py-3">Staff Identity</th>
-              <th className="py-3">Pipeline Status</th>
-              <th className="py-3">Lead Owner</th>
-              <th className="pe-4 py-3 text-end">Management</th>
-            </tr>
-          </thead>
-          <tbody className="border-0">
-            {leads.map(lead => (
-              <tr key={lead.id} className={`${selectedLeadIds.includes(lead.id) ? 'bg-primary bg-opacity-5' : ''} border-bottom border-white border-opacity-5 transition-all`}>
-                <td className="ps-4">
-                  {!lead.assignedToId && (
-                    <div className="form-check custom-checkbox">
-                      <input 
-                        className="form-check-input shadow-none" 
-                        type="checkbox" 
-                        checked={selectedLeadIds.includes(lead.id)}
-                        onChange={() => toggleSelection(lead.id)}
-                      />
-                    </div>
-                  )}
-                </td>
-                      <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="p-2 bg-surface rounded-circle shadow-sm border border-white border-opacity-5 d-flex align-items-center justify-content-center bg-primary bg-opacity-10" style={{ width: '36px', height: '36px' }}>
-                              <p className="mb-0 fw-black text-primary small">{lead.name.charAt(0).toUpperCase()}</p>
-                          </div>
-                          <div>
-                              <p className="fw-bold mb-0 text-main" style={{ fontSize: '13px' }}>{lead.name}</p>
-                              <small className="text-muted fw-medium font-monospace" style={{ fontSize: '10px' }}>{lead.mobile || 'No Contact Data'}</small>
-                          </div>
-                        </div>
-                      </td>
-                <td>
-                  <span className={`badge rounded-sm text-uppercase px-2 py-1 ${
-                    lead.status === 'PAID' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-20' :
-                    lead.status === 'NEW' ? 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20' :
-                    'bg-white bg-opacity-5 text-muted border border-white border-opacity-10'
-                  }`} style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.02em' }}>
-                    {lead.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="d-flex align-items-center gap-2">
-                    {lead.assignedToId && <div className="p-1 bg-success rounded-circle" style={{ width: '6px', height: '6px' }}></div>}
-                    <span className={`small ${lead.assignedToId ? 'fw-bold text-main' : 'text-muted fst-italic opacity-50'}`}>
-                        {lead.assignedToName || 'Awaiting Assignment'}
-                    </span>
-                  </div>
-                </td>
-                <td className="pe-4 text-end">
-                  <div className="d-flex align-items-center justify-content-end gap-2">
-                    <button 
-                      className="btn btn-link text-primary p-1 border-0 hover-opacity-100 transition-all"
-                      title="Log Manual Call"
-                      onClick={() => onLogCall && onLogCall(lead)}
-                    >
-                      <Phone size={16} />
-                    </button>
-                    {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
-                      <button 
-                        className="btn btn-link text-success p-1 border-0 hover-opacity-100 transition-all animate-fade-in"
-                        title="Generate/View Invoice"
-                        onClick={() => onViewInvoice && onViewInvoice(lead)}
-                      >
-                        <FileText size={16} />
-                      </button>
-                    )}
-                    <select 
-                      className="glass-select py-1 border-0 text-primary fw-bold text-end" 
-                      style={{ width: '130px', fontSize: '11px' }}
-                      onChange={(e) => handleAssignLead(lead.id, e.target.value, teamLeaders)}
-                      value={lead.assignedToId || ''}
-                    >
-                      <option value="">Move To...</option>
-                      {teamLeaders
-                        .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
-                        .map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
-
-                    </select>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {leads.length === 0 && (
-          <div className="p-5 text-center my-4 animate-fade-in">
-            <Users size={48} className="text-muted opacity-20 mb-3" />
-            <p className="text-muted fw-bold mb-0">No operational records found</p>
-            <small className="text-muted opacity-50">Try adjusting your filters or search term</small>
-          </div>
+              )}
+            </td>
+            <td>
+              <div className="d-flex align-items-center gap-3">
+                <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill small fw-black text-center" style={{ width: '32px', height: '32px' }}>
+                  {lead.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="d-flex flex-column">
+                  <span className="fw-bold text-main small">{lead.name}</span>
+                  <span className="text-muted small opacity-75" style={{ fontSize: '10px' }}>{lead.mobile || 'No Contact Data'}</span>
+                </div>
+              </div>
+            </td>
+            <td>{getStatusBadge(lead.status)}</td>
+            <td>
+              <div className="d-flex align-items-center gap-2">
+                <div className={`p-1 rounded-circle ${lead.assignedToId ? 'bg-success' : 'bg-muted opacity-25'}`} style={{ width: '6px', height: '6px' }}></div>
+                <span className={`small fw-bold ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`}>
+                  {lead.assignedToName || 'Awaiting Node'}
+                </span>
+              </div>
+            </td>
+            <td className="text-end">
+              <div className="d-flex align-items-center justify-content-end gap-1">
+                <button className="btn btn-link text-primary p-2 border-0" title="Log Manual Call" onClick={() => onLogCall && onLogCall(lead)}>
+                  <Phone size={16} />
+                </button>
+                {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
+                  <button className="btn btn-link text-success p-2 border-0" title="View Invoice" onClick={() => onViewInvoice && onViewInvoice(lead)}>
+                    <FileText size={16} />
+                  </button>
+                )}
+                <select 
+                  className={`ui-input py-1 px-2 mb-0 ${['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(lead.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  style={{ width: '130px', fontSize: '10px' }}
+                  onChange={(e) => handleAssignLead(lead.id, e.target.value, teamLeaders)}
+                  value={lead.assignedToId || ''}
+                  disabled={['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(lead.status)}
+                  title={['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(lead.status) ? "Assignment locked for paid leads" : "Redirect lead owner"}
+                >
+                  <option value="">Move To...</option>
+                  {teamLeaders
+                    .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
+                    .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            </td>
+          </>
         )}
-      </div>
+      />
+      <BulkUploadModal 
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        onSuccess={() => {
+          setIsBulkModalOpen(false);
+          onBulkUploadSuccess && onBulkUploadSuccess();
+        }}
+        assignees={teamLeaders?.filter(u => u.role === 'ASSOCIATE') || []}
+      />
     </div>
   );
 };

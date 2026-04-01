@@ -18,4 +18,5 @@ public class LeadStatsDTO {
     private long convertedCount;
     private long lostCount;
     private long closedCount;
+    private double totalRevenue;
 }

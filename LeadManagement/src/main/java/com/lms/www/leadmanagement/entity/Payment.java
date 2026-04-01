@@ -57,6 +57,6 @@ public class Payment {
     }
 
     public enum Status {
-        PENDING, APPROVED, OVERDUE, PAID, FAILED
+        PENDING, APPROVED, OVERDUE, PAID, FAILED, SUCCESS
     }
 }

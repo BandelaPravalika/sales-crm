@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
-import { X, Send, Plus, Trash2, Calendar, IndianRupee, Layers, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { X, Send, Plus, Trash2, Zap, IndianRupee, CreditCard, ShieldCheck } from 'lucide-react';
 
 const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
   const [totalAmount, setTotalAmount] = useState('499');
   const [initialAmount, setInitialAmount] = useState('499');
-  const [paymentType, setPaymentType] = useState('FULL'); // FULL or PART
+  const [paymentType, setPaymentType] = useState('FULL');
   const [installments, setInstallments] = useState([]);
   const [note, setNote] = useState('');
+
+  useEffect(() => {
+    const esc = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onClose]);
 
   if (!show || !lead) return null;
 
@@ -27,9 +34,12 @@ const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
     setInstallments(newInstallments);
   };
 
-  const sumOfParts = Number(initialAmount || 0) + installments.reduce((sum, inst) => sum + Number(inst.amount || 0), 0);
+  const sumOfParts =
+    Number(initialAmount || 0) +
+    installments.reduce((sum, inst) => sum + Number(inst.amount || 0), 0);
+
   const targetTotal = Number(totalAmount || 0);
-  const isMatch = Math.abs(sumOfParts - targetTotal) < 1; 
+  const isMatch = Math.abs(sumOfParts - targetTotal) < 1;
   const balanceRemaining = targetTotal - sumOfParts;
 
   const handleSubmit = (e) => {
@@ -41,227 +51,123 @@ const GeneratePaymentLinkModal = ({ show, onClose, onConfirm, lead }) => {
       initialAmount: parseFloat(initialAmount),
       paymentType,
       note,
-      installments: installments.map(inst => ({
+      installments: installments.map((inst) => ({
         amount: parseFloat(inst.amount),
-        dueDate: inst.dueDate ? `${inst.dueDate}T23:59:59` : null
-      }))
+        dueDate: inst.dueDate ? `${inst.dueDate}T23:59:59` : null,
+      })),
     });
+
+    onClose();
   };
 
-  return (
-    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 10600, overflowY: 'auto' }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div className="modal-content border-0 shadow-2xl rounded-4 overflow-hidden" style={{ background: '#131826', color: '#fff' }}>
-          {/* Header */}
-          <div className="modal-header border-bottom border-secondary border-opacity-10 p-4 d-flex justify-content-between align-items-center bg-dark bg-opacity-50">
-            <div className="d-flex align-items-center gap-3">
-              <div className="bg-primary bg-gradient p-3 rounded-4 shadow-sm text-white animate-pulse-slow">
-                <Send size={24} />
+  const modalContent = (
+    <div className="modal-overlay d-flex align-items-center justify-content-center px-3" style={{ 
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+      backgroundColor: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(10px)', zIndex: 11000 
+    }}>
+      <div className="bg-white rounded-4 shadow-2xl animate-fade-in d-flex flex-column" style={{ width: '100%', maxWidth: '520px', background: '#fff', color: '#1e293b', maxHeight: '90vh', overflow: 'hidden' }}>
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center p-3 border-bottom bg-light bg-opacity-30">
+          <div className="d-flex align-items-center gap-2">
+            <div className="bg-primary bg-opacity-10 p-2 rounded-circle text-primary border border-primary border-opacity-10">
+              <Zap size={18} />
+            </div>
+            <div>
+              <h5 className="fw-black text-dark mb-0 tracking-tight" style={{ fontSize: '16px' }}>Generate Payment Schedule</h5>
+              <p className="text-muted small fw-bold mb-0 text-uppercase tracking-widest" style={{ fontSize: '8px' }}>Asset Transmission Protocol</p>
+            </div>
+          </div>
+          <button type="button" className="btn btn-sm btn-light rounded-circle shadow-sm border" onClick={onClose} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} />
+          </button>
+        </div>
+ 
+        <div className="p-4 overflow-auto custom-scroll">
+          {/* Quick Action */}
+          <div className="mb-4 p-3 rounded-4 border border-primary border-opacity-10 d-flex justify-content-between align-items-center transition-smooth hover-up bg-primary bg-opacity-5 cursor-pointer" 
+               onClick={() => { onConfirm(lead.id, { totalAmount: 499, initialAmount: 499, paymentType: 'FULL' }); onClose(); }}>
+            <div>
+               <div className="text-primary fw-black text-uppercase tracking-widest mb-1" style={{ fontSize: '8px' }}>Standard Protocol</div>
+               <h6 className="fw-black mb-0 text-dark">One-Tap Quick Invoice</h6>
+               <p className="text-muted small mb-0 fw-bold opacity-75" style={{ fontSize: '10px' }}>Generate ₹499 Full Clearance Link</p>
+            </div>
+            <div className="p-2 bg-primary rounded-pill text-white shadow-glow">
+               <Send size={16} />
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="row g-3 mb-4">
+              <div className="col-12 col-md-6">
+                 <label className="form-label small fw-black text-muted text-uppercase mb-1" style={{ fontSize: '10px' }}>Total Amount</label>
+                 <div className="input-group bg-light rounded-3 border overflow-hidden shadow-sm">
+                    <span className="input-group-text bg-transparent border-0 text-muted ps-3 pe-0"><IndianRupee size={14} /></span>
+                    <input type="number" className="form-control border-0 bg-transparent text-dark py-2.5 fw-black shadow-none" value={totalAmount} onChange={(e) => { setTotalAmount(e.target.value); if (paymentType === 'FULL') setInitialAmount(e.target.value); }} />
+                 </div>
               </div>
-              <div>
-                <h4 className="fw-black text-white mb-0 tracking-tight">Generate Payment Link</h4>
-                <p className="text-secondary small fw-bold mb-0">Configuring conversion for <span className="text-primary">{lead.name}</span></p>
+              <div className="col-12 col-md-6">
+                 <label className="form-label small fw-black text-muted text-uppercase mb-1" style={{ fontSize: '10px' }}>Initial Amount</label>
+                 <div className="input-group bg-light rounded-3 border overflow-hidden shadow-sm">
+                    <span className="input-group-text bg-transparent border-0 text-muted ps-3 pe-0"><CreditCard size={14} /></span>
+                    <input type="number" className="form-control border-0 bg-transparent text-dark py-2.5 fw-black shadow-none" value={initialAmount} onChange={(e) => setInitialAmount(e.target.value)} />
+                 </div>
               </div>
             </div>
-            <button type="button" className="btn btn-dark rounded-circle p-2 shadow-sm border-secondary border-opacity-25" onClick={onClose}>
-              <X size={20} />
-            </button>
-          </div>
-          
-          <div className="modal-body p-4 custom-scroll">
-            <form onSubmit={handleSubmit}>
-              {/* Type Selector */}
-              <div className="bg-dark bg-opacity-50 p-2 rounded-pill shadow-sm mb-4 d-inline-flex gap-1 border border-secondary border-opacity-10">
-                <button 
-                  type="button"
-                  className={`btn rounded-pill px-4 py-2 fw-black text-uppercase small transition-all ${paymentType === 'FULL' ? 'btn-primary shadow' : 'btn-link text-secondary'}`}
-                  onClick={() => {
-                    setPaymentType('FULL');
-                    setInstallments([]);
-                    setInitialAmount(totalAmount);
-                  }}
-                >
-                  Single Full Payment
-                </button>
-                <button 
-                  type="button"
-                  className={`btn rounded-pill px-4 py-2 fw-black text-uppercase small transition-all ${paymentType === 'PART' ? 'btn-primary shadow' : 'btn-link text-secondary'}`}
-                  onClick={() => setPaymentType('PART')}
-                >
-                  Installment Plan
-                </button>
-              </div>
 
-              <div className="row g-3 mb-4">
-                <div className="col-12 col-md-6">
-                  <div className="p-4 rounded-4 bg-dark bg-opacity-25 border border-secondary border-opacity-10 h-100 shadow-sm">
-                    <label className="form-label small fw-black text-secondary text-uppercase mb-3 tracking-wider d-flex align-items-center gap-2">
-                       <Layers size={14} /> Total Package Amount
-                    </label>
-                    <div className="input-group input-group-lg shadow-none border-bottom border-secondary border-opacity-25 bg-transparent transition-all focus-within-primary">
-                      <span className="input-group-text bg-transparent border-0 text-secondary ps-0"><IndianRupee size={20} /></span>
-                      <input 
-                        type="number" 
-                        className="form-control bg-transparent border-0 fw-black fs-2 p-0 shadow-none text-white tracking-tighter" 
-                        placeholder="0.00"
-                        value={totalAmount}
-                        onChange={(e) => {
-                          setTotalAmount(e.target.value);
-                          if (paymentType === 'FULL') setInitialAmount(e.target.value);
-                        }}
-                        required
-                      />
+            <div className="mb-4">
+               <label className="form-label small fw-black text-muted text-uppercase mb-2" style={{ fontSize: '10px' }}>Transmission Logic</label>
+               <div className="d-flex gap-2 p-1 bg-light rounded-pill border">
+                  <button type="button" className={`btn flex-grow-1 rounded-pill fw-black text-uppercase border-0 py-2 ${paymentType === 'FULL' ? 'btn-primary shadow-sm' : 'btn-transparent text-muted'}`} onClick={() => { setPaymentType('FULL'); setInstallments([]); }} style={{ fontSize: '10px' }}>Full Transmission</button>
+                  <button type="button" className={`btn flex-grow-1 rounded-pill fw-black text-uppercase border-0 py-2 ${paymentType === 'PART' ? 'btn-primary shadow-sm' : 'btn-transparent text-muted'}`} onClick={() => setPaymentType('PART')} style={{ fontSize: '10px' }}>Installment Matrix</button>
+               </div>
+            </div>
+
+            {paymentType === 'PART' && (
+              <div className="mb-4 animate-fade-in">
+                {installments.map((inst, i) => (
+                  <div key={i} className="d-flex gap-2 mb-2 align-items-center">
+                    <div className="flex-grow-1 input-group bg-light rounded-3 border overflow-hidden shadow-sm">
+                       <span className="input-group-text bg-transparent border-0 text-muted pe-1 ps-2 small">₹</span>
+                       <input type="number" placeholder="Amount" className="form-control border-0 bg-transparent py-2 small fw-bold shadow-none" value={inst.amount} onChange={(e) => handleInstallmentChange(i, 'amount', e.target.value)} />
                     </div>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <div className="p-4 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 shadow-sm h-100 animate-slide-right">
-                    <label className="form-label small fw-black text-primary text-uppercase mb-3 tracking-wider d-flex align-items-center gap-2">
-                       <ShieldCheck size={14} /> Initial Link Amount
-                    </label>
-                    <div className="input-group input-group-lg shadow-none border-bottom border-primary border-opacity-25 bg-transparent">
-                      <span className="input-group-text bg-transparent border-0 text-primary ps-0"><IndianRupee size={20} /></span>
-                      <input 
-                        type="number" 
-                        className="form-control bg-transparent border-0 fw-black fs-2 p-0 shadow-none text-primary" 
-                        placeholder="0.00"
-                        value={initialAmount}
-                        onChange={(e) => setInitialAmount(e.target.value)}
-                        required
-                      />
+                    <div className="flex-grow-1 input-group bg-light rounded-3 border overflow-hidden shadow-sm">
+                       <input type="date" className="form-control border-0 bg-transparent py-2 small fw-bold shadow-none" value={inst.dueDate} onChange={(e) => handleInstallmentChange(i, 'dueDate', e.target.value)} />
                     </div>
-                    <p className="small text-secondary mb-0 mt-2 fw-bold italic">Generated link will hold this value.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Installments Section */}
-              {paymentType === 'PART' && (
-                <div className="mb-4 animate-fade-in bg-dark bg-opacity-25 rounded-4 p-4 border border-secondary border-opacity-10">
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h6 className="fw-black text-uppercase text-secondary small mb-0 tracking-widest d-flex align-items-center gap-2">
-                      <Calendar size={18} /> Installment Schedule
-                    </h6>
-                    <button 
-                      type="button" 
-                      className="btn btn-primary btn-sm rounded-pill px-4 py-1 fw-bold d-flex align-items-center gap-2 shadow-sm"
-                      onClick={addInstallment}
-                    >
-                      <Plus size={14} /> Add Part
+                    <button type="button" className="btn btn-outline-danger border-0 rounded-circle p-2" onClick={() => removeInstallment(i)}>
+                       <Trash2 size={16} />
                     </button>
                   </div>
+                ))}
 
-                  <div className="d-flex flex-column gap-3">
-                    {installments.map((inst, index) => (
-                      <div key={index} className="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary border-opacity-10 shadow-sm animate-slide-up">
-                        <div className="row g-4 align-items-center">
-                          <div className="col-auto">
-                            <span className="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '32px', height: '32px' }}>{index + 1}</span>
-                          </div>
-                          
-                          <div className="col-12 col-md-4">
-                             <div className="form-floating bg-secondary bg-opacity-10 rounded-3">
-                                <input 
-                                  type="number" 
-                                  className="form-control border-0 bg-transparent text-white fw-bold pt-4 pb-2 px-3 shadow-none" 
-                                  id={`amt-${index}`}
-                                  placeholder="Amount"
-                                  value={inst.amount}
-                                  onChange={(e) => handleInstallmentChange(index, 'amount', e.target.value)}
-                                  required
-                                />
-                                <label htmlFor={`amt-${index}`} className="text-secondary small fw-bold">Installment Value (₹)</label>
-                             </div>
-                          </div>
+                <button type="button" className="btn btn-sm btn-outline-primary rounded-pill fw-bold border-0 d-flex align-items-center gap-2 mb-3" onClick={addInstallment}>
+                  <Plus size={14} /> APPEND INSTALLMENT
+                </button>
 
-                          <div className="col-12 col-md-4">
-                             <div className="form-floating bg-secondary bg-opacity-10 rounded-3">
-                                <input 
-                                  type="date" 
-                                  className="form-control border-0 bg-transparent text-white fw-bold pt-4 pb-2 px-3 shadow-none" 
-                                  id={`date-${index}`}
-                                  value={inst.dueDate}
-                                  onChange={(e) => handleInstallmentChange(index, 'dueDate', e.target.value)}
-                                  required
-                                />
-                                <label htmlFor={`date-${index}`} className="text-secondary small fw-bold">Due Date</label>
-                             </div>
-                          </div>
-
-                          <div className="col-12 col-md-auto ms-md-auto text-end">
-                            <button 
-                              type="button" 
-                              className="btn btn-outline-danger border-0 p-2 rounded-circle transition-all hover-bg-danger hover-text-white" 
-                              onClick={() => removeInstallment(index)}
-                              title="Delete Row"
-                            >
-                              <Trash2 size={20} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Validation Bar */}
-                    <div className={`mt-2 p-3 rounded-4 d-flex justify-content-between align-items-center transition-all ${isMatch ? 'bg-success bg-opacity-20 text-success' : 'bg-warning bg-opacity-20 text-warning border border-warning border-opacity-25'}`}>
-                       <div className="d-flex align-items-center gap-2">
-                          {isMatch ? <ShieldCheck size={18} /> : <AlertCircle size={18} />}
-                          <span className="fw-black text-uppercase small tracking-wider">
-                            {isMatch ? 'All Parts Balanced' : `Total sum is ₹${sumOfParts.toFixed(2)}`}
-                          </span>
-                       </div>
-                       {!isMatch && (
-                         <span className="fw-black text-uppercase small tracking-wider">
-                            Remaining: ₹{Math.abs(balanceRemaining).toFixed(2)}
-                         </span>
-                       )}
-                    </div>
-                  </div>
+                <div className={`p-3 rounded-4 text-center border shadow-sm ${isMatch ? 'bg-success bg-opacity-10 border-success border-opacity-25 text-success' : 'bg-warning bg-opacity-10 border-warning border-opacity-25 text-warning'}`}>
+                  {isMatch ? (
+                    <div className="small fw-black text-uppercase tracking-widest"><ShieldCheck size={14} className="me-1" /> All Fragments Balanced</div>
+                  ) : (
+                    <div className="small fw-black text-uppercase tracking-widest">Awaiting Balance Integration: ₹{Math.abs(balanceRemaining).toFixed(2)}</div>
+                  )}
                 </div>
-              )}
-
-              <div className="mb-4">
-                <label className="form-label small fw-black text-secondary text-uppercase mb-2 tracking-wider">Internal Note (Optional)</label>
-                <textarea 
-                  className="form-control bg-dark text-white border-secondary border-opacity-25 shadow-sm rounded-4 p-3 fw-bold focus-ring-primary" 
-                  rows="2"
-                  placeholder="Payment remarks or reference details..."
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                />
               </div>
+            )}
 
-              {/* Action */}
-              <button 
-                type="submit" 
-                className={`btn w-100 py-3 rounded-pill fw-black text-uppercase tracking-widest shadow-lg d-flex align-items-center justify-content-center gap-3 transition-smooth ${paymentType === 'PART' && !isMatch ? 'btn-outline-secondary opacity-50' : 'btn-primary'}`}
-                disabled={paymentType === 'PART' && !isMatch}
-              >
-                <Send size={20} className={paymentType === 'PART' && !isMatch ? 'opacity-25' : 'animate-bounce-right'} /> 
-                <span className="ls-1">Generate & Securely Dispatch Link</span>
-              </button>
-            </form>
-          </div>
+            <div className="mb-4">
+              <label className="form-label small fw-black text-muted text-uppercase mb-1" style={{ fontSize: '10px' }}>Reference Note</label>
+              <textarea className="form-control bg-light border-0 rounded-4 py-3 shadow-none fw-bold small" rows="2" placeholder="Institutional details for this invoicing schedule..." value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
+
+            <button className={`btn btn-primary w-100 py-3 rounded-pill fw-black text-uppercase tracking-widest shadow-glow border-0 hover-up transition-smooth ${paymentType === 'PART' && !isMatch ? 'opacity-50' : ''}`} disabled={paymentType === 'PART' && !isMatch}>
+              INITIALIZE TRANSMISSION LINK
+            </button>
+          </form>
         </div>
       </div>
-      <style>{`
-        .fw-black { font-weight: 900; }
-        .animate-pulse-slow { animation: pulse 3s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-        .animate-slide-up { animation: slideUp 0.4s ease-out; }
-        .animate-slide-right { animation: slideRight 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideRight { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        .focus-ring-primary:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25) !important; outline: 0; }
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 10px; }
-      `}</style>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default GeneratePaymentLinkModal;

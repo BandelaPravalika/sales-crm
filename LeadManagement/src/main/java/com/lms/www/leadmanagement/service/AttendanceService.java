@@ -88,7 +88,7 @@ public class AttendanceService {
                 .ifPresent(this::finalizeSession);
 
         OfficeLocation office = findNearestOffice(request.getLat(), request.getLng())
-                .orElseThrow(() -> new ResourceNotFoundException("No office locations defined"));
+                .orElseThrow(() -> new RuntimeException("No office locations defined. Admin must setup a branch first."));
 
         if (calculateDistance(request.getLat(), request.getLng(), office.getLatitude(), office.getLongitude()) > office
                 .getRadius()) {
@@ -119,6 +119,12 @@ public class AttendanceService {
                             AttendanceStatus.AUTO_BREAK))
                     .orElseThrow(
                             () -> new ResourceNotFoundException("No active session found. Please Clock In again."));
+
+            if (session.getOffice() == null) {
+                log.error("Fatal error: active attendance session #{} has no office node", session.getId());
+                finalizeSession(session);
+                throw new RuntimeException("Operational integrity violation: missing office link. Please Clock In again.");
+            }
 
             AttendancePolicy policy = attendancePolicyRepository.findByOfficeId(session.getOffice().getId())
                     .orElseGet(() -> AttendancePolicy.builder().office(session.getOffice()).build());
@@ -385,9 +391,24 @@ public class AttendanceService {
     }
 
     private void finalizeSession(AttendanceSession s) {
+        LocalDateTime now = nowInIndia();
+        
+        // Final work/break duration update before closing
+        long finalMins = Duration.between(s.getLastSeenTime() != null ? s.getLastSeenTime() : s.getCheckInTime(), now).toMinutes();
+        if (finalMins > 0) {
+            if (s.getStatus() == AttendanceStatus.WORKING) {
+                s.setTotalWorkMinutes(s.getTotalWorkMinutes() + (int) finalMins);
+            } else if (s.getStatus() == AttendanceStatus.ON_SHORT_BREAK || 
+                       s.getStatus() == AttendanceStatus.ON_LONG_BREAK || 
+                       s.getStatus() == AttendanceStatus.AUTO_BREAK) {
+                s.setTotalBreakMinutes(s.getTotalBreakMinutes() + (int) finalMins);
+            }
+        }
+
         s.setStatus(AttendanceStatus.PUNCHED_OUT);
-        s.setCheckOutTime(nowInIndia());
+        s.setCheckOutTime(now);
         s.setAutoCheckout(true);
+        s.setLastSeenTime(now);
         attendanceSessionRepository.save(s);
         reconcileDailySummary(s.getUser().getId(), todayInIndia(), s.getOffice());
     }
@@ -527,7 +548,7 @@ public class AttendanceService {
         LocalDate yesterday = todayInIndia().minusDays(1);
         List<User> allUsers = userRepository.findAll();
         for (User user : allUsers) {
-            if ("ADMIN".equals(user.getRole().getName()))
+            if ("ADMIN".equalsIgnoreCase(user.getRole().getName()))
                 continue;
 
             Optional<AttendanceDaily> dailyOpt = attendanceDailyRepository.findByUserIdAndDate(user.getId(), yesterday);
@@ -569,9 +590,10 @@ public class AttendanceService {
         int dayWork = 0;
         if (userId != null) {
             AttendanceDaily daily = attendanceDailyRepository.findByUserIdAndDate(userId, date).orElse(null);
-            dayWork = (daily != null) ? daily.getTotalWorkMinutes() : s.getTotalWorkMinutes();
+            dayWork = (daily != null && daily.getTotalWorkMinutes() != null) ? daily.getTotalWorkMinutes() : 
+                      (s.getTotalWorkMinutes() != null ? s.getTotalWorkMinutes() : 0);
         } else {
-            dayWork = s.getTotalWorkMinutes();
+            dayWork = (s.getTotalWorkMinutes() != null) ? s.getTotalWorkMinutes() : 0;
         }
         
         String dayHours = String.format("%dh %dm", dayWork / 60, dayWork % 60);

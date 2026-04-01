@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import adminService from '../services/adminService';
 import PaymentHistory from '../components/PaymentHistory';
 import StatCard from '../components/StatCard';
@@ -9,11 +10,13 @@ import RevenueTrendChart from './dashboard/components/RevenueTrendChart';
 import FiltersBar from './dashboard/components/FiltersBar';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import UserEditModal from './dashboard/components/UserEditModal';
+import BulkUploadModal from './dashboard/components/BulkUploadModal.jsx';
 import AttendanceDashboard from '../components/pages/AttendanceDashboard';
 import AttendanceSettings from './dashboard/components/AttendanceSettings';
 import CallLogDashboard from './dashboard/components/CallLogDashboard';
 import InvoiceModal from './dashboard/components/InvoiceModal';
 import paymentService from '../services/paymentService';
+import { Button, Card, Input, Table } from '../components/common/Components';
 import {
   UserPlus,
   Users,
@@ -23,15 +26,18 @@ import {
   Trash2,
   CheckCircle,
   TrendingUp,
+  Power,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [availablePermissions, setAvailablePermissions] = useState([]);
+  const [availableShifts, setAvailableShifts] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -56,18 +62,26 @@ const AdminDashboard = () => {
     userId: null
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const handleSync = () => setRefreshTrigger(prev => prev + 1);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const statsFilters = { start: filters.from, end: filters.to, userId: filters.userId };
-      const trendFilters = { from: filters.from.split('T')[0], to: filters.to.split('T')[0] };
+      const trendFilters = { 
+        from: filters.from.split('T')[0], 
+        to: filters.to.split('T')[0],
+        userId: filters.userId 
+      };
 
-      const [statsRes, perfRes, trendRes, usersRes, permsRes, leadsRes, treeRes] = await Promise.all([
+      const [statsRes, perfRes, trendRes, usersRes, permsRes, shiftsRes, leadsRes, treeRes] = await Promise.all([
         adminService.fetchDashboardStats(statsFilters),
         adminService.fetchMemberPerformance(statsFilters),
         adminService.fetchTrendData(trendFilters),
         adminService.fetchUsers(),
         adminService.fetchPermissions(),
+        adminService.fetchShifts(),
         adminService.fetchLeads(),
         adminService.fetchTeamTree()
       ]);
@@ -85,6 +99,7 @@ const AdminDashboard = () => {
       setUsers(usersPayload?.content || (Array.isArray(usersPayload) ? usersPayload : []));
       const permsPayload = permsRes.data;
       setAvailablePermissions(Array.isArray(permsPayload) ? permsPayload : (permsPayload?.data || []));
+      setAvailableShifts(Array.isArray(shiftsRes.data) ? shiftsRes.data : (shiftsRes.data?.data || []));
       const leadsPayload = leadsRes.data;
       setLeads(leadsPayload?.content || (Array.isArray(leadsPayload) ? leadsPayload : []));
       setTeamTree(treeRes.data || null);
@@ -97,7 +112,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
-  }, [filters]);
+  }, [filters, refreshTrigger]);
 
   const handleDeleteUser = async (id) => {
     if (window.confirm('Terminate this user access permanently?')) {
@@ -113,16 +128,24 @@ const AdminDashboard = () => {
 
   const handleEditUser = (u) => {
     setEditingUser({ ...u });
+    // Deep clone to detach from parent list
+    setEditingUser(JSON.parse(JSON.stringify(u)));
     setIsEditModalOpen(true);
   };
 
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await adminService.updateUser(editingUser.id, editingUser);
+      await adminService.updateUser(editingUser.id, editingUser);
       toast.success('User profile updated');
+      
+      // Close first
       setIsEditModalOpen(false);
-      fetchData();
+      
+      // Delay refresh to prevent race conditions
+      setTimeout(() => {
+        fetchData();
+      }, 300);
     } catch (err) {
       toast.error('Update failed');
     }
@@ -167,7 +190,7 @@ const AdminDashboard = () => {
   const handleViewInvoice = async (lead) => {
     try {
       toast.info('Generating official invoice document...');
-      const res = await paymentService.generateInvoice(lead.id);
+      const res = await paymentService.fetchInvoiceByLead(lead.id);
       setSelectedInvoiceData(res.data);
       setIsInvoiceModalOpen(true);
     } catch (err) {
@@ -202,16 +225,17 @@ const AdminDashboard = () => {
                 <FiltersBar
                   filters={filters}
                   onChange={setFilters}
-                  theme="dark"
+                  onSync={handleSync}
                 />
                 {filters.userId && (
-                  <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in">
-                    <span className="label text-primary">Viewing:</span>
-                    <span className="value text-white me-2">Individual Performance Profile</span>
+                  <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
+                    <span className="label text-primary" style={{ fontSize: '10px', textTransform: 'uppercase' }}>Focus Node:</span>
+                    <span className="value text-main me-2 small fw-bold">Individual Performance Profile</span>
                     <button
-                      className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none"
+                      className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
                       onClick={() => setFilters({...filters, userId: null})}
-                    >[ CLEAR FILTER ]</button>
+                      style={{ fontSize: '9px' }}
+                    >[ CLEAR FOCUS ]</button>
                   </div>
                 )}
               </div>
@@ -219,194 +243,154 @@ const AdminDashboard = () => {
 
             <div className="row g-3">
               <div className="col-12 col-xl-8">
-                <div className="premium-card overflow-hidden h-100">
-                  <div className="card-header bg-transparent border-0 p-3">
-                    <h5 className="fw-black mb-0 px-2 text-primary" style={{ fontSize: '15px' }}>Revenue Trajectory</h5>
-                  </div>
-                  <div className="card-body p-0">
-                    <RevenueTrendChart data={trendData} theme="dark" />
-                  </div>
-                </div>
+                <Card title="Revenue Trajectory" subtitle="Aggregated Performance Analytics" style={{ height: '100%' }}>
+                  <RevenueTrendChart data={trendData} theme={theme} />
+                </Card>
               </div>
               <div className="col-12 col-xl-4">
                 <div className="d-flex flex-column gap-3 h-100">
-                  <StatCard title="Total Managed" value={stats?.leadStats?.TOTAL || 0} sub="Managed Records" icon={<Users />} color="primary" />
-                  <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Paid/Partial" icon={<CheckCircle />} color="success" />
-                  <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Disinterest" icon={<Phone />} color="danger" />
-                  <StatCard title="Pending Value" value={stats?.pendingRevenue || 0} sub="INR Projected" icon={<IndianRupee />} color="info" />
-                  <StatCard title="Revenue" value={stats?.totalPayments || 0} sub="INR Confirmed" icon={<IndianRupee />} color="success" />
+                  <StatCard title="Total Managed" value={stats?.leadStats?.TOTAL || 0} sub="Global Operational Records" icon={<Users />} color="primary" />
+                  <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Paid/Partial Cycle" icon={<CheckCircle />} color="success" />
+                  <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Off-Pitch Terminations" icon={<Phone />} color="danger" />
+                  <StatCard title="Pending Value" value={stats?.pendingRevenue || 0} sub="INR Projected Margin" icon={<IndianRupee />} color="info" />
+                  <StatCard title="Revenue" value={stats?.totalPayments || 0} sub="INR Confirmed Trans" icon={<IndianRupee />} color="success" />
                 </div>
               </div>
 
-              <div className="col-12">
-                <div className="premium-card overflow-hidden">
-                  <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                    <h5 className="fw-semibold mb-0 text-white small">Team Assignment Matrix</h5>
-                  </div>
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0 table-dark border-0">
-                      <thead className="bg-dark bg-opacity-50 border-0">
-                        <tr className="small fw-semibold text-muted">
-                          <th className="ps-4">Staff Node</th>
-                          <th>Role</th>
-                          <th className="text-center">Leads</th>
-                          <th className="text-center">Converted</th>
-                          <th className="text-center">Lost</th>
-                          <th className="pe-4 text-end">Success %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performance.slice(0, 10).map(p => (
-                          <tr key={p.userId} className="table-row border-white border-opacity-5">
-                            <td
-                              className="ps-4 table-cell fw-semibold text-primary"
-                              onClick={() => setFilters({...filters, userId: p.userId})}
-                              style={{ cursor: 'pointer' }}
-                              title="Click to drill into this member's data"
-                            >{p.username}</td>
-                            <td><span className="badge bg-secondary-subtle text-secondary small">{p.role}</span></td>
-                            <td className="text-center table-cell fw-semibold">{p.totalLeads}</td>
-                            <td className="text-center table-cell text-success fw-semibold">{p.convertedLeads || 0}</td>
-                            <td className="text-center table-cell text-danger fw-semibold">{p.lostLeads || 0}</td>
-                            <td className="pe-4 table-cell text-end text-primary fw-semibold">
-                              {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+              <div className="col-12 text-main">
+                <Card title="Management Matrix" subtitle="Global User Efficiency Snapshot">
+                  <Table 
+                    headers={[
+                      'Staff Node', 
+                      'Operational Slot', 
+                      <div className="text-center">Load</div>, 
+                      <div className="text-center">Success</div>, 
+                      <div className="text-center">Risk</div>, 
+                      'Sync Rate'
+                    ]}
+                    data={performance.slice(0, 10)}
+                    renderRow={(p) => (
+                      <>
+                        <td
+                          className="ps-4 fw-bold text-primary cursor-pointer"
+                          onClick={() => setFilters({...filters, userId: p.userId})}
+                          title="Click to drill into this member's data"
+                        >{p.username}</td>
+                        <td><span className="ui-badge bg-surface text-muted small">{p.role}</span></td>
+                        <td className="text-center fw-bold">{p.totalLeads}</td>
+                        <td className="text-center text-success fw-bold">{p.convertedLeads || 0}</td>
+                        <td className="text-center text-danger fw-bold">{p.lostLeads || 0}</td>
+                        <td className="pe-4 text-end text-primary fw-black">
+                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                        </td>
+                      </>
+                    )}
+                  />
+                </Card>
               </div>
             </div>
           </div>
         )}
 
-        {activeTab === 'users' && (
+         {activeTab === 'users' && (
           <div className="row g-4 animate-fade-in">
             <div className="col-12 col-xl-4">
-               <div className="card h-100 overflow-hidden">
-                  <div className="card-body p-4">
-                    <div className="d-flex align-items-center gap-2 mb-1">
-                        <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
-                            <UserPlus size={18} />
-                        </div>
-                        <h5 className="fw-black mb-0 text-white" style={{ fontSize: '16px' }}>Provision Access</h5>
-                    </div>
-                    <p className="text-muted fw-bold opacity-50 small mb-4 text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Staff Onboarding</p>
-                    
-                    <form className="d-flex flex-column gap-3" onSubmit={(e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.target);
-                      const data = Object.fromEntries(formData.entries());
-                      data.permissions = formData.getAll('permissions');
-                      handleCreateUser(data);
-                      e.target.reset();
-                    }}>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Full Name</label>
-                           <input name="name" type="text" className="glass-input w-100" placeholder="John Doe" required />
-                       </div>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Email Terminal</label>
-                           <input name="email" type="email" className="glass-input w-100" placeholder="john@nexus.com" required />
-                       </div>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Mobile</label>
-                           <input name="mobile" type="text" className="glass-input w-100" placeholder="+91 0000000000" required />
-                       </div>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Initial Cipher</label>
-                           <input name="password" type="password" className="glass-input w-100" required />
-                       </div>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Designation</label>
-                           <select name="role" className="glass-input w-100" required>
-                              <option value="">Select Role</option>
-                              <option value="ADMIN">System Administrator</option>
-                              <option value="MANAGER">Branch Manager</option>
-                              <option value="TEAM_LEADER">Team Leader</option>
-                              <option value="ASSOCIATE">Associate Staff</option>
-                           </select>
-                       </div>
-                       <div>
-                           <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '10px' }}>Access Privileges</label>
-                           <div className="bg-dark p-3 rounded-3 shadow-sm overflow-auto text-white border border-secondary border-opacity-25" style={{ maxHeight: '180px', backgroundColor: '#1e2024' }}>
-                              <div className="row g-2">
-                                 {availablePermissions.map(perm => (
-                                    <div key={perm} className="col-12">
-                                       <div className="form-check">
-                                          <input 
-                                             className="form-check-input bg-dark border-secondary" 
-                                             type="checkbox" 
-                                             name="permissions" 
-                                             value={perm} 
-                                             id={`new-perm-${perm}`} 
-                                          />
-                                          <label className="form-check-label small fw-bold" style={{ fontSize: '11px' }} htmlFor={`new-perm-${perm}`}>
-                                             {perm.replace(/_/g, ' ')}
-                                          </label>
-                                       </div>
-                                    </div>
-                                 ))}
-                              </div>
-                           </div>
-                       </div>
-                       <button type="submit" className="btn-premium w-100 mt-2 py-3 text-uppercase tracking-widest fw-bold" style={{ fontSize: '11px' }}>Initialize Account</button>
-                    </form>
-                  </div>
-               </div>
+               <Card title="Add New User" subtitle="Create System Access">
+                  <form className="d-flex flex-column gap-2" onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData.entries());
+                    data.permissions = formData.getAll('permissions');
+                    handleCreateUser(data);
+                    e.target.reset();
+                  }}>
+                     <Input label="Full Name" name="name" placeholder="John Doe" required />
+                     <Input label="Email Address" name="email" type="email" placeholder="john@nexus.com" required />
+                     <Input label="Mobile Number" name="mobile" placeholder="+91 0000000000" required />
+                     <Input label="Password" name="password" type="password" required />
+                     
+                     <div className="mb-3">
+                         <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '0.65rem' }}>Select Role</label>
+                         <select name="role" className="ui-input py-2" required>
+                            <option value="" className="text-dark">Select Role...</option>
+                            <option value="ADMIN" className="text-dark">System Administrator</option>
+                            <option value="MANAGER" className="text-dark">Branch Manager</option>
+                            <option value="TEAM_LEADER" className="text-dark">Team Leader</option>
+                            <option value="ASSOCIATE" className="text-dark">Associate Staff</option>
+                         </select>
+                     </div>
+
+                     <div className="mb-4">
+                         <label className="text-muted fw-bold small text-uppercase mb-2 d-block" style={{ fontSize: '0.65rem' }}>Access Privileges</label>
+                         <div className="custom-scroll p-3 bg-surface rounded-3 border border-white border-opacity-5" style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                            <div className="row g-2">
+                               {availablePermissions.map(perm => (
+                                  <div key={perm} className="col-12">
+                                     <div className="form-check">
+                                        <input className="form-check-input" type="checkbox" name="permissions" value={perm} id={`perm-${perm}`} />
+                                        <label className="form-check-label small fw-bold text-muted ms-1" htmlFor={`perm-${perm}`}>
+                                           {perm.replace(/_/g, ' ')}
+                                        </label>
+                                     </div>
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                     </div>
+                     <Button type="submit" className="w-100 py-3 shadow-glow">PROVISION USER</Button>
+                  </form>
+               </Card>
             </div>
 
             <div className="col-12 col-xl-8">
-               <div className="card h-100 overflow-hidden">
-                  <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                     <h5 className="fw-black mb-0 text-white">Active Operational Staff</h5>
-                  </div>
-                  <div className="table-responsive custom-scroll">
-                     <table className="table table-hover align-middle mb-0 table-dark border-0">
-                        <thead>
-                           <tr className="text-muted small fw-bold text-uppercase tracking-wider border-bottom border-white border-opacity-5" style={{ fontSize: '10px' }}>
-                              <th className="ps-4">User Details</th>
-                              <th>Role</th>
-                              <th className="pe-4 text-end">Management</th>
-                           </tr>
-                        </thead>
-                        <tbody className="border-0">
-                           {users.map(u => (
-                              <tr key={u.id} className="border-bottom border-white border-opacity-5 transition-all">
-                                 <td className="ps-4 py-4">
-                                    <div className="d-flex align-items-center gap-3">
-                                       <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary text-center d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
-                                          <Users size={18} />
-                                       </div>
-                                       <div>
-                                          <p className="mb-0 fw-bold text-truncate text-white" style={{ maxWidth: '200px' }}>{u.name}</p>
-                                          <small className="text-muted fw-medium small opacity-75">{u.email}</small>
-                                       </div>
-                                    </div>
-                                 </td>
-                                 <td>
-                                    <span className={`badge rounded-sm px-2 py-1 text-uppercase fw-black ${
-                                       u.role === 'ADMIN' ? 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20' : 
-                                       u.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20' : 
-                                       'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20'
-                                    }`} style={{ fontSize: '9px' }}>
-                                       {u.role.toLowerCase().replace(/_/g, ' ')}
-                                    </span>
-                                 </td>
-                                 <td className="pe-4 text-end">
-                                    <div className="d-flex align-items-center justify-content-end gap-1">
-                                       <button onClick={() => handleEditUser(u)} className="btn btn-sm btn-link text-white opacity-40 hover-opacity-100 p-2 transition-all"><Edit size={16} /></button>
-                                       <button onClick={() => handleDeleteUser(u.id)} className="btn btn-sm btn-link text-danger opacity-40 hover-opacity-100 p-2 transition-all" disabled={u.email === user?.email}><Trash2 size={16} /></button>
-                                    </div>
-                                 </td>
-                              </tr>
-                           ))}
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
+               <Card title="Staff Directory" subtitle="Manage System Access">
+                  <Table 
+                    headers={['User Details', 'Designation', 'Actions']}
+                    data={users}
+                    renderRow={(u) => (
+                      <>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-3 py-1">
+                             <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary text-center d-flex align-items-center justify-content-center border border-primary border-opacity-10" style={{ width: '36px', height: '36px' }}>
+                                <Users size={16} />
+                             </div>
+                             <div>
+                                <p className="mb-0 fw-bold text-main small">{u.name}</p>
+                                <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>{u.email}</small>
+                             </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="d-flex flex-column gap-1">
+                            <span className={`ui-badge text-uppercase fw-black ${
+                               u.role === 'ADMIN' ? 'bg-danger bg-opacity-10 text-danger border-danger border-opacity-20' : 
+                               u.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning border-warning border-opacity-20' : 
+                               'bg-primary bg-opacity-10 text-primary border-primary border-opacity-20'
+                            }`} style={{fontSize: '8px'}}>
+                               {u.role.replace(/_/g, ' ')}
+                            </span>
+                            <span className={`fw-black text-uppercase small ${u.active ? 'text-success' : 'text-danger opacity-50'}`} style={{ fontSize: '7px', letterSpacing: '0.05em' }}>
+                               {u.active ? '• Active Node' : '• Inactive Node'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="pe-4 text-end">
+                           <div className="d-flex align-items-center justify-content-end gap-1">
+                              <button onClick={() => handleEditUser(u)} className="btn btn-link text-muted p-2 opacity-50 hover-opacity-100" title="Edit Node"><Edit size={16} /></button>
+                              <button 
+                                onClick={() => handleDeleteUser(u.id)} 
+                                className={`btn btn-link p-2 opacity-50 hover-opacity-100 ${u.active ? 'text-danger' : 'text-success'}`} 
+                                disabled={u.email === user?.email}
+                                title={u.active ? "Deactivate Node" : "Activate Node"}
+                              >
+                                <Power size={16} />
+                              </button>
+                           </div>
+                        </td>
+                      </>
+                    )}
+                  />
+               </Card>
             </div>
           </div>
         )}
@@ -424,18 +408,17 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'pipeline' && (
-          <div className="card overflow-hidden animate-fade-in">
+          <div className="premium-card overflow-hidden animate-fade-in shadow-lg">
              <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
                 <div>
-                    <h5 className="fw-black mb-0 text-white">System Pipeline Overview</h5>
-                    <small className="text-muted fw-bold opacity-50 small text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Global Operational Ledger</small>
+                    <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Global Pipeline Ledger</h5>
+                    <small className="text-muted fw-bold opacity-50 small text-uppercase tracking-wider" style={{ fontSize: '9px' }}>IDENTIFICATION & ASSIGNMENT NODE</small>
                 </div>
-                <button className="btn-premium btn-sm px-4" onClick={() => fetchData()}>Live Sync</button>
+                <button className="ui-btn ui-btn-primary btn-sm px-4 rounded-pill shadow-glow" onClick={() => fetchData()}>LIVE SYNC</button>
              </div>
              <div className="card-body p-0">
                 <LeadsTable
                   leads={filteredLeadsList}
-                  theme="dark"
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
                   filterUnassigned={filterUnassigned}
@@ -453,12 +436,28 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'ingestion' && (
+          <div className="animate-fade-in h-100">
+            <BulkUploadModal 
+              isOpen={true}
+              isInline={true}
+              onClose={() => setActiveTab('pipeline')}
+              onSuccess={handleSync}
+              assignees={users.filter(u => u.role === 'ASSOCIATE')}
+            />
+          </div>
+        )}
+
         {activeTab === 'attendance-logs' && (
-          <AttendanceDashboard role="ADMIN" />
+          <div className="animate-fade-in">
+             <AttendanceDashboard role="ADMIN" />
+          </div>
         )}
 
         {activeTab === 'attendance-settings' && (
-          <AttendanceSettings />
+          <div className="animate-fade-in">
+             <AttendanceSettings />
+          </div>
         )}
 
         {activeTab === 'call-logs' && (
@@ -466,12 +465,15 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 'revenue' && (
-          <div className="d-flex flex-column gap-4 animate-fade-in h-100">
-             <div className="d-flex align-items-center gap-2 mb-1">
-                <div className="p-1.5 bg-primary bg-opacity-10 rounded text-primary">
+          <div className="d-flex flex-column gap-4 animate-fade-in">
+             <div className="d-flex align-items-center gap-3 mb-1">
+                <div className="p-2 bg-primary bg-opacity-10 rounded text-primary border border-primary border-opacity-10">
                     <TrendingUp size={18} />
                 </div>
-                <h5 className="fw-black mb-0 text-white">Financial Transmission Ledger</h5>
+                <div>
+                   <h5 className="fw-black mb-0 text-main text-uppercase small tracking-widest">Financial Transmission Ledger</h5>
+                   <p className="text-muted small mb-0 fw-bold opacity-50" style={{fontSize: '9px'}}>AGGREGATED TRANSACTIONAL ARCHIVE</p>
+                </div>
             </div>
             <PaymentHistory role="ADMIN" />
           </div>
@@ -479,14 +481,16 @@ const AdminDashboard = () => {
       </div>
 
       <UserEditModal 
+        key={editingUser?.id}
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)} 
         user={editingUser} 
         setUser={setEditingUser} 
-        onSubmit={handleUpdateUser} 
+        onSubmit={handleUpdateUser}
         roles={[{id: 1, name: 'ADMIN'}, {id: 2, name: 'MANAGER'}, {id: 3, name: 'TEAM_LEADER'}, {id: 4, name: 'ASSOCIATE'}]} 
         permissions={availablePermissions}
         teamLeaders={users}
+        shifts={availableShifts}
       />
 
       <InvoiceModal 

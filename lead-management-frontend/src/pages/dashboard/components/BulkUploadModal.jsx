@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Download } from 'lucide-react';
 import { toast } from 'react-toastify';
 import managerService from '../../../services/managerService';
+import { useTheme } from '../../../context/ThemeContext';
+import { useAuth } from '../../../context/AuthContext';
 
 const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline = false }) => {
+    const { isDarkMode } = useTheme();
+    const { user: currentUser } = useAuth();
+    const isAssociate = currentUser?.role === 'ASSOCIATE';
+    
     const [file, setFile] = useState(null);
     const [assignedToIds, setAssignedToIds] = useState([]);
     const [uploading, setUploading] = useState(false);
@@ -88,15 +95,15 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
             {/* Header - Only if inline or first step */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div className="d-flex align-items-center gap-3">
-                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-3">
+                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-3 shadow-glow">
                         <Upload size={24} />
                     </div>
                     <div>
-                        <h5 className="fw-bold text-white mb-0">Lead Ingestion Hub</h5>
-                        <p className="text-muted small mb-0">Import and distribute datasets</p>
+                        <h5 className="fw-black text-main mb-0 text-uppercase tracking-widest">Lead Ingestion Hub</h5>
+                        <p className="text-muted small mb-0 fw-bold opacity-75">Import and distribute datasets</p>
                     </div>
                 </div>
-                {!isInline && <button type="button" className="btn-close btn-close-white shadow-none" onClick={onClose}></button>}
+                {!isInline && <button type="button" className={`btn-close ${isDarkMode ? 'btn-close-white' : ''} shadow-none`} onClick={onClose}></button>}
             </div>
 
             {!uploadResult ? (
@@ -106,58 +113,57 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                             <div className="flex-grow-1 d-flex flex-column gap-3 h-100">
                                 <div 
                                     className={`p-5 rounded-4 border-2 border-dashed d-flex flex-column align-items-center justify-content-center transition-smooth flex-grow-1 ${
-                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 bg-black bg-opacity-40'
+                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 bg-surface'
                                     }`}
                                     onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
-                                    style={{ minHeight: '250px', backgroundColor: '#090a11' }}
+                                    style={{ minHeight: '250px' }}
                                 >
                                     <input type="file" className="d-none" id="csvFile" accept=".csv" onChange={handleFileChange} />
                                     {!file ? (
                                         <div className="text-center">
-                                            <div className="p-3 bg-white bg-opacity-5 rounded-circle mb-3 d-inline-block shadow-sm">
+                                            <div className="p-3 bg-surface rounded-circle mb-3 d-inline-block shadow-sm">
                                                 <FileText size={42} className="text-muted" />
                                             </div>
-                                            <h6 className="text-white fw-bold mb-1">Upload CSV Data</h6>
-                                            <p className="text-muted small mb-3">Drag and drop file here</p>
-                                            <label htmlFor="csvFile" className="btn btn-primary btn-sm px-4 rounded-pill fw-black shadow-glow border-0 text-uppercase" style={{ fontSize: '10px' }}>Browse Files</label>
+                                            <h6 className="text-main fw-black mb-1 text-uppercase tracking-widest small">Upload CSV Data</h6>
+                                            <p className="text-muted small mb-3 fw-bold opacity-75">Drag and drop file here</p>
+                                            <label htmlFor="csvFile" className="btn btn-primary px-5 rounded-pill fw-black shadow-glow border-0 text-uppercase" style={{ fontSize: '10px' }}>Browse Files</label>
                                         </div>
                                     ) : (
                                         <div className="text-center animate-fade-in">
-                                            <div className="p-3 bg-success bg-opacity-10 rounded-circle mb-3 d-inline-block">
+                                            <div className="p-3 bg-success bg-opacity-10 rounded-circle mb-3 d-inline-block shadow-glow">
                                                 <CheckCircle2 size={42} className="text-success" />
                                             </div>
-                                            <h6 className="text-white fw-bold mb-1 text-truncate" style={{maxWidth: '200px'}}>{file.name}</h6>
-                                            <p className="text-muted small mb-3">{(file.size / 1024).toFixed(2)} KB ready</p>
-                                            <button type="button" className="btn btn-link btn-sm text-danger text-decoration-none" onClick={() => setFile(null)}>Remove</button>
+                                            <h6 className="text-main fw-black mb-1 text-truncate" style={{maxWidth: '200px'}}>{file.name}</h6>
+                                            <p className="text-muted small mb-3 fw-bold">{(file.size / 1024).toFixed(2)} KB ready</p>
+                                            <button type="button" className="btn btn-link btn-sm text-danger text-decoration-none fw-bold" onClick={() => setFile(null)}>Remove</button>
                                         </div>
                                     )}
                                 </div>
-                                <div className="alert bg-primary bg-opacity-5 border-primary border-opacity-10 rounded-4 d-flex gap-3 mb-0">
+                                <div className="alert bg-primary bg-opacity-5 border-primary border-opacity-10 rounded-4 d-flex gap-3 mb-0 align-items-center">
                                     <AlertCircle size={20} className="text-primary flex-shrink-0" />
-                                    <div className="small text-primary opacity-75">Format: <strong>Name, Email, Mobile</strong>. First row header.</div>
+                                    <div className="small text-primary fw-bold opacity-75">Schema Requirement: <strong>Name, Email, Mobile</strong></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-lg-6">
-                            <div className="bg-dark bg-opacity-40 p-4 rounded-4 border border-white border-opacity-5 h-100 d-flex flex-column">
+                        <div className={isAssociate ? "d-none" : "col-lg-6"}>
+                            <div className="bg-surface bg-opacity-40 p-4 rounded-4 border border-white border-opacity-5 h-100 d-flex flex-column shadow-sm">
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <label className="small fw-bold text-muted text-uppercase mb-0" style={{ fontSize: '10px', letterSpacing: '1px' }}>Assignment Strategy</label>
-                                    <div className="btn-group btn-group-sm rounded-pill p-1 bg-black bg-opacity-50 border border-white border-opacity-5 shadow-sm">
-                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'SINGLE' ? 'btn-primary' : 'text-muted hover-text-white'}`} onClick={() => {setAssignMode('SINGLE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SINGLE</button>
-                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'DISTRIBUTE' ? 'btn-primary' : 'text-muted hover-text-white'}`} onClick={() => {setAssignMode('DISTRIBUTE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SPLIT</button>
+                                    <div className="btn-group btn-group-sm rounded-pill p-1 bg-surface border border-white border-opacity-5 shadow-sm">
+                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'SINGLE' ? 'btn-primary shadow-glow' : 'text-muted'}`} onClick={() => {setAssignMode('SINGLE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SINGLE</button>
+                                        <button type="button" className={`btn rounded-pill px-3 border-0 py-1 small transition-all ${assignMode === 'DISTRIBUTE' ? 'btn-primary shadow-glow' : 'text-muted'}`} onClick={() => {setAssignMode('DISTRIBUTE'); setAssignedToIds([]);}} style={{fontSize: '9px'}}>SPLIT</button>
                                     </div>
                                 </div>
 
-                                <div className="flex-grow-1 overflow-auto custom-scroll pe-2 mb-3" style={{ maxHeight: '200px' }}>
+                                <div className="flex-grow-1 overflow-auto custom-scroll pe-2 mb-3 d-flex flex-column gap-2" style={{ maxHeight: '240px' }}>
                                     <button 
                                         type="button"
                                         onClick={() => setAssignedToIds([])}
-                                        className={`w-100 text-start p-3 rounded-4 border mb-2 transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary glow-border' : 'border-white border-opacity-5 bg-black bg-opacity-30 text-muted'}`}
-                                        style={{ backgroundColor: assignedToIds.length === 0 ? '' : '#0d111b' }}
+                                        className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 bg-card text-main'}`}
                                     >
                                         <div className="d-flex align-items-center justify-content-between">
-                                            <span className="fw-bold">Direct Pool (Unassigned)</span>
+                                            <span className="fw-black text-uppercase small tracking-widest" style={{fontSize: '10px'}}>Unassigned Pool</span>
                                             {assignedToIds.length === 0 && <CheckCircle2 size={16} />}
                                         </div>
                                     </button>
@@ -167,11 +173,13 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                             key={user.id} 
                                             type="button"
                                             onClick={() => toggleAssociate(user.id)}
-                                            className={`w-100 text-start p-3 rounded-4 border mb-2 transition-smooth small ${assignedToIds.includes(user.id) ? 'border-primary bg-primary bg-opacity-10 text-primary glow-border' : 'border-white border-opacity-5 bg-black bg-opacity-30 text-muted'}`}
-                                            style={{ backgroundColor: assignedToIds.includes(user.id) ? '' : '#0d111b' }}
+                                            className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.includes(user.id) ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 bg-card text-main'}`}
                                         >
                                             <div className="d-flex align-items-center justify-content-between">
-                                                <span className="fw-bold text-truncate">{user.name} <small className="opacity-50 ms-1 fw-normal text-uppercase" style={{fontSize: '8px'}}>{user.role?.replace('_', ' ') || 'User'}</small></span>
+                                                <div className="d-flex flex-column">
+                                                   <span className="fw-black text-main">{user.name}</span>
+                                                   <small className="opacity-50 fw-bold text-uppercase" style={{fontSize: '8px'}}>{user.role?.replace('_', ' ') || 'User Asset'}</small>
+                                                </div>
                                                 {assignedToIds.includes(user.id) && <CheckCircle2 size={16} />}
                                             </div>
                                         </button>
@@ -179,14 +187,11 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                 </div>
 
                                 <div className="mt-auto">
-                                    <div className="p-2 bg-black bg-opacity-20 rounded-3 border border-white border-opacity-5">
+                                    <div className="p-3 bg-surface bg-opacity-50 rounded-4 border border-white border-opacity-5">
                                         <div className="d-flex justify-content-between align-items-center small">
-                                            <span className="text-muted">Target Assignees:</span>
-                                            <span className="text-white fw-bold">{assignedToIds.length || 'Pool'}</span>
+                                            <span className="text-muted fw-bold">Target Propagation:</span>
+                                            <span className="text-main fw-black text-uppercase tracking-widest" style={{fontSize: '10px'}}>{assignedToIds.length ? `${assignedToIds.length} SELECTED` : 'POOL'}</span>
                                         </div>
-                                        {assignMode === 'DISTRIBUTE' && assignedToIds.length > 1 && (
-                                            <div className="text-primary mt-1 fw-bold" style={{fontSize: '9px'}}>ROUND-ROBIN DISTRIBUTION ENABLED</div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -244,14 +249,27 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
     );
 
     if (isInline) return renderContent();
-
-    return (
-        <div className="modal-backdrop fade show d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(2, 6, 17, 0.95)', backdropFilter: 'blur(12px)', zIndex: 2000 }}>
-            <div className="modal-dialog modal-xl modal-dialog-centered w-100 p-3" style={{ maxWidth: '1000px' }}>
+    
+    const portalContent = (
+        <div 
+          className="modal-backdrop fade show d-flex align-items-center justify-content-center" 
+          style={{ 
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: isDarkMode ? 'rgba(2, 6, 17, 0.95)' : 'rgba(255, 255, 255, 0.8)', 
+            backdropFilter: 'blur(12px)', 
+            zIndex: 1100000 
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+        >
+            <div className="modal-dialog modal-xl modal-dialog-centered w-100 p-3" style={{ maxWidth: '1000px', pointerEvents: 'all' }} onClick={e => e.stopPropagation()}>
                 {renderContent()}
             </div>
         </div>
     );
+    
+    return ReactDOM.createPortal(portalContent, document.body);
 };
 
 export default BulkUploadModal;

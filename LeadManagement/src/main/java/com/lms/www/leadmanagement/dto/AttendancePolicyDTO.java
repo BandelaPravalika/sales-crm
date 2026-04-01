@@ -18,6 +18,8 @@ public class AttendancePolicyDTO {
     @NotNull(message = "Office ID is required")
     private Long officeId;
 
+    private String officeName;
+
     @NotBlank(message = "Short break start time is required")
     private String shortBreakStartTime;
 

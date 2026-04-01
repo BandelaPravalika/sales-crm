@@ -1,161 +1,136 @@
+import React, { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import { Send, Clock, CheckCircle, XCircle, ExternalLink, Copy, MessageSquare, MessageCircle, BookOpen, Phone, Heart, Zap, TrendingUp } from 'lucide-react';
+import { Button, Card, Input, Table } from './common/Components';
 import RejectionModal from './RejectionModal';
-import { useState } from 'react';
 import { toast } from 'react-toastify';
 import CallOutcomeModal from './CallOutcomeModal';
 import GeneratePaymentLinkModal from './GeneratePaymentLinkModal';
 
-const LeadTable = ({ leads, onSendPaymentLink, onViewInvoice, onUpdateStatus, onRecordCallOutcome, onAssignLead, associates = [], role, showActions = true, theme }) => {
+const LeadTable = ({ 
+  leads, 
+  onSendPaymentLink, 
+  onViewInvoice, 
+  onUpdateStatus, 
+  onRecordCallOutcome, 
+  onAssignLead, 
+  associates = [], 
+  role, 
+  showActions = true,
+  currentUser = null 
+}) => {
+  const { isDarkMode } = useTheme();
   const [selectedOutcomeLead, setSelectedOutcomeLead] = useState(null);
-  const [selectedRejectionLead, setSelectedRejectionLead] = useState(null);
   const [selectedLinkLead, setSelectedLinkLead] = useState(null);
 
-  const handleWhatsAppShare = (lead) => {
-    if (!lead.paymentLink) {
-      toast.warning('Please click "Send Link" to generate a payment link first.');
-      return;
-    }
-    let mobile = lead.mobile.replace(/\D/g, ''); // Remove non-digits
-    if (mobile.length === 10) {
-      mobile = '91' + mobile; // Default to India country code
-    }
-    const message = `Hello ${lead.name}, please complete your payment for your admission here: ${lead.paymentLink.trim()}`;
-    window.open(`https://wa.me/${mobile}?text=${encodeURIComponent(message)}`, '_blank');
-  };
+  const isLocked = (status) => ['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(status);
 
-  const handleCopyLink = (lead) => {
-    if (!lead.paymentLink) {
-      toast.warning('Please click "Send Link" to generate a payment link first.');
-      return;
-    }
-    navigator.clipboard.writeText(lead.paymentLink);
-    toast.success('Payment link copied to clipboard!');
-  };
+  const getStatusBadge = (status) => {
+    let variant = 'bg-surface text-muted';
+    if (['NEW', 'PENDING'].includes(status)) variant = 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10';
+    if (isLocked(status)) variant = 'bg-success bg-opacity-10 text-success border border-success border-opacity-10';
+    if (['WORKING', 'CONTACTED', 'INTERESTED'].includes(status)) variant = 'bg-info bg-opacity-10 text-info border border-info border-opacity-10';
+    if (['EMI', 'RETRY', 'FOLLOW_UP'].includes(status)) variant = 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-10';
+    if (['LOST', 'NOT_INTERESTED', 'PAYMENT_FAILED'].includes(status)) variant = 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-10';
 
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'NEW': return 'badge bg-primary';
-      case 'PAID': return 'badge bg-success';
-      case 'CONTACTED': return 'badge bg-info text-dark';
-      case 'INTERESTED': return 'badge bg-warning text-dark';
-      case 'UNDER_REVIEW': return 'badge bg-purple text-white';
-      case 'CONVERTED': return 'badge bg-success text-white';
-      case 'LOST': return 'badge bg-secondary';
-      case 'PAYMENT_FAILED': return 'badge bg-danger';
-      case 'NOT_INTERESTED': return 'badge bg-secondary';
-      case 'EMI': return 'badge bg-warning text-dark';
-      case 'RETRY': return 'badge bg-warning text-dark';
-      case 'WORKING': return 'badge bg-info text-dark';
-      case 'PENDING_MESSAGES': return 'badge bg-primary';
-      default: return 'badge bg-dark-subtle text-muted';
-    }
+    return (
+      <span className={`ui-badge ${variant}`} style={{ minWidth: '80px', textAlign: 'center', display: 'inline-block' }}>
+        {status || 'IDENTIFIED'}
+      </span>
+    );
   };
 
   return (
     <div className="w-100 animate-fade-in">
-      <div className="p-0">
-        <div className="table-responsive">
-          <table className={`table table-hover align-middle mb-0 table-dark border-0 glass-table`}>
-            <thead>
-              <tr className="text-muted small fw-bold text-uppercase tracking-widest border-bottom border-white border-opacity-5">
-                <th className="ps-4 py-3">Lead Entity</th>
-                <th className="py-3">Current Status</th>
-                <th className="py-3">Assignment Node</th>
-                <th className="py-3">Operational Notes</th>
-                {showActions && <th className="pe-4 text-end py-3">Engagement</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead.id} className="table-row border-bottom border-white border-opacity-5 transition-all">
-                  <td className="ps-4 table-cell">
-                    <div className="d-flex flex-column">
-                      <span className="value">{lead.name}</span>
-                      <small className="label" style={{ fontSize: '10px' }}>{lead.email}</small>
-                      <small className="value" style={{ fontSize: '11px', opacity: 0.7 }}>{lead.mobile}</small>
-                    </div>
-                  </td>
-                  <td className="table-cell">
-                    <span className={getStatusBadgeClass(lead.status)}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="table-cell">
-                    {role === 'TEAM_LEADER' && associates.length > 0 ? (
-                      <select 
-                        className="form-select form-select-sm bg-dark bg-opacity-50 text-white border-white border-opacity-10 shadow-none py-0"
-                        style={{ fontSize: '10px', height: '24px', width: 'fit-content' }}
-                        value={lead.assignedToId || ""}
-                        onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
-                      >
-                        <option value="">Assign Associate...</option>
-                        {associates
-                          .filter(a => a.role === 'ASSOCIATE')
-                          .map((a) => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
-                          ))}
-                      </select>
-                    ) : (
-                      <span className="badge bg-secondary bg-opacity-25 text-muted px-2 py-1" style={{ fontSize: '10px' }}>
-                        {lead.assignedToName || (lead.assignedToId ? 'Assigned' : 'Unassigned')}
-                      </span>
-                    )}
-                  </td>
-                  <td className="table-cell">
-                    <div className="d-flex align-items-center gap-2 bg-secondary bg-opacity-10 border border-secondary border-opacity-25 rounded px-1 py-1 w-100" style={{ minWidth: '150px' }}>
-                      <MessageSquare size={12} className="text-muted" />
-                      <input 
-                        type="text" 
-                        placeholder="Add note..."
-                        className="form-control form-control-sm border-0 bg-transparent shadow-none p-0 text-white"
-                        style={{ fontSize: '12px' }}
-                        defaultValue={lead.note || ""}
-                      />
-                    </div>
-                  </td>
-                  {showActions && (
-                    <td className="text-end pe-4 table-cell">
-                      <div className="d-flex align-items-center justify-content-end gap-2">
-                        <button 
-                          className="btn btn-outline-primary btn-sm border-0 p-1 rounded-circle hover-bg-primary hover-text-white transition-smooth" 
-                          onClick={() => setSelectedOutcomeLead(lead)}
-                          title="Log Interaction"
-                        >
-                          <Phone size={14} />
-                        </button>
-                        <button className="btn btn-primary btn-sm rounded-pill px-3" onClick={() => setSelectedLinkLead(lead)} style={{ fontSize: '10px', height: '24px', display: 'flex', alignItems: 'center' }}>
-                          <Zap size={10} className="me-1" /> Link
-                        </button>
-                        {lead.status === 'PAID' && (
-                          <button 
-                            className="btn btn-success btn-sm rounded-pill px-3 border-0 shadow-sm" 
-                            style={{ fontSize: '10px', height: '24px', display: 'flex', alignItems: 'center', backgroundColor: '#10b981' }}
-                            onClick={() => onViewInvoice && onViewInvoice(lead)}
-                          >
-                            <BookOpen size={10} className="me-1" /> Invoice
-                          </button>
-                        )}
-                      </div>
-                    </td>
+      <Table 
+        headers={['Lead Entity', 'Current Status', 'Assignment Node', 'Operational Notes', ...(showActions ? ['Engagement'] : [])]}
+        data={leads}
+        renderRow={(lead) => (
+          <>
+            <td>
+              <div className="d-flex flex-column gap-0.5">
+                <span className="fw-bold text-main">{lead.name}</span>
+                <span className="text-muted small opacity-75">{lead.email}</span>
+                <span className="text-primary small fw-semibold">{lead.mobile}</span>
+              </div>
+            </td>
+            <td className="text-center">
+              {getStatusBadge(lead.status)}
+            </td>
+            <td>
+              {role === 'TEAM_LEADER' ? (
+                <select 
+                  className={`ui-input py-1 px-2 mb-0 ${isLocked(lead.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  style={{ fontSize: '11px', width: 'fit-content', border: isDarkMode ? 'none' : '1px solid #ddd' }}
+                  value={lead.assignedToId || ""}
+                  onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
+                  disabled={isLocked(lead.status)}
+                >
+                  <option value="">Assign...</option>
+                  {currentUser && currentUser.id && (
+                    <option key="me" value={currentUser.id} className="fw-black text-primary bg-primary bg-opacity-10 text-uppercase">
+                      ★ ME ({currentUser.name || 'Owner'})
+                    </option>
                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {leads.length === 0 && (
-            <div className="text-center p-5 text-muted fw-bold text-uppercase">
-              No leads found.
-            </div>
-          )}
-        </div>
-      </div>
+                  {associates && associates.length > 0 && (
+                    <optgroup label="Squad Nodes (Associates)">
+                      {associates.map((a) => (
+                        <option key={a.id} value={a.id}>↳ {a.name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              ) : (
+                <div className="d-flex align-items-center gap-2">
+                  <div className={`p-1 rounded-circle ${lead.assignedToId ? 'bg-success' : 'bg-muted opacity-25'}`} style={{ width: '6px', height: '6px' }}></div>
+                  <span className={`small fw-bold ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`}>
+                    {lead.assignedToName || 'Awaiting Node'}
+                  </span>
+                </div>
+              )}
+            </td>
+            <td>
+              <div className="d-flex align-items-center gap-2 bg-surface rounded-3 px-2 py-1.5 border" style={{ borderColor: 'var(--border-color)' }}>
+                <MessageSquare size={12} className="text-muted" />
+                <input 
+                  type="text" 
+                  placeholder="Annotate..."
+                  className="bg-transparent border-0 shadow-none p-0 text-main small"
+                  style={{ fontSize: '12px', outline: 'none', width: '100%' }}
+                  defaultValue={lead.note || ""}
+                />
+              </div>
+            </td>
+            {showActions && (
+              <td className="text-end">
+                <div className="d-flex align-items-center justify-content-end gap-2">
+                  <button 
+                    className="btn btn-link text-primary p-2 border-0" 
+                    onClick={() => setSelectedOutcomeLead(lead)}
+                  >
+                    <Phone size={16} />
+                  </button>
+                  <Button variant="primary" className="py-1 px-3" style={{ fontSize: '11px' }} onClick={() => setSelectedLinkLead(lead)}>
+                    <Zap size={12} className="me-1" /> LINK
+                  </Button>
+                  {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
+                    <Button variant="secondary" className="py-1 px-3" style={{ fontSize: '11px' }} onClick={() => onViewInvoice && onViewInvoice(lead)}>
+                      <BookOpen size={12} className="me-1" /> BILL
+                    </Button>
+                  )}
+                </div>
+              </td>
+            )}
+          </>
+        )}
+      />
 
       {selectedOutcomeLead && (
         <CallOutcomeModal 
           isOpen={!!selectedOutcomeLead}
           onClose={() => setSelectedOutcomeLead(null)}
           lead={selectedOutcomeLead}
-          theme={theme || 'dark'}
+          theme={isDarkMode ? 'dark' : 'light'}
           onSendPaymentLink={onSendPaymentLink}
           onSubmit={async (data) => {
             if (onRecordCallOutcome) {

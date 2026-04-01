@@ -4,6 +4,8 @@ import com.lms.www.leadmanagement.dto.UserDTO;
 import com.lms.www.leadmanagement.entity.Permission;
 import com.lms.www.leadmanagement.entity.Role;
 import com.lms.www.leadmanagement.entity.User;
+import com.lms.www.leadmanagement.entity.AttendanceShift;
+import com.lms.www.leadmanagement.repository.AttendanceShiftRepository;
 import com.lms.www.leadmanagement.repository.PermissionRepository;
 import com.lms.www.leadmanagement.repository.RoleRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
@@ -33,6 +35,12 @@ public class ManagerService {
     @Autowired
     private PermissionRepository permissionRepository;
 
+    @Autowired
+    private MailService mailService;
+
+    @Autowired
+    private AttendanceShiftRepository attendanceShiftRepository;
+
     public User getCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
@@ -52,7 +60,16 @@ public class ManagerService {
                 .role(tlRole)
                 .manager(manager)
                 .build();
-        return UserDTO.fromEntity(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        
+        // Send Credentials to Mail
+        try {
+            mailService.sendUserCredentials(savedUser.getEmail(), userDTO.getPassword(), savedUser.getName());
+        } catch (Exception e) {
+            System.err.println("CRITICAL: Failed to send Team Leader credentials email: " + e.getMessage());
+        }
+
+        return UserDTO.fromEntity(savedUser);
     }
 
     public List<UserDTO> getAllManagedUsers() {
@@ -112,7 +129,16 @@ public class ManagerService {
                 .manager(manager)
                 .supervisor(supervisor)
                 .build();
-        return UserDTO.fromEntity(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        
+        // Send Credentials to Mail
+        try {
+            mailService.sendUserCredentials(savedUser.getEmail(), userDTO.getPassword(), savedUser.getName());
+        } catch (Exception e) {
+            System.err.println("CRITICAL: Failed to send user credentials email: " + e.getMessage());
+        }
+
+        return UserDTO.fromEntity(savedUser);
     }
 
     public UserDTO assignToSupervisor(Long associateId, Long supervisorId) {
@@ -151,8 +177,19 @@ public class ManagerService {
             // Optional: Handle explicitly unassigning?
             // user.setSupervisor(null); 
         }
+
+        if (userDTO.getShiftId() != null) {
+            AttendanceShift shift = attendanceShiftRepository.findById(userDTO.getShiftId())
+                    .orElseThrow(() -> new RuntimeException("Shift not found: " + userDTO.getShiftId()));
+            user.setShift(shift);
+        } else {
+            user.setShift(null);
+        }
         
         if (userDTO.getPermissions() != null) {
+            System.out.println(">>> Updating permissions for user ID: " + user.getId() + " (" + user.getEmail() + ")");
+            System.out.println(">>> Requested Permissions: " + userDTO.getPermissions());
+
             java.util.Set<Permission> direct = new java.util.HashSet<>();
             for (String p : userDTO.getPermissions()) {
                 permissionRepository.findByName(p).ifPresent(direct::add);
@@ -161,13 +198,16 @@ public class ManagerService {
             boolean exactMatch = false;
             if (user.getRole() != null && user.getRole().getPermissions() != null) {
                 java.util.Set<String> rps = user.getRole().getPermissions().stream().map(Permission::getName).collect(Collectors.toSet());
+                System.out.println(">>> Role Permissions: " + rps);
                 if (rps.size() == direct.size() && rps.containsAll(userDTO.getPermissions())) {
                     exactMatch = true;
                 }
             }
             if (!exactMatch) {
+                System.out.println(">>> Result: DIRECT OVERRIDE applied.");
                 user.setDirectPermissions(direct);
             } else {
+                System.out.println(">>> Result: MATCHES ROLE, clearing overrides.");
                 user.getDirectPermissions().clear();
             }
         }

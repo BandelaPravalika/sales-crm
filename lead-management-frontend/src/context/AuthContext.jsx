@@ -19,8 +19,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
-      const { token, role, email: userEmail } = response.data;
-      const userData = { email: userEmail, role };
+      // Backend should return id, role, email, username
+      const { token, id, role, email: userEmail, username, name } = response.data;
+      const userData = { id, email: userEmail, role, username, name: name || username || userEmail.split('@')[0] };
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginDemo = (role) => {
     const userData = { 
+      id: 999,
       email: `demo_${role.toLowerCase()}@lms.com`, 
       role,
       name: `Demo ${role.charAt(0) + role.slice(1).toLowerCase().replace(/_/g, ' ')}`

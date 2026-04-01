@@ -1,39 +1,32 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-
-const getAuthHeader = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import api from '../api/api';
 
 export const attendanceService = {
   clockIn: async (lat, lng, accuracy, deviceId) => {
-    const response = await axios.post(`${API_URL}/attendance/clock-in`, {
+    const response = await api.post('/attendance/clock-in', {
       lat, lng, accuracy, deviceId
-    }, { headers: getAuthHeader() });
+    });
     return response.data;
   },
 
   trackLocation: async (lat, lng, accuracy, deviceId) => {
-    const response = await axios.post(`${API_URL}/attendance/track`, {
+    const response = await api.post('/attendance/track', {
       lat, lng, accuracy, deviceId
-    }, { headers: getAuthHeader() });
+    });
     return response.data;
   },
 
   clockOut: async () => {
-    const response = await axios.put(`${API_URL}/attendance/clock-out`, {}, { headers: getAuthHeader() });
+    const response = await api.put('/attendance/clock-out', {});
     return response.data;
   },
 
   getStatus: async () => {
-    const response = await axios.get(`${API_URL}/attendance/status`, { headers: getAuthHeader() });
+    const response = await api.get('/attendance/status');
     return response.data;
   },
 
   getMyLogs: async () => {
-    const response = await axios.get(`${API_URL}/attendance/my-logs`, { headers: getAuthHeader() });
+    const response = await api.get('/attendance/my-logs');
     return response.data;
   },
 
@@ -41,22 +34,20 @@ export const attendanceService = {
     const params = {};
     if (date) params.date = date;
     if (userId) params.userId = userId;
-    const response = await axios.get(`${API_URL}/admin/attendance/summaries`, { 
-      params, 
-      headers: getAuthHeader() 
-    });
+    const response = await api.get('/admin/attendance/summaries', { params });
     return response.data;
   },
   
   startBreak: async (type = 'SHORT') => {
-    const response = await axios.post(`${API_URL}/attendance/break/start?type=${type}`, {}, { headers: getAuthHeader() });
+    const response = await api.post(`/attendance/break/start?type=${type}`, {});
     return response.data;
   },
 
   endBreak: async () => {
-    const response = await axios.post(`${API_URL}/attendance/break/end`, {}, { headers: getAuthHeader() });
+    const response = await api.post('/attendance/break/end', {});
     return response.data;
   }
 };
 
 export default attendanceService;
+

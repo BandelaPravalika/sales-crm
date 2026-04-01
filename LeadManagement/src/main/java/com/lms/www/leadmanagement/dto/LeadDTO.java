@@ -33,8 +33,10 @@ public class LeadDTO {
     private LocalDateTime updatedAt;
     private Long updatedById;
     private String updatedByName;
+    private java.util.List<LeadNoteDTO> notes;
 
     public static LeadDTO fromEntity(Lead lead) {
+        if (lead == null) return null;
         return LeadDTO.builder()
                 .id(lead.getId())
                 .name(lead.getName())
@@ -56,6 +58,9 @@ public class LeadDTO {
                 .updatedAt(lead.getUpdatedAt())
                 .updatedById(lead.getUpdatedBy() != null ? lead.getUpdatedBy().getId() : null)
                 .updatedByName(lead.getUpdatedBy() != null ? lead.getUpdatedBy().getName() : null)
+                .notes(lead.getNotes() != null ? 
+                    lead.getNotes().stream().map(LeadNoteDTO::fromEntity).collect(java.util.stream.Collectors.toList()) : 
+                    new java.util.ArrayList<>())
                 .build();
     }
 }

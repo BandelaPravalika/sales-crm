@@ -38,10 +38,12 @@ public class User {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "manager_id")
+    @JsonIgnore
     private User manager;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supervisor_id")
+    @JsonIgnore
     private User supervisor;
 
     @Builder.Default
@@ -71,6 +73,9 @@ public class User {
     private java.util.Set<Permission> directPermissions = new java.util.HashSet<>();
 
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    private boolean active = true;
 
     @PrePersist
     protected void onCreate() {

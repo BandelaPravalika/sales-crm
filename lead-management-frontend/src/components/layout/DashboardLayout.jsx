@@ -4,56 +4,50 @@ import { useTheme } from '../../context/ThemeContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 
-const DashboardLayout = ({ children, activeTab, onTabChange, title, subtitle, role }) => {
+const DashboardLayout = ({ children, activeTab, onTabChange, role }) => {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 992);
-  const [isSidebarMobileVisible, setIsSidebarMobileVisible] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1200);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
-  const handleToggleSidebar = () => {
-    if (window.innerWidth > 992) {
-      setIsSidebarOpen(prev => !prev);
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const toggleSidebar = () => {
+    if (windowWidth > 992) {
+      setIsCollapsed(!isCollapsed);
     } else {
-      setIsSidebarMobileVisible(prev => !prev);
+      setIsMobileOpen(!isMobileOpen);
     }
   };
 
   return (
     <div className="dashboard-wrapper">
       <Sidebar
-        isOpen={window.innerWidth > 992 ? isSidebarOpen : isSidebarMobileVisible}
-        onClose={() => setIsSidebarMobileVisible(false)}
+        isOpen={window.innerWidth > 992 ? true : isMobileOpen}
+        onClose={() => setIsMobileOpen(false)}
         activeTab={activeTab}
         onTabChange={onTabChange}
         role={role || user?.role}
-        userEmail={user?.email}
-        isCollapsed={!isSidebarOpen}
-        onToggle={handleToggleSidebar}
+        isCollapsed={isCollapsed}
+        onToggle={toggleSidebar}
       />
 
-      <Navbar
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onLogout={logout}
-        role={role || user?.role}
-        userEmail={user?.email}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        onToggleSidebar={handleToggleSidebar}
-        className={!isSidebarOpen ? 'sidebar-closed' : ''}
-      />
-
-      <main className={`main-content ${!isSidebarOpen ? 'sidebar-closed' : ''}`} style={{ backgroundColor: 'var(--bg-body)' }}>
-        <div className="container-fluid animate-fade-in p-3">
-          {(title || subtitle) && (
-            <div className="mb-3 px-2">
-              {title && <h2 className="fw-black mb-0 text-white" style={{ fontSize: '1.25rem' }}>{title}</h2>}
-              {subtitle && <p className="text-muted small fw-bold text-uppercase mb-0" style={{ fontSize: '10px' }}>{subtitle}</p>}
-            </div>
-          )}
+      <div className={`main-content ${isCollapsed ? 'sidebar-closed' : ''}`} style={{ transition: 'margin-left 0.3s ease' }}>
+        <Navbar 
+          isCollapsed={isCollapsed} 
+          userEmail={user?.email} 
+          onLogout={logout} 
+          onToggleSidebar={toggleSidebar} 
+        />
+        
+        <div className="container-fluid p-4 animate-fade-in" style={{ marginTop: '20px' }}>
           {children}
         </div>
-      </main>
+      </div>
     </div>
   );
 };

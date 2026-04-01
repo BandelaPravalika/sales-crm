@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { UserPlus, Edit, Trash2, ChevronDown, ChevronRight, BarChart2, Users } from 'lucide-react';
+import { useTheme } from '../../../context/ThemeContext';
 
 const TeamManagement = ({ 
   teamLeaders, 
   roles, 
   permissions, 
-  theme, 
   handleCreateUser, 
   handleDeleteUser, 
   handleEditUser,
@@ -13,6 +13,7 @@ const TeamManagement = ({
   setSelectedPerfUserId,
   setActiveTab
 }) => {
+  const { isDarkMode } = useTheme();
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
@@ -39,19 +40,22 @@ const TeamManagement = ({
   return (
     <div className="animate-fade-in row g-4">
       <div className="col-12 col-xl-4">
-        <div className="premium-card overflow-hidden mb-4 h-100">
+        <div className="premium-card overflow-hidden mb-4 h-100 shadow-glow border-0">
           <div className="card-header bg-transparent p-4 border-0 d-flex align-items-center gap-3 border-bottom border-white border-opacity-5">
-             <div className="p-2 bg-primary bg-opacity-10 text-primary rounded shadow-sm">
+             <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle shadow-glow">
                <UserPlus size={20} />
              </div>
-             <h5 className="card-title fw-bold mb-0 text-uppercase tracking-wider text-white">Onboard Staff</h5>
+             <div>
+               <h6 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Onboard Staff</h6>
+               <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>INITIALIZE NEW IDENTITY NODE</small>
+             </div>
           </div>
           <form onSubmit={onSubmit} autoComplete="off" className="p-4">
-            <div className="row g-3">
+            <div className="row g-4">
               <div className="col-12">
-                <label className="form-label small fw-bold text-uppercase text-muted mb-1">Full Identity</label>
+                <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Full Name</label>
                 <input 
-                  className="form-control border-0 bg-dark text-white shadow-none fw-bold" 
+                  className="form-control border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
                   placeholder="Rahul Sharma" 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
@@ -59,19 +63,19 @@ const TeamManagement = ({
                 />
               </div>
               <div className="col-12">
-                <label className="form-label small fw-bold text-uppercase text-muted mb-1">Email Terminal</label>
+                <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Email Address</label>
                 <input 
-                  className="form-control border-0 bg-dark text-white shadow-none fw-bold" 
-                  placeholder="rahul@nexus.com" 
+                  className="form-control border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
+                  placeholder="rahul@example.com" 
                   value={formData.email} 
                   onChange={(e) => setFormData({...formData, email: e.target.value})} 
                   required 
                 />
               </div>
               <div className="col-12 col-md-6">
-                <label className="form-label small fw-bold text-uppercase text-muted mb-1">Mobile Contact</label>
+                <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Phone Number</label>
                 <input 
-                  className="form-control border-0 bg-dark text-white shadow-none fw-bold" 
+                  className="form-control border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
                   placeholder="+91 00000 00000" 
                   value={formData.mobile} 
                   onChange={(e) => setFormData({...formData, mobile: e.target.value})} 
@@ -79,10 +83,10 @@ const TeamManagement = ({
                 />
               </div>
               <div className="col-12 col-md-6">
-                <label className="form-label small fw-bold text-uppercase text-muted mb-1">Access Cipher</label>
+                <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Password</label>
                 <input 
                   type="password" 
-                  className="form-control border-0 bg-dark text-white shadow-none fw-bold" 
+                  className="form-control border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
                   placeholder="Secure string..." 
                   value={formData.password} 
                   onChange={(e) => setFormData({...formData, password: e.target.value})} 
@@ -90,33 +94,32 @@ const TeamManagement = ({
                 />
               </div>
               <div className="col-12">
-                <label className="form-label small fw-bold text-uppercase text-muted mb-1">Assigned Designation</label>
+                <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Role / Designation</label>
                 <select 
-                  className="form-select border-0 bg-dark text-white shadow-none fw-bold" 
+                  className="form-select border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
                   value={formData.role} 
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   required
                 >
-                  <option value="" className="bg-dark">Designation...</option>
-                  {roles.map(r => <option key={r.id} value={r.name} className="bg-dark">{r.name.replace(/_/g, ' ')}</option>)}
+                  <option value="" className="text-muted">Select Target Role...</option>
+                  {roles.map(r => <option key={r.id} value={r.name}>{r.name.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
 
-              {/* Strict Supervisor Selection: Associates MUST have a Team Leader */}
               {formData.role === 'ASSOCIATE' && (
                 <div className="col-12 animate-fade-in">
-                  <label className="form-label small fw-bold text-uppercase text-primary mb-1">Direct Node (Team Leader)</label>
+                  <label className="form-label small fw-black text-uppercase text-primary mb-2 tracking-widest" style={{ fontSize: '10px' }}>Reports To</label>
                   <select 
-                    className="form-select border-primary border-opacity-25 bg-dark text-white fw-bold shadow-none" 
+                    className="form-select border-primary border-opacity-25 bg-surface text-main fw-bold shadow-none py-2.5 rounded-3" 
                     value={formData.supervisorId} 
                     onChange={(e) => setFormData({...formData, supervisorId: e.target.value})}
                     required
                   >
-                    <option value="" className="bg-dark text-muted">Select Target Team Leader...</option>
+                    <option value="" className="text-muted">Select Direct Node (Team Leader)...</option>
                     {teamLeaders
                       .filter(u => u.role === 'TEAM_LEADER')
                       .map(tl => (
-                        <option key={tl.id} value={tl.id} className="bg-dark text-white">
+                        <option key={tl.id} value={tl.id}>
                           {tl.name}
                         </option>
                       ))
@@ -126,35 +129,33 @@ const TeamManagement = ({
               )}
               
               <div className="col-12">
-                <label className="form-label small fw-bold text-uppercase text-muted d-block mb-1">Privilege Stack</label>
-                <div className="p-3 rounded-4 border-0 bg-dark text-white overflow-auto shadow-inner" style={{ maxHeight: '120px' }}>
-                  <div className="row g-2">
+                <label className="form-label small fw-black text-uppercase text-muted d-block mb-3 tracking-widest" style={{ fontSize: '10px' }}>Permission Set</label>
+                <div className="p-3 rounded-4 border-0 bg-surface text-main overflow-auto shadow-sm" style={{ maxHeight: '150px' }}>
+                  <div className="d-flex flex-column gap-2">
                     {permissions.map(perm => (
-                      <div key={perm} className="col-12">
-                        <div className="form-check">
-                          <input 
-                            className="form-check-input" 
-                            type="checkbox" 
-                            id={`perm-${perm}`}
-                            checked={formData.permissions.includes(perm)}
-                            onChange={() => {
-                              const perms = formData.permissions.includes(perm)
-                                ? formData.permissions.filter(p => p !== perm)
-                                : [...formData.permissions, perm];
-                              setFormData({...formData, permissions: perms});
-                            }}
-                          />
-                          <label className="form-check-label small" htmlFor={`perm-${perm}`}>
-                             {perm.replace(/_/g, ' ')}
-                          </label>
-                        </div>
+                      <div key={perm} className="form-check custom-check">
+                        <input 
+                          className="form-check-input shadow-none" 
+                          type="checkbox" 
+                          id={`perm-${perm}`}
+                          checked={formData.permissions.includes(perm)}
+                          onChange={() => {
+                            const perms = formData.permissions.includes(perm)
+                              ? formData.permissions.filter(p => p !== perm)
+                              : [...formData.permissions, perm];
+                            setFormData({...formData, permissions: perms});
+                          }}
+                        />
+                        <label className="form-check-label small fw-bold opacity-75" htmlFor={`perm-${perm}`}>
+                           {perm.replace(/_/g, ' ')}
+                        </label>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
               <div className="col-12 mt-3">
-                <button type="submit" className="btn btn-primary w-100 fw-bold text-uppercase shadow-sm rounded-pill py-3">Initialize Account</button>
+                <button type="submit" className="btn btn-primary w-100 fw-black text-uppercase shadow-glow rounded-pill py-3">Initialize Account</button>
               </div>
             </div>
           </form>
@@ -162,17 +163,19 @@ const TeamManagement = ({
       </div>
 
       <div className="col-12 col-xl-8">
-        <div className="premium-card overflow-hidden h-100">
+        <div className="premium-card overflow-hidden h-100 border-0 shadow-lg">
            <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-              <h5 className="fw-bold text-uppercase mb-0 d-flex align-items-center gap-2 text-white">
-                 <Users size={20} className="text-primary glow-icon" />
+              <h6 className="fw-black text-uppercase mb-0 d-flex align-items-center gap-3 text-main tracking-widest">
+                 <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+                    <Users size={18} />
+                 </div>
                  Active Personnel Hierarchy
-              </h5>
+              </h6>
            </div>
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
-              <thead className="table-dark">
-                <tr className="text-uppercase text-muted small fw-bold">
+              <thead className="bg-surface bg-opacity-50">
+                <tr className="text-uppercase text-muted small fw-black tracking-widest" style={{ fontSize: '9px' }}>
                   <th className="ps-4" style={{ width: '40px' }}></th>
                   <th>Member Identity</th>
                   <th className="text-center">Role</th>
@@ -187,7 +190,7 @@ const TeamManagement = ({
                   
                   return (
                     <React.Fragment key={tl.id}>
-                      <tr className="bg-white bg-opacity-5 border-white border-opacity-5">
+                      <tr className="border-bottom border-white border-opacity-5 transition-smooth hover-bg-surface">
                          <td className="ps-4">
                            <button 
                              className="btn btn-link link-primary p-0 shadow-none border-0" 
@@ -198,25 +201,25 @@ const TeamManagement = ({
                          </td>
                          <td>
                            <div className="d-flex align-items-center gap-2">
-                             <span className="fw-bold text-primary">{tl.name}</span>
+                             <span className="fw-black text-primary">{tl.name}</span>
                              <BarChart2 
-                               size={14} 
-                               className="text-primary cursor-pointer hover-opacity-75" 
-                               onClick={() => { setSelectedPerfUserId(tl.id); setActiveTab('payments'); }} 
+                                size={14} 
+                                className="text-primary cursor-pointer hover-opacity-75" 
+                                onClick={() => { setSelectedPerfUserId(tl.id); setActiveTab('payments'); }} 
                              />
                            </div>
-                           <small className="text-muted small">{tl.email}</small>
+                           <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>{tl.email}</small>
                          </td>
                          <td className="text-center">
-                           <span className={`badge rounded-pill ${tl.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-info text-dark'} fw-bold px-3`} style={{ fontSize: '9px' }}>{tl.role.replace(/_/g, ' ')}</span>
+                           <span className={`ui-badge small py-1 px-3 rounded-pill fw-black ${tl.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-primary bg-opacity-10 text-primary'}`} style={{ fontSize: '9px' }}>{tl.role.replace(/_/g, ' ')}</span>
                          </td>
-                         <td className="text-center text-muted small fst-italic">
-                            {tl.role === 'MANAGER' ? 'Organization Root' : 'Direct Node'}
+                         <td className="text-center text-muted small fw-bold opacity-50 tracking-widest" style={{ fontSize: '8px' }}>
+                            {tl.role === 'MANAGER' ? 'ORGANIZATION ROOT' : 'DIRECT NODE'}
                          </td>
                          <td className="pe-4 text-end">
                            <div className="d-flex align-items-center justify-content-end gap-1">
-                              <button onClick={() => handleEditUser(tl)} className="btn btn-sm btn-link text-primary"><Edit size={14} /></button>
-                              <button onClick={() => handleDeleteUser(tl.id)} className="btn btn-sm btn-link text-danger"><Trash2 size={14} /></button>
+                              <button onClick={() => handleEditUser(tl)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={14} /></button>
+                              <button onClick={() => handleDeleteUser(tl.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={14} /></button>
                            </div>
                          </td>
                        </tr>
@@ -224,31 +227,30 @@ const TeamManagement = ({
                         {expandedTlId === tl.id && (
                           associatesAtThisNode.length > 0 ? (
                             associatesAtThisNode.map(assoc => (
-                              <tr key={assoc.id} className="animate-fade-in border-start border-primary border-4 bg-dark bg-opacity-25 border-white border-opacity-5">
+                              <tr key={assoc.id} className="animate-fade-in border-start border-primary border-4 bg-surface bg-opacity-30 border-bottom border-white border-opacity-5">
                                 <td className="ps-4 text-center text-muted small">└</td>
                                 <td>
                                   <div className="d-flex align-items-center gap-2">
-                                    <span className="small fw-bold">{assoc.name}</span>
+                                    <span className="small fw-bold text-main">{assoc.name}</span>
                                     <BarChart2 
                                       size={12} 
                                       className="text-info cursor-pointer hover-opacity-75" 
                                       onClick={() => { setSelectedPerfUserId(assoc.id); setActiveTab('payments'); }} 
                                     />
                                   </div>
-                                  <small className="text-muted d-block small" style={{ fontSize: '10px' }}>{assoc.email}</small>
+                                  <small className="text-muted d-block small fw-bold opacity-50" style={{ fontSize: '8px' }}>{assoc.email}</small>
                                 </td>
                                 <td className="text-center">
-                                  <span className="badge rounded-pill bg-secondary text-white" style={{ fontSize: '9px' }}>{assoc.role.replace(/_/g, ' ')}</span>
+                                  <span className="ui-badge bg-surface text-muted small" style={{ fontSize: '9px' }}>{assoc.role.replace(/_/g, ' ')}</span>
                                 </td>
                                 <td className="text-center">
                                   <select 
-                                    className="form-select form-select-sm border-0 bg-transparent text-primary fw-bold" 
-                                    style={{ fontSize: '11px' }}
+                                    className="form-select form-select-sm border-0 bg-transparent text-primary fw-black tracking-widest" 
+                                    style={{ fontSize: '9px' }}
                                     value={assoc.supervisorId || ''}
                                     onChange={(e) => handleAssignSupervisor(assoc.id, e.target.value)}
                                   >
-                                    <option value="">Move To (TL Only)...</option>
-                                    {/* Associates should only be moved to Team Leaders */}
+                                    <option value="">Move Node...</option>
                                     {teamLeaders
                                       .filter(u => u.role === 'TEAM_LEADER' && !isSameId(u.id, tl.id))
                                       .map(t => (
@@ -258,16 +260,16 @@ const TeamManagement = ({
                                 </td>
                                 <td className="pe-4 text-end">
                                    <div className="d-flex align-items-center justify-content-end gap-1">
-                                      <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary"><Edit size={12} /></button>
-                                      <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger"><Trash2 size={12} /></button>
+                                      <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={12} /></button>
+                                      <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={12} /></button>
                                    </div>
                                 </td>
                               </tr>
                             ))
                           ) : (
-                            <tr className="animate-fade-in bg-dark bg-opacity-10">
-                              <td colSpan="5" className="py-2 ps-5">
-                                <span className="text-muted small fst-italic">No associates assigned</span>
+                            <tr className="animate-fade-in bg-surface bg-opacity-10">
+                              <td colSpan="5" className="py-3 ps-5">
+                                <span className="text-muted small fw-bold opacity-50 text-uppercase tracking-widest" style={{ fontSize: '8px' }}>No operational nodes assigned</span>
                               </td>
                             </tr>
                           )
@@ -278,32 +280,32 @@ const TeamManagement = ({
 
                 {/* Unassigned associates and users */}
                 {teamLeaders.filter(u => u.role === 'ASSOCIATE' && !u.supervisorId).map(assoc => (
-                  <tr key={assoc.id} className="animate-fade-in border-start border-warning border-4 bg-white bg-opacity-5">
+                  <tr key={assoc.id} className="animate-fade-in border-start border-warning border-4 bg-surface bg-opacity-20 border-bottom border-white border-opacity-5">
                     <td className="ps-4 text-center">
-                       <BarChart2 size={16} className="text-warning opacity-50" />
+                       <BarChart2 size={16} className="text-warning opacity-50 shadow-glow" />
                     </td>
                     <td>
                       <div className="d-flex align-items-center gap-2">
-                        <span className="fw-bold">{assoc.name}</span>
+                        <span className="fw-black text-main">{assoc.name}</span>
                         <BarChart2 
                           size={14} 
                           className="text-info cursor-pointer hover-opacity-75" 
                           onClick={() => { setSelectedPerfUserId(assoc.id); setActiveTab('payments'); }} 
                         />
                       </div>
-                      <small className="text-muted d-block small" style={{ fontSize: '10px' }}>{assoc.email}</small>
+                      <small className="text-muted d-block small fw-bold opacity-50" style={{ fontSize: '9px' }}>{assoc.email}</small>
                     </td>
                     <td className="text-center">
-                      <span className="badge rounded-pill bg-warning text-dark fw-bold px-3" style={{ fontSize: '9px' }}>UNASSIGNED</span>
+                      <span className="ui-badge bg-warning bg-opacity-10 text-warning px-3 rounded-pill fw-black small" style={{ fontSize: '9px' }}>ORPHAN NODE</span>
                     </td>
                     <td className="text-center">
                       <select 
-                        className="form-select form-select-sm border-0 bg-transparent text-primary fw-bold" 
-                        style={{ fontSize: '11px' }}
+                        className="form-select form-select-sm border-0 bg-transparent text-primary fw-black tracking-widest" 
+                        style={{ fontSize: '9px' }}
                         value={assoc.supervisorId || ''}
                         onChange={(e) => handleAssignSupervisor(assoc.id, e.target.value)}
                       >
-                        <option value="">Link to TL Node...</option>
+                        <option value="">Link to TL...</option>
                         {teamLeaders
                           .filter(u => u.role === 'TEAM_LEADER')
                           .map(t => (
@@ -313,8 +315,8 @@ const TeamManagement = ({
                     </td>
                     <td className="pe-4 text-end">
                        <div className="d-flex align-items-center justify-content-end gap-1">
-                          <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary"><Edit size={14} /></button>
-                          <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger"><Trash2 size={14} /></button>
+                          <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={14} /></button>
+                          <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={14} /></button>
                        </div>
                     </td>
                   </tr>
@@ -329,3 +331,4 @@ const TeamManagement = ({
 };
 
 export default TeamManagement;
+;

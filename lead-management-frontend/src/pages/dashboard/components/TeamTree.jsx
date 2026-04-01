@@ -34,7 +34,7 @@ const TeamTreeItem = ({ item, level = 0, onFocus, currentFocusId }) => {
         className={`d-flex align-items-center gap-2 py-2 px-3 rounded-3 cursor-pointer transition-all mb-1 ${
           isFocused 
           ? 'bg-primary bg-opacity-10 border border-primary border-opacity-30 shadow-sm ring-1 ring-primary ring-opacity-20' 
-          : 'hover-bg-white hover-bg-opacity-5 border border-transparent'
+          : 'hover-bg-surface border border-transparent'
         }`}
         style={{ marginLeft: `${level * 32}px` }}
         onClick={() => onFocus(item.id)}
@@ -50,14 +50,14 @@ const TeamTreeItem = ({ item, level = 0, onFocus, currentFocusId }) => {
           )}
         </div>
         
-        <div className={`p-1.5 rounded-circle flex-shrink-0 ${isFocused ? 'bg-primary bg-opacity-20' : 'bg-white bg-opacity-5 border border-white border-opacity-10'}`}>
+        <div className={`p-1.5 rounded-circle flex-shrink-0 ${isFocused ? 'bg-primary bg-opacity-20' : 'bg-surface border border-white border-opacity-5'}`}>
           {getRoleIcon(item.role)}
         </div>
         
         <div className="flex-grow-1 d-flex align-items-center justify-content-between overflow-hidden">
           <div className="d-flex flex-column overflow-hidden text-truncate">
-            <span className={`fw-bold small mb-0 text-truncate ${isFocused ? 'text-primary' : 'text-white text-opacity-90'}`}>{item.name}</span>
-            <span className="text-muted text-uppercase fw-bold" style={{ fontSize: '7px', letterSpacing: '0.5px' }}>
+            <span className={`fw-bold small mb-0 text-truncate ${isFocused ? 'text-primary' : 'text-main'}`}>{item.name}</span>
+            <span className="text-muted text-uppercase fw-bold" style={{ fontSize: '7px', letterSpacing: '0.6px' }}>
               {item.role?.replace(/_/g, ' ')}
             </span>
           </div>
@@ -97,7 +97,7 @@ const TeamTree = ({ data, onFocus, currentFocusId }) => {
               <Users size={20} />
             </div>
             <div>
-              <h6 className="fw-bold mb-0 text-uppercase text-white tracking-wider small">Staff Hierarchy</h6>
+              <h6 className="fw-black mb-0 text-uppercase text-main tracking-widest small">Staff Hierarchy</h6>
               <p className="mb-0 text-muted fw-bold" style={{ fontSize: '9px' }}>Real-time Chain of Command</p>
             </div>
           </div>
@@ -105,13 +105,16 @@ const TeamTree = ({ data, onFocus, currentFocusId }) => {
       </div>
       
       <div className="card-body p-3 overflow-auto custom-scrollbar" style={{ maxHeight: '600px' }}>
-        {data ? (
+        {data && Array.isArray(data) ? (
           <div className="d-flex flex-column">
-            <TeamTreeItem 
-              item={data} 
-              onFocus={onFocus} 
-              currentFocusId={currentFocusId}
-            />
+            {data.map(root => (
+              <TeamTreeItem 
+                key={root.id}
+                item={root} 
+                onFocus={onFocus} 
+                currentFocusId={currentFocusId}
+              />
+            ))}
           </div>
         ) : (
           <div className="text-center py-5 d-flex flex-column align-items-center">
@@ -122,7 +125,7 @@ const TeamTree = ({ data, onFocus, currentFocusId }) => {
         
         {currentFocusId && (
           <button 
-            className="btn btn-outline-primary btn-sm w-100 mt-4 rounded-pill fw-bold text-uppercase py-2 shadow-sm animate-fade-in border-opacity-25"
+            className="btn btn-outline-primary btn-sm w-100 mt-4 rounded-pill fw-black text-uppercase py-2 shadow-sm animate-fade-in border-opacity-25"
             style={{ fontSize: '10px' }}
             onClick={() => onFocus(null)}
           >
@@ -134,7 +137,7 @@ const TeamTree = ({ data, onFocus, currentFocusId }) => {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.1); border-radius: 4px; }
-        .hover-bg-white:hover { background: rgba(255, 255, 255, 0.05); }
+        .hover-bg-surface:hover { background: var(--bg-surface); }
         .ring-1 { box-shadow: 0 0 0 1px currentColor; }
       `}</style>
     </div>

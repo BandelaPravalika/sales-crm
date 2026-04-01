@@ -26,10 +26,15 @@ public class PaymentController {
     public ResponseEntity<PaymentDTO> getPublicInvoice(@RequestParam String order_id) {
         // First verify payment status/gateway sync
         PaymentDTO status = leadPaymentService.getPaymentStatus(order_id);
-        if (!"PAID".equals(status.getStatus())) {
+        if (!"PAID".equals(status.getStatus()) && !"SUCCESS".equals(status.getStatus()) && !"APPROVED".equals(status.getStatus())) {
             throw new RuntimeException("Invoice not available for unpaid orders");
         }
         return ResponseEntity.ok(status);
+    }
+
+    @GetMapping("/api/payments/lead/{leadId}/invoice")
+    public ResponseEntity<PaymentDTO> getInvoiceByLeadId(@PathVariable Long leadId) {
+        return ResponseEntity.ok(leadPaymentService.generateInvoice(leadId));
     }
 
     @PutMapping("/api/payments/{id}/status")

@@ -23,6 +23,7 @@ const managerService = {
     fetchTeamLeaders: () => api.get('/manager/team-leaders'),
     fetchRoles: () => api.get('/manager/roles'),
     fetchPermissions: () => api.get('/manager/permissions'),
+    fetchShifts: () => api.get('/manager/shifts'),
     createUser: (formData) => api.post('/manager/users', formData),
     updateUser: (id, userData) => api.put(`/manager/users/${id}`, userData),
     deleteUser: (id) => api.delete(`/manager/users/${id}`),

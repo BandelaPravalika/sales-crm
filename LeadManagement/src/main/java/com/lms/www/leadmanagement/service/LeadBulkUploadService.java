@@ -28,7 +28,7 @@ public class LeadBulkUploadService {
     @Autowired
     private LeadService leadService;
 
-    @PreAuthorize("hasAuthority('BULK_UPLOAD')")
+    @PreAuthorize("hasAuthority('CREATE_LEADS')")
     public BulkUploadResponseDTO uploadLeads(MultipartFile file, String assignedToIds) {
         int total = 0;
         int success = 0;
@@ -104,15 +104,15 @@ public class LeadBulkUploadService {
 
                     // Duplicate Check
                     boolean isDuplicate = false;
-                    if (!email.isEmpty() && leadRepository.existsByEmailAndAssignedTo(email, finalAssignee)) {
+                    if (!email.isEmpty() && leadRepository.existsByEmail(email)) {
                         isDuplicate = true;
-                    } else if (leadRepository.existsByMobileAndAssignedTo(mobile, finalAssignee)) {
+                    } else if (leadRepository.existsByMobile(mobile)) {
                         isDuplicate = true;
                     }
 
                     if (isDuplicate) {
                         duplicates++;
-                        errorList.add("Row " + rowNum + ": Duplicate for " + finalAssignee.getName());
+                        errorList.add("Row " + rowNum + ": Mobile or Email already exists in system");
                         continue;
                     }
 

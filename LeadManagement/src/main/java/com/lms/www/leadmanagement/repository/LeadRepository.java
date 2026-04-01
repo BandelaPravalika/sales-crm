@@ -19,8 +19,11 @@ import java.util.Optional;
 public interface LeadRepository extends JpaRepository<Lead, Long> {
 
     Optional<Lead> findByMobile(String mobile);
+    boolean existsByMobile(String mobile);
+    boolean existsByEmail(String email);
 
     List<Lead> findByAssignedTo(User assignedTo);
+    List<Lead> findByAssignedToIsNull();
 
     List<Lead> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
@@ -54,11 +57,24 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             "coalesce(sum(case when l.status = 'INTERESTED' then 1 else 0 end), 0) as interestedCount, " +
             "coalesce(sum(case when l.status = 'CONTACTED' then 1 else 0 end), 0) as contactedCount, " +
             "coalesce(sum(case when l.status = 'FOLLOW_UP' then 1 else 0 end), 0) as followUpCount, " +
-            "coalesce(sum(case when l.status = 'CONVERTED' then 1 else 0 end), 0) as convertedCount, " +
-            "coalesce(sum(case when l.status = 'LOST' then 1 else 0 end), 0) as lostCount) " +
+            "coalesce(sum(case when l.status IN ('CONVERTED', 'PAID', 'EMI', 'CLOSED') then 1 else 0 end), 0) as convertedCount, " +
+            "coalesce(sum(case when l.status IN ('LOST', 'NOT_INTERESTED', 'PAYMENT_FAILED') then 1 else 0 end), 0) as lostCount) " +
             "FROM Lead l WHERE l.assignedTo IN :users AND l.createdAt BETWEEN :start AND :end")
     Map<String, Long> getSummaryStats(
             @Param("users") Collection<User> users,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    @Query("SELECT new map(" +
+            "count(l) as total, " +
+            "coalesce(sum(case when l.status = 'NEW' then 1 else 0 end), 0) as newCount, " +
+            "coalesce(sum(case when l.status = 'INTERESTED' then 1 else 0 end), 0) as interestedCount, " +
+            "coalesce(sum(case when l.status = 'CONTACTED' then 1 else 0 end), 0) as contactedCount, " +
+            "coalesce(sum(case when l.status = 'FOLLOW_UP' then 1 else 0 end), 0) as followUpCount, " +
+            "coalesce(sum(case when l.status IN ('CONVERTED', 'PAID', 'EMI', 'CLOSED') then 1 else 0 end), 0) as convertedCount, " +
+            "coalesce(sum(case when l.status IN ('LOST', 'NOT_INTERESTED', 'PAYMENT_FAILED') then 1 else 0 end), 0) as lostCount) " +
+            "FROM Lead l WHERE l.createdAt BETWEEN :start AND :end")
+    Map<String, Long> getGlobalSummaryStats(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
@@ -71,11 +87,26 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
             @Param("end") LocalDateTime end);
 
     @Query("SELECT new map(cast(l.createdAt as localdate) as date, count(l) as count) " +
+            "FROM Lead l WHERE l.createdAt BETWEEN :start AND :end " +
+            "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
+    List<Map<String, Object>> getGlobalDailyLeadTrend(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    @Query("SELECT new map(cast(l.createdAt as localdate) as date, count(l) as count) " +
             "FROM Lead l WHERE l.assignedTo.id IN :userIds AND l.createdAt BETWEEN :start AND :end " +
             "AND (l.status = 'LOST' OR l.status = 'NOT_INTERESTED') " +
             "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
     List<Map<String, Object>> getDailyLostTrend(
             @Param("userIds") Collection<Long> userIds,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    @Query("SELECT new map(cast(l.createdAt as localdate) as date, count(l) as count) " +
+            "FROM Lead l WHERE l.createdAt BETWEEN :start AND :end " +
+            "AND (l.status = 'LOST' OR l.status = 'NOT_INTERESTED') " +
+            "GROUP BY cast(l.createdAt as localdate) ORDER BY cast(l.createdAt as localdate)")
+    List<Map<String, Object>> getGlobalDailyLostTrend(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 }

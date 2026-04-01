@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class LeadTaskDTO {
     private Long id;
+    private LeadDTO lead;
     private Long leadId;
     private String leadName;
     private String title;

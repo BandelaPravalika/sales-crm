@@ -38,8 +38,10 @@ public class AuthService {
 
         return AuthResponse.builder()
                 .token(jwt)
+                .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole().getName())
+                .name(user.getName())
                 .build();
     }
 }

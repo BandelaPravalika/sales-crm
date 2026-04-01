@@ -11,20 +11,16 @@ import com.lms.www.leadmanagement.repository.PaymentRepository;
 import com.lms.www.leadmanagement.repository.RoleRepository;
 import com.lms.www.leadmanagement.repository.UserRepository;
 import com.lms.www.leadmanagement.dto.PaymentDTO;
-import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -186,13 +182,14 @@ public class LeadPaymentService {
         // Send REAL Admission & Invoice Email
         sendAdmissionSuccessEmail(lead, payment);
 
-        // Create USER account with rollback protection
+        /* 
+        // Disabled per user request: Do not create student account automatically
         try {
             createUserFromLead(lead);
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             log.warn(">>> User already exists or being created by another thread for lead: {}", lead.getEmail());
-            // We ignore this error to allow the status update to commit
         }
+        */
     }
 
     @Transactional
@@ -218,9 +215,14 @@ public class LeadPaymentService {
 
     @Transactional(readOnly = true)
     public PaymentDTO getPaymentStatus(String orderId) {
-        Payment payment = paymentRepository.findByPaymentGatewayId(orderId)
-                .orElseThrow(() -> new RuntimeException("Payment not found"));
+        // Try Gateway ID first, then numeric ID if numeric
+        Optional<Payment> paymentOpt = paymentRepository.findByPaymentGatewayId(orderId);
+        
+        if (paymentOpt.isEmpty() && orderId.matches("\\d+")) {
+            paymentOpt = paymentRepository.findById(Long.parseLong(orderId));
+        }
 
+        Payment payment = paymentOpt.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transaction record not found: " + orderId));
         return convertToDTO(payment);
     }
 
@@ -243,12 +245,11 @@ public class LeadPaymentService {
                 // Step 2: Email notification
                 sendAdmissionSuccessEmail(lead, payment);
                 
-                // Step 3: Account creation
-                createUserFromLead(lead);
+                // Step 3: Account creation (Disabled per user request)
+                // createUserFromLead(lead);
                 
             } catch (Exception e) {
                 log.warn(">>> NOTIFICATION/ACCOUNT WARNING: Payment was successful, but background steps lagged: {}", e.getMessage());
-                // We do NOT re-throw here so the @Transactional for status commits
             }
         } catch (Exception e) {
             log.error(">>> CRITICAL ERROR in Safe Payment Processing: {}", e.getMessage());
@@ -307,39 +308,6 @@ public class LeadPaymentService {
             (payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "MANUAL")
         );
         mailService.sendEmail(lead.getEmail(), subject, body);
-    }
-
-    private void createUserFromLead(Lead lead) {
-        if (userRepository.existsByEmail(lead.getEmail())) {
-            log.info("User already exists for email: {}", lead.getEmail());
-            return;
-        }
-
-        String tempPassword = UUID.randomUUID().toString().substring(0, 8);
-        Role userRole = roleRepository.findByName("STUDENT").orElseGet(() -> {
-            log.info(">>> Role 'STUDENT' missing. Creating on-the-fly...");
-            Role newRole = new Role();
-            newRole.setName("STUDENT");
-            return roleRepository.save(newRole);
-        });
-        
-        User user = User.builder()
-                .name(lead.getName())
-                .email(lead.getEmail())
-                .mobile(lead.getMobile())
-                .password(passwordEncoder.encode(tempPassword))
-                .role(userRole)
-                .build();
-        if (user != null) {
-            userRepository.save(user);
-        }
-
-        // Simulate sending email to user with credentials
-        System.out.println(">>> SIMULATED EMAIL SENT to " + lead.getEmail());
-        System.out.println(">>> Subject: Your New LMS Account Credentials");
-        System.out.println(">>> Body: Your account has been created. Use email: " + lead.getEmail() + " and Password: " + tempPassword);
-
-        log.info("Created USER account for lead {}. Temporary password: {}", lead.getEmail(), tempPassword);
     }
 
     public List<com.lms.www.leadmanagement.dto.UserDTO> getTeamLeaders() {
@@ -409,11 +377,11 @@ public class LeadPaymentService {
         }
     }
 
-    public List<PaymentDTO> getFilteredPaymentHistoryForTL(String tlEmail, java.time.LocalDateTime startDateTime, java.time.LocalDateTime endDateTime, String status) {
-        User tl = userRepository.findByEmail(tlEmail)
-                .orElseThrow(() -> new RuntimeException("TL not found"));
+    public List<PaymentDTO> getFilteredPaymentHistoryForTL(String email, java.time.LocalDateTime startDateTime, java.time.LocalDateTime endDateTime, String status) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Long> leadIds = leadRepository.findByAssignedTo(tl).stream()
+        List<Long> leadIds = leadRepository.findByAssignedTo(user).stream()
                 .map(Lead::getId)
                 .collect(Collectors.toList());
                 
@@ -526,7 +494,7 @@ public class LeadPaymentService {
                         // Manual SUCCESS lifecycle - usually no gateway ID
                         try {
                             sendAdmissionSuccessEmail(lead, saved);
-                            createUserFromLead(lead);
+                            // createUserFromLead(lead); // Disabled per user request
                         } catch (Exception e) {
                             log.warn(">>> Background tasks failed for manual payment: {}", e.getMessage());
                         }

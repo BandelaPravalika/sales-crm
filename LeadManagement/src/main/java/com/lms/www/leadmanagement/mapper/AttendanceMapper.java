@@ -65,6 +65,7 @@ public class AttendanceMapper {
         return AttendancePolicyDTO.builder()
                 .id(p.getId())
                 .officeId(p.getOffice() != null ? p.getOffice().getId() : null)
+                .officeName(p.getOffice() != null ? p.getOffice().getName() : null)
                 .shortBreakStartTime(p.getShortBreakStartTime() != null ? p.getShortBreakStartTime().toString() : null)
                 .shortBreakEndTime(p.getShortBreakEndTime() != null ? p.getShortBreakEndTime().toString() : null)
                 .longBreakStartTime(p.getLongBreakStartTime() != null ? p.getLongBreakStartTime().toString() : null)

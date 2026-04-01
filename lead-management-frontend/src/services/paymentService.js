@@ -32,6 +32,9 @@ const paymentService = {
 
   generateInvoice: (orderId) => {
     return api.get('/public/payments/invoice', { params: { order_id: orderId } });
+  },
+  fetchInvoiceByLead: (leadId) => {
+    return api.get(`/payments/lead/${leadId}/invoice`);
   }
 };
 
