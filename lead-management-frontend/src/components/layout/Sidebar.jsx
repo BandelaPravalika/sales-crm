@@ -67,10 +67,6 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
       
       <aside 
         className={`glass-sidebar ${isCollapsed ? 'closed' : ''} ${isOpen ? 'show' : ''}`}
-        style={{ 
-          transform: isOpen ? 'translateX(0)' : (window.innerWidth < 992 ? 'translateX(-100%)' : 'none'),
-          zIndex: 1050
-        }}
       >
         <div className="d-flex flex-column h-100">
           <div className="p-4 d-flex align-items-center justify-content-between border-bottom border-white border-opacity-5">
@@ -84,12 +80,22 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
             )}
             {isCollapsed && <ShieldHalf size={24} className="text-primary mx-auto" />}
             
+            {/* Desktop toggle button */}
             <button 
-              className="btn btn-link text-main p-1 border-0 ms-2 hover-bg-surface rounded-circle transition-all" 
+              className="btn btn-link text-main p-1 border-0 ms-2 hover-bg-surface rounded-circle transition-all d-none d-lg-flex" 
               onClick={onToggle} 
-              title={isCollapsed ? "Expand Nodes" : "Collapse Nodes"}
+              title={isCollapsed ? "Expand" : "Collapse"}
             >
-              <Menu size={18} className="opacity-75 hover-opacity-100" />
+              <Menu size={18} className="opacity-75" />
+            </button>
+
+            {/* Mobile close button */}
+            <button
+              className="btn btn-link text-main p-1 border-0 sidebar-mobile-close"
+              onClick={onClose}
+              aria-label="Close menu"
+            >
+              <X size={20} />
             </button>
           </div>
 

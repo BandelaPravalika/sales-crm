@@ -297,7 +297,7 @@ public class LeadPaymentService {
             "        <tr><td style='padding: 8px 0; color: #666;'>Status:</td><td style='padding: 8px 0; text-align: right; color: #2e7d32; font-weight: bold;'>SUCCESSFUL</td></tr>" +
             "      </table>" +
             "    </div>" +
-            "    <p>Your student account have been created. You will receive a separate automated email with your portal login credentials shortly.</p>" +
+            "    <p>Your admission is confirmed. Our team will contact you shortly to discuss the next steps.</p>" +
             "    <p style='margin-top: 30px;'>Best Regards,<br/><strong>The Admissions Team</strong></p>" +
             "  </div>" +
             "  <div style='background-color: #f5f5f5; color: #888; padding: 15px; text-align: center; font-size: 12px; border-top: 1px solid #e0e0e0;'>" +

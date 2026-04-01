@@ -2,15 +2,15 @@ import React from 'react';
 import { LogOut, Sun, Moon, Bell, Search, User as UserIcon, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
-const Navbar = ({ isCollapsed, userEmail, onLogout, onToggleSidebar }) => {
+const Navbar = ({ isCollapsed, userEmail, onLogout, onToggleSidebar, windowWidth }) => {
   const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <nav 
-      className="position-fixed top-0 end-0 d-flex align-items-center justify-content-between px-4"
+      className="position-fixed top-0 end-0 d-flex align-items-center justify-content-between px-3 px-md-4"
       style={{ 
         height: 'var(--header-height)', 
-        left: (window.innerWidth > 992) ? (isCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)') : '0',
+        left: (windowWidth > 992) ? (isCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)') : '0',
         width: 'auto',
         backgroundColor: 'var(--nav-bg)',
         borderBottom: '1px solid var(--border-color)',
@@ -19,16 +19,38 @@ const Navbar = ({ isCollapsed, userEmail, onLogout, onToggleSidebar }) => {
         transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      <div className="d-flex align-items-center gap-2">
-          <div className="d-none d-xl-flex align-items-center gap-3 bg-surface bg-opacity-50 px-3 py-1.5 rounded-pill border border-white border-opacity-5">
-            <Search size={14} className="text-muted" />
-            <input 
-              type="text" 
-              className="bg-transparent border-0 text-main fw-medium small" 
-              placeholder="Search identity node..." 
-              style={{outline: 'none', width: '200px', fontSize: '12px'}}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Mobile hamburger — always visible on phones */}
+        <button
+          onClick={onToggleSidebar}
+          aria-label="Open navigation menu"
+          style={{
+            display: (windowWidth <= 992) ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            cursor: 'pointer',
+            padding: '8px',
+            borderRadius: '8px',
+            lineHeight: 1,
+          }}
+        >
+          <Menu size={24} />
+        </button>
+
+        {/* Desktop search bar */}
+        {windowWidth > 1280 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface)', padding: '6px 16px', borderRadius: '999px', border: '1px solid var(--border-color)' }}>
+            <Search size={14} style={{ color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search..."
+              style={{ outline: 'none', width: '200px', fontSize: '12px', background: 'transparent', border: 'none', color: 'var(--text-main)', fontWeight: 500 }}
             />
-         </div>
+          </div>
+        )}
       </div>
 
       <div className="d-flex align-items-center gap-3 gap-md-4">

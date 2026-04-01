@@ -27,7 +27,7 @@ const DashboardLayout = ({ children, activeTab, onTabChange, role }) => {
   return (
     <div className="dashboard-wrapper">
       <Sidebar
-        isOpen={window.innerWidth > 992 ? true : isMobileOpen}
+        isOpen={windowWidth > 992 ? true : isMobileOpen}
         onClose={() => setIsMobileOpen(false)}
         activeTab={activeTab}
         onTabChange={onTabChange}
@@ -41,7 +41,8 @@ const DashboardLayout = ({ children, activeTab, onTabChange, role }) => {
           isCollapsed={isCollapsed} 
           userEmail={user?.email} 
           onLogout={logout} 
-          onToggleSidebar={toggleSidebar} 
+          onToggleSidebar={toggleSidebar}
+          windowWidth={windowWidth}
         />
         
         <div className="container-fluid p-4 animate-fade-in" style={{ marginTop: '20px' }}>
