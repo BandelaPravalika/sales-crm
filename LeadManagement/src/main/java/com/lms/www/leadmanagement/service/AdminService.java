@@ -370,9 +370,6 @@ public class AdminService {
                 scope = ReportScope.OWN;
             }
         }
-        if (scope == null)
-            scope = com.lms.www.leadmanagement.entity.ReportScope.OWN;
-
         if (targetUserId != null) {
             User target = userRepository.findById(targetUserId).orElse(null);
             if (target != null) {
@@ -516,9 +513,6 @@ public class AdminService {
                 scope = ReportScope.OWN;
             }
         }
-        if (scope == null)
-            scope = com.lms.www.leadmanagement.entity.ReportScope.OWN;
-
         switch (scope) {
             case OWN:
                 if (requester != null)

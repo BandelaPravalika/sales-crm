@@ -49,11 +49,3 @@ public class Ticket {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 }
-
-enum TicketStatus {
-    OPEN, IN_PROGRESS, RESOLVED, CLOSED
-}
-
-enum TicketPriority {
-    LOW, MEDIUM, HIGH, URGENT
-}

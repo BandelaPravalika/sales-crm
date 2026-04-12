@@ -22,5 +22,6 @@ public class OfficeLocation {
     private String name;
     private Double latitude;
     private Double longitude;
+    @Builder.Default
     private Double radius = 30.0; // Default 30 meters
 }
