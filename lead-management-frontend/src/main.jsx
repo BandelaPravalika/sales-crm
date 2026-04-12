@@ -8,10 +8,8 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
-// Force dark mode immediately — before React mounts
-document.documentElement.setAttribute('data-bs-theme', 'dark');
-document.documentElement.style.backgroundColor = '#030712';
-document.documentElement.style.color = '#f9fafb';
+// Theme is managed by ThemeProvider in App.jsx
+
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

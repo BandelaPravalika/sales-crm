@@ -148,13 +148,13 @@ const UserEditModal = ({
                         <div className="col-12 col-md-3">
                           <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>From</label>
                           <div className="form-control border-0 bg-surface text-main py-2 rounded-3 fw-black small text-center opacity-75">
-                             {selectedShift ? selectedShift.startTime.substring(0, 5) : '--:--'}
+                             {selectedShift?.startTime ? selectedShift.startTime.substring(0, 5) : '--:--'}
                           </div>
                         </div>
                         <div className="col-12 col-md-3">
                           <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>To</label>
                           <div className="form-control border-0 bg-surface text-main py-2 rounded-3 fw-black small text-center opacity-75">
-                             {selectedShift ? selectedShift.endTime.substring(0, 5) : '--:--'}
+                             {selectedShift?.endTime ? selectedShift.endTime.substring(0, 5) : '--:--'}
                           </div>
                         </div>
                       </div>

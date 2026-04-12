@@ -23,7 +23,7 @@ const TeamManagement = ({
     permissions: [],
     supervisorId: '' 
   });
-  const [expandedTlId, setExpandedTlId] = useState(null);
+  const [expandedIds, setExpandedIds] = useState([]);
 
   // Helper for strict ID comparison (normalizes types)
   const isSameId = (a, b) => {
@@ -35,6 +35,87 @@ const TeamManagement = ({
     e.preventDefault();
     handleCreateUser(formData);
     setFormData({ name: '', email: '', mobile: '', password: '', role: '', permissions: [], supervisorId: '' });
+  };
+
+  const toggleExpand = (id) => {
+    setExpandedIds(prev => 
+      prev.some(eid => isSameId(eid, id)) 
+        ? prev.filter(eid => !isSameId(eid, id)) 
+        : [...prev, id]
+    );
+  };
+
+  const UserRow = ({ user, level = 0, children }) => {
+    const isExpanded = expandedIds.some(eid => isSameId(eid, user.id));
+    const hasChildren = (user.role === 'MANAGER' || user.role === 'TEAM_LEADER');
+    
+    return (
+      <React.Fragment>
+        <tr className={`border-bottom border-white border-opacity-5 transition-smooth hover-bg-surface ${level > 0 ? 'bg-surface bg-opacity-10' : ''}`}>
+          <td className="ps-4" style={{ paddingLeft: `${24 + (level * 20)}px` }}>
+            {hasChildren && (
+              <button 
+                className="btn btn-link link-primary p-0 shadow-none border-0" 
+                onClick={() => toggleExpand(user.id)}
+              >
+                {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+              </button>
+            )}
+            {!hasChildren && level > 0 && <span className="text-muted opacity-25">└</span>}
+          </td>
+          <td>
+            <div className="d-flex align-items-center gap-2">
+              <span className={`fw-black ${level === 0 ? 'text-primary' : 'text-main'}`} style={{ fontSize: level === 0 ? '14px' : '13px' }}>
+                {user.name}
+              </span>
+              <BarChart2 
+                size={14} 
+                className="text-primary cursor-pointer hover-opacity-75" 
+                onClick={() => { setSelectedPerfUserId(user.id); setActiveTab('payments'); }} 
+              />
+            </div>
+            <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>{user.email}</small>
+          </td>
+          <td className="text-center">
+            <span className={`ui-badge small py-1 px-3 rounded-pill fw-black ${
+              user.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning' : 
+              user.role === 'TEAM_LEADER' ? 'bg-primary bg-opacity-10 text-primary' : 
+              'bg-surface text-muted'
+            }`} style={{ fontSize: '9px' }}>
+              {user.role.replace(/_/g, ' ')}
+            </span>
+          </td>
+          <td className="text-center">
+             {user.role === 'MANAGER' ? (
+               <span className="text-muted small fw-bold opacity-50 tracking-widest" style={{ fontSize: '8px' }}>ORGANIZATION ROOT</span>
+             ) : (
+                <select 
+                  className="form-select form-select-sm border-0 bg-transparent text-primary fw-black tracking-widest mx-auto" 
+                  style={{ fontSize: '9px', width: 'fit-content' }}
+                  value={user.supervisorId || ''}
+                  onChange={(e) => handleAssignSupervisor(user.id, e.target.value)}
+                >
+                  <option value="">{user.role === 'TEAM_LEADER' ? 'Link to Manager...' : 'Link to TL...'}</option>
+                  {teamLeaders.filter(u => {
+                    if (user.role === 'TEAM_LEADER') return u.role === 'MANAGER';
+                    if (user.role === 'ASSOCIATE') return u.role === 'TEAM_LEADER' || u.role === 'MANAGER';
+                    return false;
+                  }).map(sup => (
+                    <option key={sup.id} value={sup.id}>{sup.name}</option>
+                  ))}
+                </select>
+             )}
+          </td>
+          <td className="pe-4 text-end">
+            <div className="d-flex align-items-center justify-content-end gap-1">
+               <button onClick={() => handleEditUser(user)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={14} /></button>
+               <button onClick={() => handleDeleteUser(user.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={14} /></button>
+            </div>
+          </td>
+        </tr>
+        {isExpanded && children}
+      </React.Fragment>
+    );
   };
 
   return (
@@ -96,31 +177,37 @@ const TeamManagement = ({
               <div className="col-12">
                 <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Role / Designation</label>
                 <select 
-                  className="form-select border-0 bg-surface text-main shadow-none fw-bold py-2.5 rounded-3" 
+                  className="ui-input py-3 w-100 fw-black text-uppercase tracking-widest cursor-pointer hover-bg-surface-light transition-all" 
+                  style={{ fontSize: '11px', appearance: 'none', backgroundImage: 'linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%)', backgroundPosition: 'calc(100% - 20px) calc(1em + 5px), calc(100% - 15px) calc(1em + 5px)', backgroundSize: '5px 5px, 5px 5px', backgroundRepeat: 'no-repeat' }}
                   value={formData.role} 
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   required
                 >
-                  <option value="" className="text-muted">Select Target Role...</option>
-                  {roles.map(r => <option key={r.id} value={r.name}>{r.name.replace(/_/g, ' ')}</option>)}
+                  <option value="" className="text-dark bg-white">Select Target Role...</option>
+                  {roles.map(r => <option key={r.id} value={r.name} className="text-dark bg-white">{r.name.replace(/_/g, ' ')}</option>)}
                 </select>
               </div>
 
-              {formData.role === 'ASSOCIATE' && (
+              {(formData.role === 'ASSOCIATE' || formData.role === 'TEAM_LEADER') && (
                 <div className="col-12 animate-fade-in">
                   <label className="form-label small fw-black text-uppercase text-primary mb-2 tracking-widest" style={{ fontSize: '10px' }}>Reports To</label>
                   <select 
-                    className="form-select border-primary border-opacity-25 bg-surface text-main fw-bold shadow-none py-2.5 rounded-3" 
+                    className="ui-input py-3 w-100 border-primary border-opacity-30 fw-black text-uppercase tracking-widest cursor-pointer" 
+                    style={{ fontSize: '10px', appearance: 'none', backgroundImage: 'linear-gradient(45deg, transparent 50%, #0d6efd 50%), linear-gradient(135deg, #0d6efd 50%, transparent 50%)', backgroundPosition: 'calc(100% - 20px) calc(1em + 5px), calc(100% - 15px) calc(1em + 5px)', backgroundSize: '5px 5px, 5px 5px', backgroundRepeat: 'no-repeat' }}
                     value={formData.supervisorId} 
                     onChange={(e) => setFormData({...formData, supervisorId: e.target.value})}
                     required
                   >
-                    <option value="" className="text-muted">Select Direct Node (Team Leader)...</option>
+                    <option value="" className="text-dark bg-white">Select Supervisor...</option>
                     {teamLeaders
-                      .filter(u => u.role === 'TEAM_LEADER')
-                      .map(tl => (
-                        <option key={tl.id} value={tl.id}>
-                          {tl.name}
+                      .filter(u => {
+                        if (formData.role === 'ASSOCIATE') return u.role === 'TEAM_LEADER' || u.role === 'MANAGER';
+                        if (formData.role === 'TEAM_LEADER') return u.role === 'MANAGER';
+                        return false;
+                      })
+                      .map(sup => (
+                        <option key={sup.id} value={sup.id} className="text-dark bg-white">
+                          {sup.name} ({sup.role})
                         </option>
                       ))
                     }
@@ -184,142 +271,57 @@ const TeamManagement = ({
                 </tr>
               </thead>
               <tbody>
-                {/* Managers and Team Leaders form the "Primary Nodes" */}
-                {teamLeaders.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER').map(tl => {
-                  const associatesAtThisNode = teamLeaders.filter(u => u.role === 'ASSOCIATE' && isSameId(u.supervisorId, tl.id));
-                  
+                {teamLeaders.filter(u => u.role === 'MANAGER').map(mgr => {
+                  const tlsUnderMgr = teamLeaders.filter(u => u.role === 'TEAM_LEADER' && isSameId(u.supervisorId, mgr.id));
+                  const assocsUnderMgr = teamLeaders.filter(u => u.role === 'ASSOCIATE' && isSameId(u.supervisorId, mgr.id));
+                  const hasAnything = tlsUnderMgr.length > 0 || assocsUnderMgr.length > 0;
+
                   return (
-                    <React.Fragment key={tl.id}>
-                      <tr className="border-bottom border-white border-opacity-5 transition-smooth hover-bg-surface">
-                         <td className="ps-4">
-                           <button 
-                             className="btn btn-link link-primary p-0 shadow-none border-0" 
-                             onClick={() => setExpandedTlId(expandedTlId === tl.id ? null : tl.id)}
-                           >
-                             {expandedTlId === tl.id ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                           </button>
-                         </td>
-                         <td>
-                           <div className="d-flex align-items-center gap-2">
-                             <span className="fw-black text-primary">{tl.name}</span>
-                             <BarChart2 
-                                size={14} 
-                                className="text-primary cursor-pointer hover-opacity-75" 
-                                onClick={() => { setSelectedPerfUserId(tl.id); setActiveTab('payments'); }} 
-                             />
-                           </div>
-                           <small className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>{tl.email}</small>
-                         </td>
-                         <td className="text-center">
-                           <span className={`ui-badge small py-1 px-3 rounded-pill fw-black ${tl.role === 'MANAGER' ? 'bg-warning bg-opacity-10 text-warning' : 'bg-primary bg-opacity-10 text-primary'}`} style={{ fontSize: '9px' }}>{tl.role.replace(/_/g, ' ')}</span>
-                         </td>
-                         <td className="text-center text-muted small fw-bold opacity-50 tracking-widest" style={{ fontSize: '8px' }}>
-                            {tl.role === 'MANAGER' ? 'ORGANIZATION ROOT' : 'DIRECT NODE'}
-                         </td>
-                         <td className="pe-4 text-end">
-                           <div className="d-flex align-items-center justify-content-end gap-1">
-                              <button onClick={() => handleEditUser(tl)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={14} /></button>
-                              <button onClick={() => handleDeleteUser(tl.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={14} /></button>
-                           </div>
-                         </td>
-                       </tr>
-                        
-                        {expandedTlId === tl.id && (
-                          associatesAtThisNode.length > 0 ? (
-                            associatesAtThisNode.map(assoc => (
-                              <tr key={assoc.id} className="animate-fade-in border-start border-primary border-4 bg-surface bg-opacity-30 border-bottom border-white border-opacity-5">
-                                <td className="ps-4 text-center text-muted small">└</td>
-                                <td>
-                                  <div className="d-flex align-items-center gap-2">
-                                    <span className="small fw-bold text-main">{assoc.name}</span>
-                                    <BarChart2 
-                                      size={12} 
-                                      className="text-info cursor-pointer hover-opacity-75" 
-                                      onClick={() => { setSelectedPerfUserId(assoc.id); setActiveTab('payments'); }} 
-                                    />
-                                  </div>
-                                  <small className="text-muted d-block small fw-bold opacity-50" style={{ fontSize: '8px' }}>{assoc.email}</small>
-                                </td>
-                                <td className="text-center">
-                                  <span className="ui-badge bg-surface text-muted small" style={{ fontSize: '9px' }}>{assoc.role.replace(/_/g, ' ')}</span>
-                                </td>
-                                <td className="text-center">
-                                  <select 
-                                    className="form-select form-select-sm border-0 bg-transparent text-primary fw-black tracking-widest" 
-                                    style={{ fontSize: '9px' }}
-                                    value={assoc.supervisorId || ''}
-                                    onChange={(e) => handleAssignSupervisor(assoc.id, e.target.value)}
-                                  >
-                                    <option value="">Move Node...</option>
-                                    {teamLeaders
-                                      .filter(u => u.role === 'TEAM_LEADER' && !isSameId(u.id, tl.id))
-                                      .map(t => (
-                                      <option key={t.id} value={t.id}>{t.name} (TL)</option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="pe-4 text-end">
-                                   <div className="d-flex align-items-center justify-content-end gap-1">
-                                      <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={12} /></button>
-                                      <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={12} /></button>
-                                   </div>
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr className="animate-fade-in bg-surface bg-opacity-10">
-                              <td colSpan="5" className="py-3 ps-5">
-                                <span className="text-muted small fw-bold opacity-50 text-uppercase tracking-widest" style={{ fontSize: '8px' }}>No operational nodes assigned</span>
-                              </td>
-                            </tr>
-                          )
-                        )}
-                    </React.Fragment>
+                    <UserRow key={mgr.id} user={mgr}>
+                      {hasAnything ? (
+                        <React.Fragment>
+                          {/* 2. Team Leaders under Managers */}
+                          {tlsUnderMgr.map(tl => {
+                             const assocs = teamLeaders.filter(u => u.role === 'ASSOCIATE' && isSameId(u.supervisorId, tl.id));
+                             return (
+                               <UserRow key={tl.id} user={tl} level={1}>
+                                 {assocs.length > 0 ? (
+                                   assocs.map(assoc => <UserRow key={assoc.id} user={assoc} level={2} />)
+                                 ) : (
+                                   <tr className="bg-surface bg-opacity-10 opacity-75"><td colSpan="5" className="py-2 ps-5 small text-muted italic" style={{paddingLeft: '64px'}}>No associates assigned</td></tr>
+                                 )}
+                               </UserRow>
+                             );
+                          })}
+                          {/* 4. Associates directly under Managers */}
+                          {assocsUnderMgr.map(assoc => (
+                            <UserRow key={assoc.id} user={assoc} level={1} />
+                          ))}
+                        </React.Fragment>
+                      ) : (
+                        <tr className="bg-surface bg-opacity-10 opacity-75"><td colSpan="5" className="py-2 ps-5 small text-muted italic" style={{paddingLeft: '44px'}}>No operational nodes assigned</td></tr>
+                      )}
+                    </UserRow>
                   );
                 })}
 
-                {/* Unassigned associates and users */}
+                {/* 5. Orphan Team Leaders (Top Level) */}
+                {teamLeaders.filter(u => u.role === 'TEAM_LEADER' && !u.supervisorId).map(tl => {
+                  const assocs = teamLeaders.filter(u => u.role === 'ASSOCIATE' && isSameId(u.supervisorId, tl.id));
+                  return (
+                    <UserRow key={tl.id} user={tl}>
+                      {assocs.length > 0 ? (
+                        assocs.map(assoc => <UserRow key={assoc.id} user={assoc} level={1} />)
+                      ) : (
+                        <tr className="bg-surface bg-opacity-10 opacity-75"><td colSpan="5" className="py-2 ps-4 small text-muted italic" style={{paddingLeft: '44px'}}>No associates assigned</td></tr>
+                      )}
+                    </UserRow>
+                  );
+                })}
+
+                {/* 6. Orphan Associates (Top Level) */}
                 {teamLeaders.filter(u => u.role === 'ASSOCIATE' && !u.supervisorId).map(assoc => (
-                  <tr key={assoc.id} className="animate-fade-in border-start border-warning border-4 bg-surface bg-opacity-20 border-bottom border-white border-opacity-5">
-                    <td className="ps-4 text-center">
-                       <BarChart2 size={16} className="text-warning opacity-50 shadow-glow" />
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="fw-black text-main">{assoc.name}</span>
-                        <BarChart2 
-                          size={14} 
-                          className="text-info cursor-pointer hover-opacity-75" 
-                          onClick={() => { setSelectedPerfUserId(assoc.id); setActiveTab('payments'); }} 
-                        />
-                      </div>
-                      <small className="text-muted d-block small fw-bold opacity-50" style={{ fontSize: '9px' }}>{assoc.email}</small>
-                    </td>
-                    <td className="text-center">
-                      <span className="ui-badge bg-warning bg-opacity-10 text-warning px-3 rounded-pill fw-black small" style={{ fontSize: '9px' }}>ORPHAN NODE</span>
-                    </td>
-                    <td className="text-center">
-                      <select 
-                        className="form-select form-select-sm border-0 bg-transparent text-primary fw-black tracking-widest" 
-                        style={{ fontSize: '9px' }}
-                        value={assoc.supervisorId || ''}
-                        onChange={(e) => handleAssignSupervisor(assoc.id, e.target.value)}
-                      >
-                        <option value="">Link to TL...</option>
-                        {teamLeaders
-                          .filter(u => u.role === 'TEAM_LEADER')
-                          .map(t => (
-                          <option key={t.id} value={t.id}>{t.name} (TL)</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="pe-4 text-end">
-                       <div className="d-flex align-items-center justify-content-end gap-1">
-                          <button onClick={() => handleEditUser(assoc)} className="btn btn-sm btn-link text-primary shadow-none"><Edit size={14} /></button>
-                          <button onClick={() => handleDeleteUser(assoc.id)} className="btn btn-sm btn-link text-danger shadow-none"><Trash2 size={14} /></button>
-                       </div>
-                    </td>
-                  </tr>
+                  <UserRow key={assoc.id} user={assoc} />
                 ))}
               </tbody>
             </table>

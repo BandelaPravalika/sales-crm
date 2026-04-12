@@ -31,25 +31,31 @@ import LeadsTable from './dashboard/components/LeadsTable';
 import TeamTree from './dashboard/components/TeamTree';
 import TeamManagement from './dashboard/components/TeamManagement';
 import UserEditModal from './dashboard/components/UserEditModal';
-import BulkUploadModal from './dashboard/components/BulkUploadModal.jsx';
 import PaymentHistory from '../components/PaymentHistory';
 import RevenueTrendChart from './dashboard/components/RevenueTrendChart';
 import StatCard from '../components/StatCard';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import AttendanceDashboard from '../components/pages/AttendanceDashboard';
 import CallLogDashboard from './dashboard/components/CallLogDashboard';
+import CallAnalyticsGrid from './dashboard/components/CallAnalyticsGrid';
 import InvoiceModal from './dashboard/components/InvoiceModal';
 import paymentService from '../services/paymentService';
+import TaskBoard from '../components/TaskBoard';
+import LeadForm from '../components/LeadForm';
+import BulkUploadModal from './dashboard/components/BulkUploadModal';
+
+import MetricCommandCenter from './dashboard/components/MetricCommandCenter';
+import TicketManager from '../components/TicketManager';
 
 const ManagerDashboard = () => {
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
     const { isDarkMode } = useTheme();
     const theme = isDarkMode ? 'dark' : 'light';
     const [activeTab, setActiveTab] = useState(localStorage.getItem('mgr_activeTab') || 'overview');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterUnassigned, setFilterUnassigned] = useState(false);
     const [bulkAssignTlId, setBulkAssignTlId] = useState('');
-    const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+
 
     // Invoice state
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -62,7 +68,7 @@ const ManagerDashboard = () => {
     });
 
     // Custom Hooks
-    const { stats, performance, teamTree, trend, reload } = useDashboardData(filters);
+    const { stats, performance, teamTree, trend, callStats, loading, reload } = useDashboardData(filters);
     const { 
         leads, 
         loadLeads, 
@@ -89,7 +95,11 @@ const ManagerDashboard = () => {
                 managerService.fetchPermissions(),
                 managerService.fetchShifts()
             ]);
-            setTeamLeaders(Array.isArray(tlRes.data) ? tlRes.data : (tlRes.data?.data || []));
+            const tlData = Array.isArray(tlRes.data) ? tlRes.data : (tlRes.data?.data || []);
+            // Add current manager for self-assignment capability
+            const selfManager = { id: user.id, name: `${user.name} (Self)`, role: user.role };
+            setTeamLeaders([selfManager, ...tlData]);
+            
             setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || []));
             setPermissions(Array.isArray(permRes.data) ? permRes.data : (permRes.data?.data || []));
             setShifts(Array.isArray(shiftRes.data) ? shiftRes.data : (shiftRes.data?.data || []));
@@ -101,6 +111,13 @@ const ManagerDashboard = () => {
     useEffect(() => {
         fetchLookupData();
     }, []);
+
+    useEffect(() => {
+        // Auto-scroll to top when drilling into a specific user's data
+        if (filters.userId) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [filters.userId]);
 
     useEffect(() => {
         localStorage.setItem('mgr_activeTab', activeTab);
@@ -156,6 +173,18 @@ const ManagerDashboard = () => {
         }
     };
 
+    const handleAddLead = async (leadData) => {
+        try {
+            await managerService.addLead(leadData);
+            toast.success('Lead added to nodal pipeline');
+            loadLeads();
+            return true;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Lead ingestion failed: Constraint violation');
+            return false;
+        }
+    };
+
     const handleRecordCallOutcome = async (leadId, data) => {
         try {
             await managerService.recordCallOutcome(leadId, data);
@@ -178,14 +207,13 @@ const ManagerDashboard = () => {
         }
     };
 
-    const handleBulkUploadSuccess = () => {
-        setIsBulkUploadModalOpen(false);
-        loadLeads();
-        reload();
-    };
 
     const filteredLeadsList = leads.filter(l => {
-        const matchesSearch = l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.mobile.includes(searchTerm);
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = 
+            (l.name && l.name.toLowerCase().includes(term)) || 
+            (l.mobile && l.mobile.includes(searchTerm)) ||
+            (l.email && l.email.toLowerCase().includes(term));
         const matchesUnassigned = filterUnassigned ? !l.assignedToId : true;
         return matchesSearch && matchesUnassigned;
     });
@@ -193,34 +221,77 @@ const ManagerDashboard = () => {
     return (
         <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab} role="MANAGER">
             <div className="animate-fade-in d-flex flex-column gap-4">
+                {activeTab === 'my-stats' && (
+                  <div className="d-flex flex-column gap-3 animate-fade-in">
+                    <div className="px-1">
+                       <h5 className="fw-black text-main mb-1 text-uppercase tracking-widest small">Personal Command Center</h5>
+                       <p className="text-muted small fw-bold opacity-50 mb-0" style={{ fontSize: '9px' }}>VIEWING INDIVIDUAL OPERATIONAL PERFORMANCE</p>
+                    </div>
+                    <MetricCommandCenter 
+                       stats={{...stats, performance: performance.filter(p => p.userId === user.id)}} 
+                       role={user.role} 
+                       filters={{...filters, userId: user.id, currentUserId: user.id}} 
+                       onNavigate={setActiveTab} 
+                    />
+                  </div>
+                )}
                 {activeTab === 'overview' && (
-                  <div className="d-flex flex-column gap-4">
-                    <FiltersBar filters={filters} onChange={setFilters} onSync={reload} />
+                  <div className="d-flex flex-column gap-3">
                     {filters.userId && (
-                      <div className="d-flex align-items-center gap-2 mt-3 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
-                        <span className="label text-primary" style={{fontSize: '10px', textTransform: 'uppercase'}}>Focus Node:</span>
-                        <span className="value text-main me-2 small fw-bold">Individual Performance Profile</span>
+                      <div className="d-flex align-items-center justify-content-between p-3 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-4 animate-slide-in mb-1 shadow-glow">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="p-3 bg-primary bg-opacity-20 rounded-circle text-primary border border-primary border-opacity-30">
+                            <TrendingUp size={24} />
+                          </div>
+                          <div>
+                            <h4 className="fw-black mb-0 text-main text-uppercase tracking-widest">Operational Deep-Dive</h4>
+                            <p className="text-muted small mb-0 fw-bold opacity-75">Analyzing specialized focus data for the selected team node</p>
+                          </div>
+                        </div>
                         <button 
-                          className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
+                          className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-primary border-opacity-30 fw-black text-uppercase tracking-wider shadow-none"
                           onClick={() => setFilters({...filters, userId: null})}
-                          style={{fontSize: '9px'}}
+                          style={{fontSize: '11px'}}
                         >
-                          [ CLEAR FOCUS ]
+                          ← GLOBAL VIEW
                         </button>
                       </div>
                     )}
+                    <div className="mb-2">
+                      <MetricCommandCenter stats={{...stats, performance}} role="MANAGER" filters={filters} onNavigate={setActiveTab} />
+                    </div>
+                    <FiltersBar 
+                      filters={{...filters, currentUserId: user?.id}} 
+                      onChange={setFilters} 
+                      onSync={reload} 
+                      users={teamLeaders}
+                      role="MANAGER"
+                    />
                     <div className="row g-4 animate-fade-in">
                         <div className="col-12 col-xl-8">
-                            <Card title="Team Conversion History" subtitle="Sales Performance Velocity" style={{ height: '100%' }}>
-                                <RevenueTrendChart data={trend} theme={theme} />
+                            <Card title="Team Conversion History" subtitle="Sales Performance Velocity" className="h-100">
+                                <div className="py-2" style={{ height: '360px' }}>
+                                    <RevenueTrendChart data={trend} theme={theme} />
+                                </div>
                             </Card>
                         </div>
                         <div className="col-12 col-xl-4">
-                             <div className="d-flex flex-column gap-3 h-100">
-                                <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Targets Synchronized" icon={<CheckCircle />} color="success" />
-                                <StatCard title="Revenue (INR)" value={stats?.totalPayments || 0} sub="Confirmed Transmission" icon={<IndianRupee />} color="primary" />
-                                <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Off-Pitch Segments" icon={<Phone />} color="danger" />
-                                <StatCard title="Pending Rev" value={stats?.pendingRevenue || 0} sub="Projected Margin" icon={<IndianRupee />} color="info" />
+                             <div className="row g-3">
+                                <div className="col-12">
+                                    <StatCard title="Total Managed" value={stats?.totalGlobalLeads || 0} sub="Global Operational Scope" icon={<Users />} color="primary" />
+                                </div>
+                                <div className="col-12 col-sm-6 col-xl-6">
+                                    <StatCard title="Total Success" value={stats?.leadStats?.SUCCESS || stats?.leadStats?.PAID || 0} sub="All Time Converted" icon={<CheckCircle />} color="success" />
+                                </div>
+                                <div className="col-12 col-sm-6 col-xl-6">
+                                    <StatCard title="Revenue" value={stats?.totalPayments || 0} sub="Today Confirmed" icon={<IndianRupee />} color="primary" unit="Trans" />
+                                </div>
+                                <div className="col-12 col-sm-6 col-xl-6">
+                                    <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Today Off-Pitch" icon={<Phone />} color="danger" />
+                                </div>
+                                <div className="col-12 col-sm-6 col-xl-6">
+                                    <StatCard title="Pending Rev" value={stats?.pendingRevenue || 0} sub="Team Projected" icon={<IndianRupee />} color="info" unit="Trans" />
+                                </div>
                              </div>
                         </div>
                         <div className="col-12 text-main">
@@ -230,7 +301,18 @@ const ManagerDashboard = () => {
                                     data={performance.slice(0, 10)}
                                     renderRow={(p) => (
                                         <>
-                                            <td className="ps-4 fw-bold text-primary cursor-pointer" onClick={() => setFilters({...filters, userId: p.userId})}>{p.username}</td>
+                                            <td 
+                                                className="ps-4 fw-bold text-primary cursor-pointer hover-scale transition-all" 
+                                                onClick={() => {
+                                                    setFilters({...filters, userId: p.userId});
+                                                    toast.info(`Focusing on ${p.username}'s operational metrics`);
+                                                }}
+                                            >
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <TrendingUp size={10} className="text-primary" />
+                                                    {p.username}
+                                                </div>
+                                            </td>
                                             <td className="text-center fw-bold small text-muted"><span className="ui-badge bg-surface">{p.role}</span></td>
                                             <td className="text-center fw-bold">{p.totalLeads}</td>
                                             <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
@@ -256,71 +338,40 @@ const ManagerDashboard = () => {
                 )}
 
                 {activeTab === 'pipeline' && (
-                    <div className="premium-card overflow-hidden animate-fade-in shadow-lg">
-                        <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
+                  <div className="animate-fade-in d-flex flex-column gap-4">
+                    <div className="row">
+                      <div className="col-12">
+                        <div className="premium-card overflow-hidden animate-fade-in shadow-lg h-100">
+                          <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
                             <div>
                                 <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Global Pipeline Ledger</h5>
                                 <p className="text-muted small mb-0 fw-bold opacity-50" style={{fontSize: '9px'}}>IDENTIFICATION & ASSIGNMENT NODE</p>
                             </div>
                             <button className="ui-btn ui-btn-primary btn-sm px-4 rounded-pill shadow-glow" onClick={() => loadLeads()}>SYNC DATA</button>
-                        </div>
-                        <LeadsTable 
-                            leads={filteredLeadsList}
-                            searchTerm={searchTerm}
-                            setSearchTerm={setSearchTerm}
-                            filterUnassigned={filterUnassigned}
-                            setFilterUnassigned={setFilterUnassigned}
-                            selectedLeadIds={selectedLeadIds}
-                            toggleSelection={toggleSelection}
-                            toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === filteredLeadsList.length ? [] : filteredLeadsList.map(l => l.id))}
-                            bulkAssignTlId={bulkAssignTlId}
-                            setBulkAssignTlId={setBulkAssignTlId}
-                            handleBulkAssign={handleBulkAssign}
-                            handleAssignLead={handleAssignLead}
-                            onRecordCallOutcome={handleRecordCallOutcome}
-                            onViewInvoice={handleViewInvoice}
-                            teamLeaders={teamLeaders.filter(u => u.role === 'TEAM_LEADER' || u.role === 'ASSOCIATE')} 
-                        />
-                    </div>
-                )}
-
-                {activeTab === 'ingestion' && (
-                  <div className="animate-fade-in d-flex flex-column gap-4">
-                    <BulkUploadModal 
-                      isOpen={true}
-                      isInline={true}
-                      onClose={() => setActiveTab('pipeline')}
-                      onSuccess={handleBulkUploadSuccess}
-                      assignees={teamLeaders.filter(u => u.role === 'ASSOCIATE')}
-                    />
-
-                    {/* Unassigned Leads Pool Section */}
-                    <div className="premium-card overflow-hidden shadow-lg border-0 mt-4">
-                       <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
-                          <h6 className="fw-black mb-0 text-main tracking-widest small">UNASSIGNED LEADS POOL</h6>
-                          <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>ORPHAN DATA NODES AWAITING ASSIGNMENT</small>
-                       </div>
-                       <div className="card-body p-0">
+                          </div>
                           <LeadsTable 
-                            leads={leads.filter(l => !l.assignedToId)}
-                            searchTerm=""
-                            setSearchTerm={() => {}}
-                            filterUnassigned={true}
-                            setFilterUnassigned={() => {}}
-                            selectedLeadIds={selectedLeadIds}
-                            toggleSelection={toggleSelection}
-                            toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === leads.filter(l => !l.assignedToId).length ? [] : leads.filter(l => !l.assignedToId).map(l => l.id))}
-                            bulkAssignTlId={bulkAssignTlId}
-                            setBulkAssignTlId={setBulkAssignTlId}
-                            handleBulkAssign={handleBulkAssign}
-                            handleAssignLead={handleAssignLead}
-                            teamLeaders={teamLeaders}
-                            showFilters={false}
+                              leads={filteredLeadsList}
+                              searchTerm={searchTerm}
+                              setSearchTerm={setSearchTerm}
+                              filterUnassigned={filterUnassigned}
+                              setFilterUnassigned={setFilterUnassigned}
+                              selectedLeadIds={selectedLeadIds}
+                              toggleSelection={toggleSelection}
+                              toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === filteredLeadsList.length ? [] : filteredLeadsList.map(l => l.id))}
+                              bulkAssignTlId={bulkAssignTlId}
+                              setBulkAssignTlId={setBulkAssignTlId}
+                              handleBulkAssign={handleBulkAssign}
+                              handleAssignLead={handleAssignLead}
+                              onRecordCallOutcome={handleRecordCallOutcome}
+                              onViewInvoice={handleViewInvoice}
+                              teamLeaders={teamLeaders} 
                           />
-                       </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
+
 
                 {activeTab === 'users' && (
                     <div className="animate-fade-in mb-4">
@@ -348,7 +399,20 @@ const ManagerDashboard = () => {
                   </div>
                 )}
 
-                {activeTab === 'call-logs' && <CallLogDashboard />}
+                {activeTab === 'call-logs' && (
+                    <CallLogDashboard />
+                )}
+
+                {activeTab === 'tasks' && (
+                  <div className="animate-fade-in">
+                    <TaskBoard
+                      leads={leads}
+                      theme={theme}
+                      onUpdateStatus={() => loadLeads()} 
+                      fetchLeads={loadLeads}
+                    />
+                  </div>
+                )}
 
                 {activeTab === 'payments' && (
                     <div className="d-flex flex-column gap-4 animate-fade-in">
@@ -361,6 +425,32 @@ const ManagerDashboard = () => {
                         </div>
                         <PaymentHistory role="MANAGER" />
                     </div>
+                )}
+                
+                {activeTab === 'ingestion' && (
+                  <div className="animate-fade-in d-flex flex-column gap-4">
+                    <div className="row g-4">
+                      <div className="col-12 col-xl-4">
+                         <div className="d-flex flex-column gap-4 h-100">
+                           <LeadForm onSubmit={handleAddLead} title="Seed Global Lead" />
+
+                         </div>
+                      </div>
+                      <div className="col-12 col-xl-8">
+                         <BulkUploadModal 
+                            isInline={true} 
+                            assignees={teamLeaders}
+                            onSuccess={loadLeads} 
+                         />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'tickets' && (
+                  <div className="animate-fade-in">
+                     <TicketManager role="MANAGER" />
+                  </div>
                 )}
             </div>
 
@@ -379,14 +469,6 @@ const ManagerDashboard = () => {
                 />
             )}
 
-            {isBulkUploadModalOpen && (
-                <BulkUploadModal 
-                    isOpen={isBulkUploadModalOpen}
-                    onClose={() => setIsBulkUploadModalOpen(false)}
-                    onSuccess={handleBulkUploadSuccess}
-                    assignees={teamLeaders}
-                />
-            )}
 
             <InvoiceModal isOpen={isInvoiceModalOpen} onClose={() => setIsInvoiceModalOpen(false)} invoiceData={selectedInvoiceData} />
         </DashboardLayout>

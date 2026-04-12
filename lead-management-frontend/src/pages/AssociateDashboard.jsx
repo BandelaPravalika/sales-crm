@@ -6,7 +6,6 @@ import associateService from '../services/associateService';
 import LeadTable from '../components/LeadTable';
 import StatCard from '../components/StatCard';
 import LeadForm from '../components/LeadForm';
-import BulkUpload from '../components/BulkUpload';
 import {
   Users,
   TrendingUp,
@@ -31,6 +30,9 @@ import FiltersBar from './dashboard/components/FiltersBar';
 import InvoiceModal from './dashboard/components/InvoiceModal';
 import paymentService from '../services/paymentService';
 import AttendanceDashboard from '../components/pages/AttendanceDashboard';
+import CallAnalyticsGrid from './dashboard/components/CallAnalyticsGrid';
+import CallLogDashboard from './dashboard/components/CallLogDashboard';
+import TicketManager from '../components/TicketManager';
 
 const AssociateDashboard = () => {
   const { user, logout } = useAuth();
@@ -38,9 +40,10 @@ const AssociateDashboard = () => {
   const [stats, setStats] = useState(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('performance');
-  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+
   const [trendData, setTrendData] = useState([]);
+  const [callStats, setCallStats] = useState(null);
   const [filters, setFilters] = useState({
     from: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0] + 'T00:00:00',
     to: new Date().toISOString().split('T')[0] + 'T23:59:59'
@@ -59,14 +62,16 @@ const AssociateDashboard = () => {
       const statsFilters = { start: filters.from, end: filters.to };
       const trendFilters = { from: filters.from.split('T')[0], to: filters.to.split('T')[0] };
 
-      const [statsRes, leadsRes, trendRes] = await Promise.all([
+      const [statsRes, leadsRes, trendRes, callStatsRes] = await Promise.all([
         associateService.fetchPerformanceStats(statsFilters),
         associateService.fetchMyLeads(),
-        associateService.fetchTrendData(trendFilters)
+        associateService.fetchTrendData(trendFilters),
+        associateService.fetchCallStats({ date: filters.from.split('T')[0] })
       ]);
       setStats(statsRes.data);
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : (leadsRes.data?.content || []));
       setTrendData(trendRes.data);
+      setCallStats(callStatsRes.data?.data || callStatsRes.data);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load dashboard data');
     } finally {
@@ -140,6 +145,35 @@ const AssociateDashboard = () => {
       role="ASSOCIATE"
     >
       <div className="animate-fade-in d-flex flex-column gap-4">
+        {activeTab === 'overview' && (
+          <div className="d-flex flex-column gap-4 animate-fade-in">
+             <div className="row g-4">
+                <div className="col-12 col-md-3">
+                  <StatCard title="Total Leads" value={stats?.total || 0} sub="Active Workspace" icon={<Users size={18} />} color="primary" />
+                </div>
+                <div className="col-12 col-md-3">
+                  <StatCard title="Conversions" value={stats?.convertedCount || 0} sub="Successful Cycles" icon={<CheckCircle size={18} />} color="success" />
+                </div>
+                <div className="col-12 col-md-3">
+                  <StatCard title="Lost Nodes" value={stats?.lostCount || 0} sub="Closed Files" icon={<Zap size={18} />} color="danger" />
+                </div>
+                <div className="col-12 col-md-3">
+                  <StatCard title="Your Revenue" value={`₹ ${stats?.totalRevenue?.toLocaleString() || 0}`} sub="Current Month" icon={<IndianRupee size={18} />} color="info" unit="INR" />
+                </div>
+             </div>
+             
+             <div className="row g-4">
+                <div className="col-12 col-xl-8">
+                   <Card title="Conversion Velocity" subtitle="Individual Trend Analytics">
+                      <div className="py-2" style={{height: '350px'}}>
+                         <RevenueTrendChart data={trendData} theme={isDarkMode ? 'dark' : 'light'} />
+                      </div>
+                   </Card>
+                </div>
+             </div>
+          </div>
+        )}
+
         {activeTab === 'leads' && (
           <div className="premium-card overflow-hidden shadow-lg border-0">
             <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
@@ -160,60 +194,6 @@ const AssociateDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'ingestion' && (
-          <div className="row g-4 animate-fade-in">
-             <div className="col-12 col-xl-5">
-                <div className="premium-card h-100 overflow-hidden shadow-glow">
-                   <div className="card-body p-4">
-                      <LeadForm onSubmit={handleAddLead} title="SINGLE LEAD ENTRY" />
-                   </div>
-                </div>
-             </div>
-             
-             <div className="col-12 col-xl-7">
-                <div className="premium-card h-100 border-0 shadow-lg overflow-hidden d-flex flex-column">
-                   <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5 d-flex align-items-center gap-3">
-                      <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill">
-                         <Upload size={20} />
-                      </div>
-                      <div>
-                         <h6 className="fw-black mb-0 text-main tracking-widest text-uppercase">Mass Data Ingestion</h6>
-                         <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>PROPAGATE DATASETS INTO PIPELINE</small>
-                      </div>
-                   </div>
-                   
-                   <div className="card-body p-5 d-flex flex-column align-items-center justify-content-center text-center gap-4">
-                      <div className="p-4 bg-primary bg-opacity-10 rounded-circle text-primary shadow-glow">
-                         <FileText size={64} />
-                      </div>
-                      <div className="max-w-md mx-auto">
-                         <h4 className="fw-black text-main mb-2">Validated CSV Ingestion</h4>
-                         <p className="text-muted small fw-bold leading-relaxed mb-4">
-                            Upload your validated lead manifest stream. The system will automatically sanitize 
-                            entries and synchronize them with your active node pool.
-                         </p>
-                         <button 
-                           className="btn btn-primary rounded-pill px-5 py-3 fw-black text-uppercase shadow-glow border-0 hover-up transition-smooth d-flex align-items-center gap-3 mx-auto"
-                           onClick={() => setIsBulkUploadModalOpen(true)}
-                         >
-                           <Upload size={20} /> OPEN BULK UPLOADER
-                         </button>
-                      </div>
-                      
-                      <div className="mt-4 p-3 bg-surface bg-opacity-50 rounded-4 border border-white border-opacity-5 w-100 max-w-sm">
-                         <div className="d-flex align-items-center gap-3 text-start">
-                            <ShieldCheck size={24} className="text-success" />
-                            <div>
-                               <div className="small fw-black text-main text-uppercase" style={{ fontSize: '10px' }}>Security Protocol</div>
-                               <div className="text-muted small fw-bold" style={{ fontSize: '9px' }}>All data is encrypted post-ingestion.</div>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-        )}
 
         {activeTab === 'tasks' && (
           <TaskBoard
@@ -225,7 +205,7 @@ const AssociateDashboard = () => {
           />
         )}
 
-        {activeTab === 'performance' && (
+        {activeTab === 'reports' && (
           <div className="d-flex flex-column gap-4 animate-fade-in">
             <FiltersBar 
               filters={filters} 
@@ -235,18 +215,7 @@ const AssociateDashboard = () => {
             />
 
             <div className="row g-4 mb-4">
-              <div className="col-12 col-md-3">
-                <StatCard title="Identity Pool" value={stats?.total || 0} sub="Global Operational Records" icon={<Users size={18} />} color="primary" />
-              </div>
-              <div className="col-12 col-md-3">
-                <StatCard title="Success Nodes" value={stats?.convertedCount || 0} sub="Capital Transmission Verified" icon={<CheckCircle size={18} />} color="success" />
-              </div>
-              <div className="col-12 col-md-3">
-                <StatCard title="Lost Segments" value={stats?.lostCount || 0} sub="Off-Pitch Terminations" icon={<TrendingUp size={18} />} color="danger" unit="Nodes" />
-              </div>
-              <div className="col-12 col-md-3">
-                <StatCard title="Revenue Growth" value={`₹ ${stats?.totalRevenue?.toLocaleString() || 0}`} sub="Total Individual Contribution" icon={<IndianRupee size={18} />} color="info" unit="INR" />
-              </div>
+              {/* Stats moved to Overview */}
             </div>
 
             <div className="row g-4">
@@ -274,7 +243,7 @@ const AssociateDashboard = () => {
           <div className="d-flex flex-column gap-4">
             <div className="px-2">
               <h5 className="fw-black mb-1 text-main text-uppercase tracking-widest small">Financial Transmission Archive</h5>
-              <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>VIEW PERSONAL CONVERSION AND COMMISSION HISTORY</p>
+              <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>VIEW PERSONAL CONVERSION AND REVENUE HISTORY</p>
             </div>
             <PaymentHistory role="ASSOCIATE" />
           </div>
@@ -283,17 +252,20 @@ const AssociateDashboard = () => {
         {activeTab === 'attendance' && (
           <AttendanceDashboard role="ASSOCIATE" />
         )}
+        
+        {activeTab === 'call-logs' && (
+          <div className="animate-fade-in">
+             <CallLogDashboard />
+          </div>
+        )}
+
+        {activeTab === 'tickets' && (
+          <div className="animate-fade-in">
+             <TicketManager role="ASSOCIATE" />
+          </div>
+        )}
       </div>
 
-      <BulkUpload
-        isOpen={isBulkUploadModalOpen}
-        onClose={() => setIsBulkUploadModalOpen(false)}
-        uploadUrl="/leads/bulk-upload"
-        onUploadSuccess={() => {
-          toast.success("Pool initialized. Refreshing data...");
-          fetchData();
-        }}
-      />
 
       <InvoiceModal
         isOpen={isInvoiceModalOpen}

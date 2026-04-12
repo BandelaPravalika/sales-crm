@@ -37,13 +37,13 @@ const StatCard = ({ title, value, sub, icon, color = 'primary', unit = 'Nodes' }
 
         <div className="mt-auto">
           <div className="p-2 rounded-3 bg-surface bg-opacity-40 border border-white border-opacity-5 relative overflow-hidden backdrop-blur-sm">
-             <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="text-muted fw-bold small opacity-50 text-uppercase tracking-widest" style={{ fontSize: '7px' }}>{sub}</span>
-                <div className="d-flex align-items-center gap-1">
-                   <div className="p-0.5 rounded-circle" style={{ backgroundColor: themeColor.base }}></div>
-                   <span className="fw-black text-main small text-uppercase" style={{ fontSize: '7px', color: themeColor.base }}>Verified</span>
-                </div>
-             </div>
+              <div className="d-flex justify-content-between align-items-center mb-1 gap-2">
+                 <span className="text-muted fw-bold small opacity-50 text-uppercase tracking-widest text-truncate" style={{ fontSize: '7px', maxWidth: '70%' }}>{sub}</span>
+                 <div className="d-flex align-items-center gap-1 flex-shrink-0">
+                    <div className="p-0.5 rounded-circle" style={{ backgroundColor: themeColor.base }}></div>
+                    <span className="fw-black text-main small text-uppercase" style={{ fontSize: '7px', color: themeColor.base }}>Verified</span>
+                 </div>
+              </div>
              <div className="progress overflow-hidden rounded-pill bg-white bg-opacity-5 mt-1" style={{ height: '3px' }}>
                 <div className="progress-bar rounded-pill shadow-glow transition-all duration-1000" 
                      role="progressbar" 

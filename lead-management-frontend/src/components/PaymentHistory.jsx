@@ -147,6 +147,7 @@ const PaymentHistory = ({ role }) => {
 
   // Apply client-side filters for student name and due date
   const filteredPayments = payments.filter(payment => {
+    if (payment.status === 'CANCELLED') return false;
     if (studentSearch && !(payment.leadName || '').toLowerCase().includes(studentSearch.toLowerCase())) return false;
     const dueDateStr = payment.dueDate ? payment.dueDate.substring(0, 10) : (payment.createdAt ? payment.createdAt.substring(0, 10) : '');
     if (dueFrom && dueDateStr < dueFrom) return false;

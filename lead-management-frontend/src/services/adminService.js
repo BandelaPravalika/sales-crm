@@ -4,6 +4,7 @@ const adminService = {
   fetchDashboardStats: (filters) => api.get('/admin/dashboard/stats', { params: filters }),
   fetchMemberPerformance: (filters) => api.get('/admin/reports/member-performance', { params: filters }),
   fetchTrendData: (filters) => api.get('/reports/trend', { params: filters }),
+  fetchDashboardSummary: (filters) => api.get('/stats/summary', { params: filters }),
   fetchUsers: () => api.get('/admin/users'),
   fetchPermissions: () => api.get('/admin/permissions'),
   fetchShifts: () => api.get('/admin/shifts'),
@@ -16,6 +17,10 @@ const adminService = {
   fetchTeamTree: () => api.get('/admin/team-tree'),
   assignLead: (leadId, tlId) => api.post(`/admin/assign-lead/${leadId}/${tlId}`),
   bulkAssignLeads: (leadIds, tlId) => api.post('/admin/leads/bulk-assign', { leadIds, tlId }),
+  addLead: (data) => api.post('/leads', data),
+  assignSupervisor: (assocId, supId) => api.post(`/admin/assign-supervisor/${assocId}/${supId}`),
+  bulkAssignSupervisor: (associateIds, supervisorId) => api.post('/admin/bulk-assign-supervisor', { associateIds, supervisorId }),
+  bulkAssignHierarchy: (emailMap) => api.post('/admin/bulk-assign-hierarchy', emailMap),
 
   // Attendance Management
   fetchOffices: () => api.get('/admin/attendance/offices'),
@@ -26,14 +31,14 @@ const adminService = {
   createPolicy: (data) => api.post('/admin/attendance/policies', data),
   updatePolicy: (id, data) => api.put(`/admin/attendance/policies/${id}`, data),
   deletePolicy: (id) => api.delete(`/admin/attendance/policies/${id}`),
-  fetchShifts: () => api.get('/admin/attendance/shifts'),
+  fetchAttendanceShifts: () => api.get('/admin/attendance/shifts'),
   createShift: (data) => api.post('/admin/attendance/shifts', data),
   updateShift: (id, data) => api.put(`/admin/attendance/shifts/${id}`, data),
   deleteShift: (id) => api.delete(`/admin/attendance/shifts/${id}`),
 
   // Call Records Audit
   fetchCallLogsAdmin: (filters) => api.get('/call-records/admin/all', { params: filters }),
-  fetchGlobalCallStats: () => api.get('/call-records/admin/stats'),
+   fetchGlobalCallStats: (filters) => api.get('/call-records/admin/stats', { params: filters }),
   bulkUploadCallLogs: (file) => {
     const formData = new FormData();
     formData.append('file', file);

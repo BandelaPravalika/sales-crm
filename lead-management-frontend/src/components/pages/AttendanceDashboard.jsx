@@ -13,7 +13,7 @@ import {
   ExternalLink,
   X
 } from 'lucide-react';
-
+import { toast } from 'react-toastify';
 import attendanceService from '../../services/attendanceService';
 
 const AttendanceDashboard = ({ role }) => {
@@ -156,25 +156,28 @@ const AttendanceDashboard = ({ role }) => {
           <table className="table table-hover align-middle mb-0">
             <thead className="bg-surface bg-opacity-30 border-bottom border-white border-opacity-5">
               <tr>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Staff Node</th>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Propagation Date</th>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Live Work</th>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Rest Stream</th>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Boundary Exits</th>
-                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-end" style={{ fontSize: '10px' }}>Node Status</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest" style={{ fontSize: '10px' }}>SNo</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Date</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Emp ID</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest" style={{ fontSize: '10px' }}>Name</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Status</th>
+                <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-center" style={{ fontSize: '10px' }}>Working Hours</th>
+                {(role === 'ADMIN' || role === 'MANAGER') && (
+                  <th className="px-4 py-3 small fw-black text-muted text-uppercase tracking-widest text-end" style={{ fontSize: '10px' }}>Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-5">
+                  <td colSpan="7" className="text-center py-5">
                     <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                     <span className="text-muted fw-bold small opacity-75">POLING ATTENDANCE PROTOCOL...</span>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center py-5">
+                  <td colSpan="7" className="text-center py-5">
                     <div className="d-flex flex-column align-items-center gap-3 opacity-25">
                        <AlertCircle size={48} className="text-muted" />
                        <span className="fw-black text-muted text-uppercase small tracking-widest">No nodes found for the selected temporal coordinates</span>
@@ -182,57 +185,70 @@ const AttendanceDashboard = ({ role }) => {
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
+                logs.map((log, index) => (
                   <tr key={`${log.userId}-${log.date}`} className="border-bottom border-white border-opacity-5 transition-smooth hover-bg-surface">
+                    <td className="px-4 py-3 text-muted small fw-bold">
+                        {index + 1}
+                    </td>
+                    <td className="px-4 py-3 text-center small text-main fw-black opacity-75">
+                      {log.date}
+                    </td>
+                    <td className="px-4 py-3 text-center small text-primary fw-black">
+                      #{log.userId || log.user?.id || '???'}
+                    </td>
                     <td className="px-4 py-4">
                       <div 
                         className="d-flex align-items-center gap-3" 
                         style={{ cursor: 'pointer' }}
                         onClick={() => fetchUserHistory(log.user || { id: log.userId, name: log.userName })}
                       >
-                        <div className="p-2.5 bg-primary bg-opacity-10 rounded-circle text-primary shadow-glow">
-                          <Users size={18} />
+                        <div className="p-1 rounded-circle bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 shadow-glow">
+                          <Users size={12} />
                         </div>
                         <div>
-                          <div className="fw-black text-main d-flex align-items-center gap-2">
+                          <div className="fw-black text-main d-flex align-items-center gap-2" style={{ fontSize: '12px' }}>
                              {log.userName || log.user?.name || `ID: ${log.userId || log.user?.id || '?'}`}
-                             <ExternalLink size={12} className="text-primary opacity-50" />
                           </div>
-                          <div className="small text-muted fw-bold opacity-50" style={{fontSize: '0.7rem'}}>{log.user?.email || 'OFFLINE ASSET'}</div>
                         </div>
                       </div>
                     </td>
-
-                    <td className="px-4 py-3 text-center small text-main fw-black opacity-75">
-                      {log.date}
-                    </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-success bg-opacity-10 text-success rounded-pill small border border-success border-opacity-10 fw-black">
-                        <Clock size={12} />
-                        {formatMinutes(log.totalWorkMinutes)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-warning bg-opacity-10 text-warning rounded-pill small border border-warning border-opacity-10 fw-black">
-                        <Coffee size={12} />
-                        {formatMinutes(log.totalBreakMinutes)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-info bg-opacity-10 text-info rounded-pill small border border-info border-opacity-10 fw-black">
-                        <AlertCircle size={12} />
-                        {log.outsideCount || 0} EXITS
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-end">
                       <div className={`ui-badge ${
                         log.status === 'PRESENT' ? 'bg-success bg-opacity-10 text-success border border-success border-opacity-20' : 
                         log.status === 'HALF_DAY' ? 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20' : 
                         'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-20'
-                      }`}>
+                      }`} style={{ fontSize: '9px' }}>
                         {log.status === 'PRESENT' ? 'PRESENT' : log.status === 'HALF_DAY' ? 'HALF DAY' : 'ABSENT'}
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="d-inline-flex align-items-center gap-2 px-3 py-1.5 bg-surface text-main rounded-pill small border border-white border-opacity-5 fw-black" style={{ fontSize: '11px' }}>
+                        <Clock size={12} className="text-primary" />
+                        {formatMinutes(log.totalWorkMinutes)}
+                      </div>
+                    </td>
+                    {(role === 'ADMIN' || role === 'MANAGER') && (
+                      <td className="px-4 py-3 text-end">
+                        <button 
+                          className="btn btn-link text-danger p-0 border-0 opacity-50 hover-opacity-100 transition-all"
+                          title="Force Punch Out (Close Session)"
+                          onClick={async (e) => {
+                             e.stopPropagation();
+                             if (window.confirm(`Force close current attendance session for ${log.userName || log.userId}?`)) {
+                                try {
+                                  await attendanceService.forceClockOut(log.userId);
+                                  toast.success('Session closed successfully');
+                                  fetchLogs();
+                                } catch (err) {
+                                  toast.error('Failed to close session - user may already be offline');
+                                }
+                             }
+                          }}
+                        >
+                          <XCircle size={18} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

@@ -61,6 +61,12 @@
   transition: background-color 0.4s ease, border-color 0.4s ease, transform 0.2s ease;
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   background-color: var(--bg-body) !important;
   color: var(--text-main);
@@ -68,6 +74,7 @@ body {
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.011em;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 /* Scrollbars */
@@ -82,12 +89,17 @@ body {
 .dashboard-wrapper {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-body);
 }
 
 .main-content {
   flex-grow: 1;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-body);
   padding-top: var(--header-height);
   transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -223,3 +235,42 @@ h1, h2, h3, h4, h5, h6 {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in { animation: fadeIn 0.4s ease forwards; }
+
+/* Attendance Widget Specific */
+.attendance-widget {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.attendance-widget.minimized {
+  max-height: 44px;
+}
+
+.cursor-pointer { cursor: pointer; }
+.hover-opacity:hover { opacity: 0.85; }
+
+.rotate-180 { transform: rotate(180deg); }
+.tracking-tighter { letter-spacing: -0.05em; }
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+.pulse-dot {
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Fix for "black select" visibility issues */
+select option {
+  background-color: #111827; /* Tailwind Gray-900 */
+  color: #ffffff;
+  padding: 10px;
+}
+
+[data-bs-theme="light"] select option {
+  background-color: #ffffff;
+  color: #000000;
+}

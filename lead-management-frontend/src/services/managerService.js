@@ -16,9 +16,12 @@ const managerService = {
             api.get('/manager/dashboard/stats', { params: statsParams }),
             api.get('/manager/reports/member-performance', { params: statsParams }),
             api.get('/manager/team-tree'),
-            api.get('/reports/trend', { params: trendParams })
+            api.get('/reports/trend', { params: trendParams }),
+            api.get('/call-records/admin/stats', { params: { date: filters.from?.split('T')[0] } }),
+            api.get('/stats/summary', { params: { from: filters.from?.split('T')[0], to: filters.to?.split('T')[0] } })
         ]);
     },
+    fetchGlobalCallStats: (filters) => api.get('/call-records/admin/stats', { params: filters }),
     fetchLeads: () => api.get('/manager/leads'),
     fetchTeamLeaders: () => api.get('/manager/team-leaders'),
     fetchRoles: () => api.get('/manager/roles'),
@@ -28,6 +31,8 @@ const managerService = {
     updateUser: (id, userData) => api.put(`/manager/users/${id}`, userData),
     deleteUser: (id) => api.delete(`/manager/users/${id}`),
     assignSupervisor: (associateId, supervisorId) => api.post(`/manager/users/${associateId}/assign-supervisor/${supervisorId}`),
+    bulkAssignSupervisor: (associateIds, supervisorId) => api.post('/manager/users/bulk-assign-supervisor', { associateIds, supervisorId }),
+    bulkAssignHierarchy: (emailMap) => api.post('/manager/users/bulk-assign-hierarchy', emailMap),
     addLead: (leadData) => api.post('/manager/leads', leadData),
     assignLead: (leadId, tlId) => api.post(`/manager/assign-lead/${leadId}/${tlId}`),
     bulkAssignLeads: (leadIds, tlId) => api.post('/manager/leads/bulk-assign', { leadIds, tlId }),

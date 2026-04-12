@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Users, ShieldHalf, Phone, FileText, Upload } from 'lucide-react';
 import { Button, Input, Table } from '../../../components/common/Components';
-import BulkUploadModal from './BulkUploadModal';
 
 const LeadsTable = ({ 
   leads, 
@@ -16,12 +15,10 @@ const LeadsTable = ({
   setBulkAssignTlId,
   handleBulkAssign,
   handleAssignLead,
-  onLogCall,
+  onRecordCallOutcome,
   onViewInvoice,
-  teamLeaders,
-  onBulkUploadSuccess
+  teamLeaders
 }) => {
-  const [isBulkModalOpen, setIsBulkModalOpen] = React.useState(false);
   const getStatusBadge = (status) => {
     let variant = 'bg-surface text-muted';
     if (['NEW', 'PENDING'].includes(status)) variant = 'bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10';
@@ -75,14 +72,6 @@ const LeadsTable = ({
                 <label className="text-muted fw-bold small text-uppercase tracking-wider cursor-pointer ms-1" htmlFor="unassignedSw" style={{ fontSize: '10px' }}>Unassigned</label>
               </div>
 
-              <Button 
-                variant="primary" 
-                className="rounded-pill px-4 py-2 d-flex align-items-center gap-2 shadow-glow border-0"
-                style={{ fontSize: '10px', fontWeight: '900', letterSpacing: '1px' }}
-                onClick={() => setIsBulkModalOpen(true)}
-              >
-                <Upload size={14} /> BULK INGESTION
-              </Button>
             </div>
           </div>
         </div>
@@ -105,7 +94,7 @@ const LeadsTable = ({
               >
                 <option value="">Bulk Redirect To...</option>
                 {teamLeaders
-                  .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
+                  .filter(u => ['MANAGER', 'TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
                   .map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
               </select>
               <Button 
@@ -160,7 +149,7 @@ const LeadsTable = ({
             </td>
             <td className="text-end">
               <div className="d-flex align-items-center justify-content-end gap-1">
-                <button className="btn btn-link text-primary p-2 border-0" title="Log Manual Call" onClick={() => onLogCall && onLogCall(lead)}>
+                <button className="btn btn-link text-primary p-2 border-0" title="Log Manual Call" onClick={() => onRecordCallOutcome && onRecordCallOutcome(lead)}>
                   <Phone size={16} />
                 </button>
                 {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
@@ -178,22 +167,13 @@ const LeadsTable = ({
                 >
                   <option value="">Move To...</option>
                   {teamLeaders
-                    .filter(u => ['TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
+                    .filter(u => ['MANAGER', 'TEAM_LEADER', 'ASSOCIATE'].includes(u.role))
                     .map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
             </td>
           </>
         )}
-      />
-      <BulkUploadModal 
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        onSuccess={() => {
-          setIsBulkModalOpen(false);
-          onBulkUploadSuccess && onBulkUploadSuccess();
-        }}
-        assignees={teamLeaders?.filter(u => u.role === 'ASSOCIATE') || []}
       />
     </div>
   );

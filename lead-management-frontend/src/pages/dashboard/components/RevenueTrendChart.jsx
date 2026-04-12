@@ -62,111 +62,105 @@ const RevenueTrendChart = ({ data }) => {
   };
 
   return (
-    <div className="premium-card overflow-hidden h-100 bg-transparent border-0">
-      <div className="card-header bg-transparent border-0 p-4 d-flex align-items-center justify-content-between">
-        <div className="d-flex align-items-center gap-3">
-          <div className="p-2 bg-success bg-opacity-10 text-success rounded shadow-sm">
-            <TrendingUp size={20} />
-          </div>
-          <div>
-            <h5 className="card-title fw-bold mb-0">Revenue Analytics Pipeline</h5>
-            <small className="text-muted small text-uppercase" style={{ fontSize: '9px' }}>Correlation: Leads Generated vs Conversion Value</small>
-          </div>
-        </div>
-      </div>
-      <div className="card-body p-4 pt-0" style={{ height: '350px' }}>
+    <>
+      <div className="w-100 bg-transparent" style={{ height: '350px', minHeight: '350px' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
+          <AreaChart 
+            data={data} 
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--success)" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="var(--success)" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
               </linearGradient>
               <linearGradient id="colorLost" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.1}/>
-                <stop offset="95%" stopColor="var(--danger)" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} />
             <XAxis 
               dataKey="date" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-              tickFormatter={(date) => new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#64748b' }}
+              tickFormatter={(date) => {
+                try {
+                  return new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+                } catch(e) { return date; }
+              }}
+              minTickGap={30}
             />
             <YAxis 
               yAxisId="left"
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+              tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#64748b' }}
             />
             <YAxis 
               yAxisId="right"
               orientation="right"
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-              tickFormatter={(val) => `₹${val>=1000 ? val/1000 + 'k' : val}`}
+              tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#64748b' }}
+              tickFormatter={(val) => `₹${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--primary)', strokeWidth: 1, strokeDasharray: '3 3' }} />
+            <Tooltip content={<CustomTooltip />} />
             <Area 
               yAxisId="left"
               type="monotone" 
               dataKey="leadsCount" 
-              stroke="var(--primary)" 
+              stroke="#6366f1" 
               strokeWidth={3}
               fillOpacity={1} 
               fill="url(#colorLeads)" 
-              name="Leads"
-              activeDot={{ r: 6, stroke: 'var(--primary)', strokeWidth: 2, fill: 'var(--bg-card)' }}
+              connectNulls
             />
             <Area 
               yAxisId="left"
               type="monotone" 
               dataKey="lostCount" 
-              stroke="var(--danger)" 
+              stroke="#f43f5e" 
               strokeWidth={3}
               fillOpacity={1} 
               fill="url(#colorLost)" 
-              name="Lost"
-              activeDot={{ r: 6, stroke: 'var(--danger)', strokeWidth: 2, fill: 'var(--bg-card)' }}
+              connectNulls
             />
             <Area 
               yAxisId="right"
               type="monotone" 
               dataKey="revenue" 
-              stroke="var(--success)" 
+              stroke="#10b981" 
               strokeWidth={3}
               fillOpacity={1} 
               fill="url(#colorRev)" 
-              name="Revenue"
-              activeDot={{ r: 6, stroke: 'var(--success)', strokeWidth: 2, fill: 'var(--bg-card)' }}
+              connectNulls
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="card-footer bg-transparent border-top border-white border-opacity-5 p-3">
+      <div className="pt-2 pb-3 border-top border-white border-opacity-5">
         <div className="d-flex justify-content-center gap-4">
           <div className="d-flex align-items-center gap-2">
-            <div className="rounded-circle bg-primary" style={{ width: 10, height: 10 }}></div>
-            <span className="small fw-bold text-muted">Lead Gen Pipeline</span>
+            <div className="rounded-circle" style={{ width: 8, height: 8, background: '#6366f1' }}></div>
+            <span className="small fw-bold text-muted" style={{ fontSize: '10px' }}>Leads Pipeline</span>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <div className="rounded-circle bg-success" style={{ width: 10, height: 10 }}></div>
-            <span className="small fw-bold text-muted">Conversion Value</span>
+            <div className="rounded-circle" style={{ width: 8, height: 8, background: '#10b981' }}></div>
+            <span className="small fw-bold text-muted" style={{ fontSize: '10px' }}>Revenue Value</span>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <div className="rounded-circle bg-danger" style={{ width: 10, height: 10 }}></div>
-            <span className="small fw-bold text-muted">Lost Leads</span>
+            <div className="rounded-circle" style={{ width: 8, height: 8, background: '#f43f5e' }}></div>
+            <span className="small fw-bold text-muted" style={{ fontSize: '10px' }}>Lost Assets</span>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

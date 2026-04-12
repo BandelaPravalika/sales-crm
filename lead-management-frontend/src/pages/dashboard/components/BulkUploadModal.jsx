@@ -56,6 +56,14 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                 toast.success(`${response.data.successCount} leads ingested successfully`);
                 onSuccess();
             }
+            
+            if (response.data.duplicateCount > 0) {
+                toast.warning(`${response.data.duplicateCount} records skipped (duplicate mobile numbers found)`);
+            }
+            
+            if (response.data.failureCount > 0) {
+                toast.error(`${response.data.failureCount} records failed due to validation errors`);
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Bulk upload failed');
         } finally {
@@ -99,7 +107,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                         <Upload size={24} />
                     </div>
                     <div>
-                        <h5 className="fw-black text-main mb-0 text-uppercase tracking-widest">Lead Ingestion Hub</h5>
+                        <h5 className="fw-black text-main mb-0 text-uppercase tracking-widest">Lead Bulk Upload</h5>
                         <p className="text-muted small mb-0 fw-bold opacity-75">Import and distribute datasets</p>
                     </div>
                 </div>
@@ -139,9 +147,8 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                         </div>
                                     )}
                                 </div>
-                                <div className="alert bg-primary bg-opacity-5 border-primary border-opacity-10 rounded-4 d-flex gap-3 mb-0 align-items-center">
-                                    <AlertCircle size={20} className="text-primary flex-shrink-0" />
-                                    <div className="small text-primary fw-bold opacity-75">Schema Requirement: <strong>Name, Email, Mobile</strong></div>
+                                <div className="bg-primary text-white p-4 rounded-4 d-flex gap-3 mb-0 align-items-center justify-content-center shadow-glow">
+                                    <div className="fw-black text-uppercase tracking-widest small">Schema Requirement: Name, Email, Mobile</div>
                                 </div>
                             </div>
                         </div>
@@ -211,7 +218,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                 disabled={uploading || !file}
                             >
                                 {uploading ? <span className="spinner-border spinner-border-sm"></span> : <Upload size={18} />}
-                                {uploading ? 'Processing...' : 'Execute Ingestion'}
+                                {uploading ? 'Processing...' : 'Execute Bulk Upload'}
                             </button>
                         </div>
                     </div>
@@ -221,26 +228,41 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                     <div className="p-4 bg-success bg-opacity-10 text-success rounded-circle d-inline-block mb-4 mx-auto animate-bounce-subtle">
                         <CheckCircle2 size={56} />
                     </div>
-                    <h4 className="text-white fw-bold mb-2">Ingestion Strategic Complete</h4>
+                    <h4 className="text-white fw-bold mb-2">Bulk Upload Complete</h4>
                     <p className="text-muted mb-4 mx-auto" style={{maxWidth: '400px'}}>The lead sequence has been successfully processed and distributed among the designated strategic assets.</p>
 
                     <div className="row g-3 mb-5 justify-content-center">
-                        {[
-                            { label: 'Success', val: uploadResult.successCount, color: 'text-success', border: 'border-success' },
-                            { label: 'Duplicates', val: uploadResult.duplicateCount, color: 'text-warning', border: 'border-warning' },
-                            { label: 'Failed', val: uploadResult.failureCount, color: 'text-danger', border: 'border-danger' }
-                        ].map(stat => (
-                            <div key={stat.label} className="col-md-3">
-                                <div className={`bg-black bg-opacity-20 p-3 rounded-4 text-center border ${stat.border} border-opacity-20`}>
-                                    <h4 className={`${stat.color} fw-black mb-0`}>{stat.val}</h4>
-                                    <small className="text-muted text-uppercase fw-bold" style={{ fontSize: '9px' }}>{stat.label}</small>
+                        <div className="d-flex justify-content-center gap-4 flex-wrap mb-4">
+                             <div className="px-4 py-3 rounded-4 border border-white border-opacity-10 bg-surface text-center shadow-sm" style={{ minWidth: '140px' }}>
+                                <div className="text-primary fw-black h2 mb-0">{uploadResult.successCount}</div>
+                                <div className="text-muted fw-bold small text-uppercase tracking-widest" style={{ fontSize: '8px' }}>SUCCESSFUL</div>
+                             </div>
+                             
+                             {uploadResult.duplicateCount > 0 && (
+                                <div className="px-4 py-3 rounded-4 border border-warning border-opacity-25 bg-warning bg-opacity-10 text-center shadow-sm animate-pulse" style={{ minWidth: '140px' }}>
+                                   <div className="text-warning fw-black h2 mb-0">{uploadResult.duplicateCount}</div>
+                                   <div className="text-warning fw-bold small text-uppercase tracking-widest" style={{ fontSize: '8px' }}>DUPLICATES</div>
                                 </div>
+                             )}
+
+                             {uploadResult.failureCount > 0 && (
+                                <div className="px-4 py-3 rounded-4 border border-danger border-opacity-25 bg-danger bg-opacity-10 text-center shadow-sm" style={{ minWidth: '140px' }}>
+                                   <div className="text-danger fw-black h2 mb-0">{uploadResult.failureCount}</div>
+                                   <div className="text-danger fw-bold small text-uppercase tracking-widest" style={{ fontSize: '8px' }}>FAILED</div>
+                                </div>
+                             )}
+                        </div>
+
+                        {uploadResult.duplicateCount > 0 && (
+                            <div className="alert bg-warning bg-opacity-10 border border-warning border-opacity-20 text-warning rounded-4 p-3 mb-4 d-flex align-items-center gap-3 justify-content-center animate-fade-in">
+                                <AlertCircle size={18} />
+                                <span className="small fw-bold">Some leads were skipped because their mobile numbers are already in the database.</span>
                             </div>
-                        ))}
+                        )}
                     </div>
 
                     <div className="d-flex gap-3 justify-content-center mt-auto">
-                        <button className="btn btn-outline-white px-5 rounded-pill fw-bold" onClick={handleReset}>New Ingestion</button>
+                        <button className="btn btn-outline-white px-5 rounded-pill fw-bold" onClick={handleReset}>New Upload</button>
                         <button className="btn btn-primary px-5 rounded-pill fw-bold shadow-glow" onClick={isInline ? handleReset : onClose}>Complete</button>
                     </div>
                 </div>

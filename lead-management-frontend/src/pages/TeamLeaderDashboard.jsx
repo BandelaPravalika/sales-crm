@@ -13,9 +13,11 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import TaskBoard from '../components/TaskBoard';
 import FiltersBar from './dashboard/components/FiltersBar';
 import LeadForm from '../components/LeadForm';
-import BulkUpload from '../components/BulkUpload';
-import CallLogDashboard from './dashboard/components/CallLogDashboard';
+import BulkUploadModal from './dashboard/components/BulkUploadModal';
 import AttendanceDashboard from '../components/pages/AttendanceDashboard';
+import CallAnalyticsGrid from './dashboard/components/CallAnalyticsGrid';
+import MetricCommandCenter from './dashboard/components/MetricCommandCenter';
+import TicketManager from '../components/TicketManager';
 
 const TeamLeaderDashboard = () => {
   const { user, logout } = useAuth();
@@ -27,9 +29,11 @@ const TeamLeaderDashboard = () => {
   const [associates, setAssociates] = useState([]);
   const [leads, setLeads] = useState([]);
   const [trendData, setTrendData] = useState([]);
+  const [callStats, setCallStats] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('tl_activeTab') || 'overview');
-  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+
   const [selectedAssignees, setSelectedAssignees] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const handleSync = () => setRefreshTrigger(prev => prev + 1);
@@ -51,18 +55,22 @@ const TeamLeaderDashboard = () => {
       const statsFilters = { start: filters.from, end: filters.to, userId: filters.userId };
       const trendFilters = { from: filters.from.split('T')[0], to: filters.to.split('T')[0], userId: filters.userId };
 
-      const [leadsRes, statsRes, perfRes, subordinatesRes, trendRes] = await Promise.all([
+      const [leadsRes, statsRes, perfRes, subordinatesRes, trendRes, callStatsRes, summaryRes] = await Promise.all([
         tlService.fetchMyLeads(),
         tlService.fetchDashboardStats(statsFilters),
         tlService.fetchMemberPerformance(statsFilters),
         tlService.fetchSubordinates(),
-        tlService.fetchTrendData(trendFilters)
+        tlService.fetchTrendData(trendFilters),
+        tlService.fetchGlobalCallStats({ date: filters.from.split('T')[0] }),
+        tlService.fetchDashboardSummary({ from: filters.from.split('T')[0], to: filters.to.split('T')[0] })
       ]);
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : (leadsRes.data?.content || []));
       setStats(statsRes.data);
       setPerformance(perfRes.data);
       setAssociates(subordinatesRes.data);
       setTrendData(trendRes.data);
+      setCallStats(callStatsRes.data?.data || callStatsRes.data);
+      setSummary(summaryRes.data);
     } catch (err) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -72,6 +80,10 @@ const TeamLeaderDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    // Auto-scroll to top when focusing on an associate
+    if (filters.userId) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, [filters, refreshTrigger]);
 
   const handleAddLead = async (leadData) => {
@@ -145,96 +157,153 @@ const TeamLeaderDashboard = () => {
       role="TEAM_LEADER"
     >
       <div className="animate-fade-in d-flex flex-column gap-3">
+        {activeTab === 'my-stats' && (
+          <div className="d-flex flex-column gap-3 animate-fade-in">
+             <div className="px-1">
+                <h5 className="fw-black text-main mb-1 text-uppercase tracking-widest small">Personal Command Center</h5>
+                <p className="text-muted small fw-bold opacity-50 mb-0" style={{ fontSize: '9px' }}>VIEWING INDIVIDUAL OPERATIONAL PERFORMANCE</p>
+             </div>
+             <MetricCommandCenter 
+                stats={{...summary, performance: performance.filter(p => p.userId === user.id)}} 
+                role={user.role} 
+                filters={{...filters, userId: user.id}} 
+                onNavigate={(tab) => setActiveTab(tab === 'revenue' ? 'payments' : tab)}
+             />
+          </div>
+        )}
         {/* Operational Scope Filters */}
         {activeTab === 'overview' && (
           <FiltersBar
             filters={filters}
             onChange={setFilters}
             onSync={handleSync}
+            users={associates}
+            role="TEAM_LEADER"
           />
         )}
 
-        {filters.userId && (
-          <div className="d-flex align-items-center gap-2 mb-4 p-2 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-3 animate-fade-in w-fit">
-            <span className="label text-primary" style={{ fontSize: '10px', textTransform: 'uppercase' }}>Focus Node:</span>
-            <span className="value text-main me-2 small fw-bold">{associates.find(a => a.id === filters.userId)?.name || 'Associate'}</span>
+         {filters.userId && (
+          <div className="d-flex align-items-center justify-content-between p-3 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-4 animate-slide-in mb-1 shadow-glow">
+            <div className="d-flex align-items-center gap-3">
+              <div className="p-3 bg-primary bg-opacity-20 rounded-circle text-primary border border-primary border-opacity-30">
+                <TrendingUp size={24} />
+              </div>
+              <div>
+                <h4 className="fw-black mb-0 text-main text-uppercase tracking-widest">Squad Drill-Down</h4>
+                <p className="text-muted small mb-0 fw-bold opacity-75">Viewing operational metrics for {associates.find(a => a.id === filters.userId)?.name || 'selected node'}</p>
+              </div>
+            </div>
             <button
-              className="btn btn-sm btn-link p-0 text-primary fw-bold text-decoration-none border-0 shadow-none hover-scale transition-all"
+              className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-primary border-opacity-30 fw-black text-uppercase tracking-wider shadow-none"
               onClick={() => setFilters({ ...filters, userId: null })}
-              style={{ fontSize: '9px' }}
+              style={{ fontSize: '11px' }}
             >
-              [ CLEAR FOCUS ]
+              ← RESET VIEW
             </button>
           </div>
         )}
 
         {activeTab === 'overview' && (
           <div className="d-flex flex-column gap-4">
-            <div className="row g-4">
+            <div className="mb-2">
+               <MetricCommandCenter 
+                 stats={{...summary, performance}} 
+                 role="TEAM_LEADER" 
+                 filters={filters} 
+                 theme={theme} 
+                 onNavigate={(tab) => setActiveTab(tab === 'revenue' ? 'payments' : tab)}
+               />
+            </div>
+            
+            <div className="row g-4 animate-fade-in">
               <div className="col-12 col-xl-8">
-                <div className="premium-card p-0 overflow-hidden shadow-lg border-0">
-                  <div className="card-header bg-transparent p-4 border-0">
-                     <h6 className="fw-black mb-0 text-main small tracking-widest text-uppercase">Engagement Curve</h6>
+                <div className="premium-card p-0 overflow-hidden shadow-lg border-0 h-100">
+                  <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 className="fw-black mb-0 text-main small tracking-widest text-uppercase">Engagement Velocity</h6>
+                      <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>TEAM PERFORMANCE TRENDS</small>
+                    </div>
+                    <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+                      <TrendingUp size={16} />
+                    </div>
                   </div>
                   <div className="card-body p-0">
                     <RevenueTrendChart data={trendData} theme={theme} />
                   </div>
                 </div>
               </div>
+
               <div className="col-12 col-xl-4">
-                <div className="d-flex flex-column gap-3 h-100">
-                  <StatCard title="Pipeline" value={stats?.leadStats?.TOTAL || 0} sub="Active Operational Records" icon={<Users />} color="primary" />
-                  <StatCard title="Success" value={stats?.convertedToday || 0} sub="Targets Synchronized" icon={<CheckCircle />} color="success" />
-                  <StatCard title="Efficiency" value={stats?.totalPayments || 0} sub="₹ Capital Transmission" icon={<IndianRupee />} color="success" />
+                <div className="row g-3 h-100">
+                  <div className="col-12 col-sm-6 col-xl-12">
+                     <StatCard title="Team Pipeline" value={stats?.leadStats?.TOTAL || 0} sub="Global Managed Records" icon={<Users />} color="primary" />
+                  </div>
+                  <div className="col-12 col-sm-6 col-xl-12">
+                     <StatCard title="Total Success" value={stats?.convertedToday || 0} sub="Converted Nodes Today" icon={<CheckCircle />} color="success" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="row g-3 mb-4">
-              <div className="col-12 col-md-4">
+            <div className="row g-3">
+              <div className="col-12 col-md-3">
                 <StatCard title="Interested" value={stats?.interestedToday || 0} sub="Hot Opportunities" icon={<Zap />} color="warning" />
               </div>
-              <div className="col-12 col-md-4">
-                <StatCard title="Lost" value={stats?.lostToday || 0} sub="Off-Pitch Segments" icon={<Phone />} color="danger" />
+              <div className="col-12 col-md-3">
+                <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Off-Pitch Segments" icon={<Phone />} color="danger" />
               </div>
-              <div className="col-12 col-md-4">
+              <div className="col-12 col-md-3">
                 <StatCard title="Revenue (P)" value={stats?.pendingRevenue || 0} sub="₹ Projected Margin" icon={<IndianRupee />} color="info" />
+              </div>
+              <div className="col-12 col-md-3">
+                <StatCard title="Revenue (C)" value={stats?.totalPayments || 0} sub="₹ Confirmed Capital" icon={<IndianRupee />} color="success" />
               </div>
             </div>
 
             <div className="row g-3">
-              <div className="col-12 text-main">
-                <Card title="Team Performance Snapshot" subtitle="Member Efficiency & Pipeline Load">
-                  <Table 
-                    headers={[
-                      'Staff Member', 
-                      'Designation', 
-                      <div className="text-center">Leads</div>, 
-                      <div className="text-center">Success</div>, 
-                      <div className="text-center">Lost</div>, 
-                      'Sync Rate'
-                    ]}
-                    data={performance}
-                    renderRow={(p) => (
-                      <>
-                        <td onClick={() => setFilters({ ...filters, userId: p.userId })} className="ps-4 cursor-pointer fw-bold text-primary">
-                          <div className="d-flex align-items-center gap-3">
-                            <div className="bg-primary bg-opacity-10 text-primary rounded-pill p-1 fw-black small" style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
-                              {p.username.charAt(0).toUpperCase()}
+              <div className="col-12">
+                <Card title="Team Efficiency Matrix" subtitle="Associate Pipeline & Sync Status">
+                  <div className="card-body p-0">
+                    <Table 
+                      headers={[
+                        'Staff Member', 
+                        'Identity Role', 
+                        <div className="text-center">Active Load</div>, 
+                        <div className="text-center">Success</div>, 
+                        <div className="text-center">Risk</div>, 
+                        <div className="text-end">Sync Rate</div>
+                      ]}
+                      data={performance}
+                      renderRow={(p) => (
+                        <>
+                          <td 
+                            onClick={() => {
+                              setFilters({ ...filters, userId: p.userId });
+                              toast.info(`Aggregating data for associate: ${p.username}`);
+                            }} 
+                            className="ps-4 cursor-pointer hover-scale transition-all"
+                          >
+                            <div className="d-flex align-items-center gap-3">
+                              <div className="bg-primary bg-opacity-10 text-primary rounded-circle p-2 fw-black small border border-primary border-opacity-10 hover-shadow shadow-glow" style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {p.username.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="d-flex flex-column">
+                                <span className="fw-bold text-main small">{p.username}</span>
+                                <span className="text-muted small opacity-50" style={{ fontSize: '9px' }}>VIEW MEMBER PROFILE</span>
+                              </div>
                             </div>
-                            <span className="small">{p.username}</span>
-                          </div>
-                        </td>
-                        <td><span className="ui-badge bg-surface text-muted small" style={{ fontSize: '9px' }}>{p.role || 'ASSOCIATE'}</span></td>
-                        <td className="text-center fw-bold">{p.totalLeads}</td>
-                        <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
-                        <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
-                        <td className="pe-4 text-end text-primary fw-black">
-                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                        </td>
-                      </>
-                    )}
-                  />
+                          </td>
+                          <td><span className="ui-badge bg-surface text-muted small border-white border-opacity-10">{p.role || 'ASSOCIATE'}</span></td>
+                          <td className="text-center fw-bold">{p.totalLeads}</td>
+                          <td className="text-center text-success fw-bold">{p.convertedLeads}</td>
+                          <td className="text-center text-danger fw-bold">{p.lostLeads}</td>
+                          <td className="pe-4 text-end text-primary fw-black">
+                            {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
+                          </td>
+                        </>
+                      )}
+                    />
+                  </div>
                 </Card>
               </div>
             </div>
@@ -249,7 +318,7 @@ const TeamLeaderDashboard = () => {
                 onSendPaymentLink={handleSendPaymentLink}
                 onAssignLead={handleAssignLead}
                 onRecordCallOutcome={handleRecordCallOutcome}
-                associates={associates.filter(a => a.role === 'ASSOCIATE')}
+                associates={associates}
                 role="TEAM_LEADER"
                 currentUser={user}
                 fetchLeads={fetchData}
@@ -265,6 +334,22 @@ const TeamLeaderDashboard = () => {
             onSendPaymentLink={handleSendPaymentLink}
             fetchLeads={fetchData}
           />
+        )}
+
+        {activeTab === 'ingestion' && (
+          <div className="animate-fade-in row g-4">
+             <div className="col-12 col-xl-4">
+                <LeadForm onSubmit={handleAddLead} title="Single Lead Entry" />
+             </div>
+             <div className="col-12 col-xl-8">
+                <BulkUploadModal 
+                  isOpen={true} 
+                  isInline={true} 
+                  onSuccess={fetchData} 
+                  assignees={associates.concat(user)}
+                />
+             </div>
+          </div>
         )}
 
         {activeTab === 'reports' && (
@@ -354,102 +439,7 @@ const TeamLeaderDashboard = () => {
               />
             </Card>
           </div>
-        )}
-
-        {activeTab === 'ingestion' && (
-          <div className="row g-4 animate-fade-in">
-             <div className="col-12 col-xl-5">
-                <div className="premium-card h-100 overflow-hidden shadow-glow">
-                   <div className="card-body p-4">
-                      <LeadForm onSubmit={handleAddLead} title="SINGLE LEAD ENTRY" />
-                   </div>
-                </div>
-             </div>
-             
-             <div className="col-12 col-xl-7">
-                <div className="premium-card h-100 border-0 shadow-lg overflow-hidden d-flex flex-column">
-                   <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5 d-flex align-items-center gap-3">
-                      <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill">
-                         <Upload size={20} />
-                      </div>
-                      <div>
-                         <h6 className="fw-black mb-0 text-main tracking-widest text-uppercase">Lead Ingestion Hub</h6>
-                         <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>MASS DATA ORCHESTRATION & DISTRIBUTION</small>
-                      </div>
-                   </div>
-                   
-                   <div className="card-body p-4 d-flex flex-column gap-4">
-                      <div className="row g-4 flex-grow-1">
-                         <div className="col-12 col-md-6 border-end border-white border-opacity-5">
-                            <div className="d-flex flex-column align-items-center justify-content-center h-100 text-center py-4 px-3 bg-surface bg-opacity-30 rounded-4 border border-dashed border-secondary border-opacity-20 transition-smooth hover-bg-opaque">
-                               <div className="p-4 bg-primary bg-opacity-10 rounded-circle text-primary mb-4 shadow-glow">
-                                  <FileText size={48} />
-                               </div>
-                               <h5 className="fw-black text-main mb-2">Upload CSV Data</h5>
-                               <p className="small text-muted fw-bold mb-4 px-3">Propagate lead datasets into the ecosystem using a validated CSV manifest.</p>
-                               <button 
-                                 className="btn btn-primary rounded-pill px-5 fw-black text-uppercase shadow-glow"
-                                 onClick={() => setIsBulkUploadModalOpen(true)}
-                               >
-                                 Browse Files
-                               </button>
-                            </div>
-                         </div>
-                         
-                         <div className="col-12 col-md-6">
-                            <div className="d-flex flex-column h-100">
-                               <div className="d-flex justify-content-between align-items-center mb-3">
-                                  <h6 className="small fw-black text-muted text-uppercase tracking-widest mb-0" style={{ fontSize: '10px' }}>Assignment Strategy</h6>
-                                  <div className="d-flex p-1 bg-surface rounded-pill border border-white border-opacity-10">
-                                     <button className="btn btn-xs py-1 px-3 rounded-pill fw-black small bg-primary text-white shadow-sm" style={{ fontSize: '8px' }}>SINGLE</button>
-                                     <button className="btn btn-xs py-1 px-3 rounded-pill fw-black small text-muted border-0" style={{ fontSize: '8px' }}>SPLIT</button>
-                                  </div>
-                               </div>
-                               
-                               <div className="flex-grow-1 overflow-auto custom-scroll pe-2 d-flex flex-column gap-2" style={{ maxHeight: '240px' }}>
-                                  <div className={`p-3 rounded-3 border transition-smooth cursor-pointer d-flex align-items-center justify-content-between ${selectedAssignees.length === 0 ? 'border-primary bg-primary bg-opacity-10 shadow-glow' : 'border-white border-opacity-5 bg-surface'}`}
-                                       onClick={() => setSelectedAssignees([])}>
-                                     <div className="d-flex align-items-center gap-2">
-                                        <div className={`p-1 mt-1 rounded-circle border ${selectedAssignees.length === 0 ? 'bg-primary border-primary' : 'bg-transparent border-secondary'}`} style={{ width: '10px', height: '10px' }}></div>
-                                        <span className={`small fw-black ${selectedAssignees.length === 0 ? 'text-primary' : 'text-muted'}`}>Unassigned Pool</span>
-                                     </div>
-                                     {selectedAssignees.length === 0 && <CheckCircle size={14} className="text-primary" />}
-                                  </div>
-                                  
-                                  {associates.map(associate => (
-                                     <div key={associate.id} 
-                                          className={`p-3 rounded-3 border transition-smooth cursor-pointer d-flex align-items-center justify-content-between ${selectedAssignees.includes(associate.id) ? 'border-primary bg-primary bg-opacity-10 shadow-glow' : 'border-white border-opacity-5 bg-surface'}`}
-                                          onClick={() => {
-                                             if (selectedAssignees.includes(associate.id)) {
-                                                setSelectedAssignees(selectedAssignees.filter(id => id !== associate.id));
-                                             } else {
-                                                setSelectedAssignees([...selectedAssignees, associate.id]);
-                                             }
-                                          }}>
-                                        <div className="d-flex align-items-center gap-2">
-                                           <div className={`p-1 mt-1 rounded-circle border ${selectedAssignees.includes(associate.id) ? 'bg-primary border-primary' : 'bg-transparent border-secondary'}`} style={{ width: '10px', height: '10px' }}></div>
-                                           <div className="d-flex flex-column">
-                                              <span className={`small fw-black ${selectedAssignees.includes(associate.id) ? 'text-primary' : 'text-main'}`}>{associate.name}</span>
-                                              <small className="text-muted fw-bold opacity-50 text-uppercase" style={{ fontSize: '8px' }}>{associate.role}</small>
-                                           </div>
-                                        </div>
-                                        {selectedAssignees.includes(associate.id) && <CheckCircle size={14} className="text-primary" />}
-                                     </div>
-                                  ))}
-                               </div>
-                               
-                               <div className="mt-4 pt-3 border-top border-white border-opacity-5 d-flex justify-content-between align-items-center">
-                                  <div className="small fw-bold text-muted opacity-75">Target Assignees:</div>
-                                  <div className="fw-black text-main tracking-widest">{selectedAssignees.length > 0 ? `${selectedAssignees.length} SELECTED` : 'POOL'}</div>
-                                </div>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-        )}
+         )}
 
         {activeTab === 'payments' && (
           <div className="d-flex flex-column gap-4">
@@ -460,17 +450,20 @@ const TeamLeaderDashboard = () => {
         {activeTab === 'attendance' && (
           <AttendanceDashboard role="TEAM_LEADER" />
         )}
+        
+        {activeTab === 'call-logs' && (
+          <div className="d-flex flex-column gap-4">
+             <CallLogDashboard />
+          </div>
+        )}
+
+        {activeTab === 'tickets' && (
+          <div className="animate-fade-in">
+             <TicketManager role="TEAM_LEADER" />
+          </div>
+        )}
       </div>
 
-      <BulkUpload
-        isOpen={isBulkUploadModalOpen}
-        onClose={() => setIsBulkUploadModalOpen(false)}
-        uploadUrl={`/tl/leads/bulk-upload${selectedAssignees.length > 0 ? `?assignedToIds=${selectedAssignees.join(',')}` : ''}`}
-        onUploadSuccess={() => {
-          toast.success("Manifest ingested and distributed accordingly.");
-          fetchData();
-        }}
-      />
     </DashboardLayout>
   );
 };

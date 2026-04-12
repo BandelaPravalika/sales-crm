@@ -7,6 +7,8 @@ import { Phone, PhoneOutgoing, Clock, User, Calendar, Search, Play, FileText, Up
 import BulkUploadCallModal from './BulkUploadCallModal';
 import { toast } from 'react-toastify';
 
+import CallAnalyticsGrid from './CallAnalyticsGrid';
+
 const CallLogDashboard = () => {
     const { user } = useAuth();
     const { isDarkMode } = useTheme();
@@ -20,32 +22,32 @@ const CallLogDashboard = () => {
     const [audioObj, setAudioObj] = useState(null);
     
     const [filters, setFilters] = useState({
-        date: new Date().toISOString().split('T')[0],
+        from: new Date().toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0],
         userId: ''
     });
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const activeFilters = Object.fromEntries(
-                Object.entries(filters).filter(([_, v]) => v !== '' && v !== null)
-            );
+            const activeFilters = { ...filters };
+            // stats call takes same from/to
+            const statsFilters = { from: filters.from, to: filters.to };
 
             let logsCall, usersCall, statsCall;
 
             if (role === 'ADMIN') {
                 logsCall = adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = adminService.fetchUsers();
-                statsCall = adminService.fetchGlobalCallStats();
+                statsCall = adminService.fetchGlobalCallStats(statsFilters);
             } else if (role === 'TEAM_LEADER') {
-                // Assuming tlService has similar methods or fallback
                 logsCall = tlService.fetchCallLogs ? tlService.fetchCallLogs(activeFilters) : adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = tlService.fetchSubordinates();
-                statsCall = tlService.fetchGlobalCallStats ? tlService.fetchGlobalCallStats() : adminService.fetchGlobalCallStats();
+                statsCall = tlService.fetchGlobalCallStats ? tlService.fetchGlobalCallStats(statsFilters) : adminService.fetchGlobalCallStats(statsFilters);
             } else {
                 logsCall = adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = adminService.fetchUsers();
-                statsCall = adminService.fetchGlobalCallStats();
+                statsCall = adminService.fetchGlobalCallStats(statsFilters);
             }
 
             const [logsRes, usersRes, statsRes] = await Promise.all([logsCall, usersCall, statsCall]);
@@ -95,55 +97,49 @@ const CallLogDashboard = () => {
 
     return (
         <div className="container-fluid p-0 animate-fade-in mt-2">
-            <div className="mb-4 d-flex justify-content-between align-items-end">
-               <div>
-                  <h5 className="fw-black text-main text-uppercase mb-1 tracking-widest small">Communication Hub</h5>
-                  <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>GLOBAL TEAM INTERACTION LEDGER</p>
+            <div className="mb-4 d-flex justify-content-between align-items-center">
+                <div>
+                   <h6 className="fw-black text-muted text-uppercase mb-1 tracking-widest" style={{ fontSize: '10px' }}>
+                     {filters.from} {filters.from !== filters.to ? ` - ${filters.to}` : '12:00 AM - 11:59 PM'}
+                   </h6>
+                   <h4 className="fw-black text-main mb-0 tracking-tighter">Interaction Intelligence</h4>
+                </div>
+                <div className="d-flex align-items-center gap-3">
+                     <div className="d-flex align-items-center bg-surface border border-white border-opacity-10 rounded-3 shadow-sm px-3" style={{ height: '42px' }}>
+                        <span className="text-muted fw-bold small uppercase me-2" style={{fontSize: '9px'}}>Pre-sets</span>
+                        <select 
+                            className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
+                            onChange={e => {
+                                const val = e.target.value;
+                                const today = new Date().toISOString().split('T')[0];
+                                if (val === 'today') setFilters({...filters, from: today, to: today});
+                                else if (val === 'yesterday') {
+                                    const y = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                                    setFilters({...filters, from: y, to: y});
+                                } else if (val === '7d') {
+                                    const start = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+                                    setFilters({...filters, from: start, to: today});
+                                }
+                            }}
+                            style={{ fontSize: '12px', outline: 'none' }}
+                        >
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="7d">Last 7 Days</option>
+                        </select>
+                     </div>
+                    <button 
+                        className="ui-btn ui-btn-primary px-4 rounded-3 shadow-glow py-2 fw-black"
+                        onClick={() => setIsUploadModalOpen(true)}
+                        style={{ fontSize: '11px' }}
+                    >
+                        <Upload size={14} /> IMPORT DATA
+                    </button>
                </div>
-               <button 
-                    className="ui-btn ui-btn-primary px-4 rounded-pill shadow-glow py-2"
-                    onClick={() => setIsUploadModalOpen(true)}
-                    style={{ fontSize: '11px' }}
-                >
-                    <Upload size={14} /> IMPORT LOGS
-                </button>
             </div>
 
-            {/* Premium Stat Cards */}
-            <div className="row g-4 mb-4">
-                <div className="col-12 col-md-4">
-                    <div className="premium-card p-4 d-flex flex-row align-items-center gap-4 transition-all hover-lift">
-                        <div className="p-3 bg-primary bg-opacity-10 text-primary rounded-4 shadow-sm border border-primary border-opacity-10">
-                            <Phone size={24} />
-                        </div>
-                        <div>
-                            <h6 className="text-muted small mb-1 fw-bold text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Total Interactions</h6>
-                            <h3 className="fw-black mb-0 text-main" style={{ letterSpacing: '-0.02em' }}>{stats?.totalCalls || 0}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-12 col-md-4">
-                    <div className="premium-card p-4 d-flex flex-row align-items-center gap-4 transition-all hover-lift">
-                        <div className="p-3 bg-success bg-opacity-10 text-success rounded-4 shadow-sm border border-success border-opacity-10">
-                            <PhoneOutgoing size={24} />
-                        </div>
-                        <div>
-                            <h6 className="text-muted small mb-1 fw-bold text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Connected Contacts</h6>
-                            <h3 className="fw-black mb-0 text-main" style={{ letterSpacing: '-0.02em' }}>{stats?.connectedCalls || 0}</h3>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-12 col-md-4">
-                    <div className="premium-card p-4 d-flex flex-row align-items-center gap-4 transition-all hover-lift">
-                        <div className="p-3 bg-info bg-opacity-10 text-info rounded-4 shadow-sm border border-info border-opacity-10">
-                            <Clock size={24} />
-                        </div>
-                        <div>
-                            <h6 className="text-muted small mb-1 fw-bold text-uppercase tracking-wider" style={{ fontSize: '9px' }}>Average Sync Path</h6>
-                            <h3 className="fw-black mb-0 text-main" style={{ letterSpacing: '-0.02em' }}>{Math.round(stats?.avgDuration || 0)}s</h3>
-                        </div>
-                    </div>
-                </div>
+            <div className="mb-4">
+                <CallAnalyticsGrid stats={stats} loading={loading} isDarkMode={isDarkMode} />
             </div>
 
             {/* Table Area */}
@@ -157,26 +153,34 @@ const CallLogDashboard = () => {
                     </div>
                     
                     <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-                        <div className="input-group input-group-sm rounded-pill shadow-sm overflow-hidden border border-white border-opacity-10" style={{ width: 'auto' }}>
-                            <span className="input-group-text bg-surface border-0 text-muted ps-3"><Calendar size={14} /></span>
+                        <div className="d-flex align-items-center bg-surface border border-white border-opacity-10 rounded-pill shadow-sm px-3" style={{ height: '42px' }}>
+                            <Calendar size={14} className="text-primary opacity-50 me-2" />
                             <input 
                                 type="date" 
-                                className="form-control bg-surface border-0 shadow-none text-main fw-bold px-2 py-2" 
-                                value={filters.date} 
-                                onChange={e => setFilters({...filters, date: e.target.value})}
-                                style={{ fontSize: '11px' }}
+                                className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
+                                value={filters.from} 
+                                onChange={e => setFilters({...filters, from: e.target.value})}
+                                style={{ fontSize: '10px', outline: 'none', colorScheme: isDarkMode ? 'dark' : 'light' }}
+                            />
+                            <span className="mx-2 text-muted fw-bold">TO</span>
+                            <input 
+                                type="date" 
+                                className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
+                                value={filters.to} 
+                                onChange={e => setFilters({...filters, to: e.target.value})}
+                                style={{ fontSize: '10px', outline: 'none', colorScheme: isDarkMode ? 'dark' : 'light' }}
                             />
                         </div>
 
                         <select 
-                            className="form-select form-select-sm bg-surface border-white border-opacity-10 shadow-sm rounded-pill fw-bold text-main py-2 px-3"
-                            style={{ fontSize: '11px', minWidth: '160px' }}
+                            className="form-select border-white border-opacity-10 shadow-sm rounded-pill fw-black text-main px-4 bg-surface"
+                            style={{ fontSize: '11px', minWidth: '180px', height: '42px', outline: 'none', boxShadow: 'none' }}
                             value={filters.userId} 
                             onChange={e => setFilters({...filters, userId: e.target.value})}
                         >
-                            <option value="" className="text-dark">All Team Members</option>
+                            <option value="" className="text-dark">ALL TEAM NODES</option>
                             {users.map(u => (
-                                <option key={u.id} value={u.id} className="text-dark">{u.name} ({u.role})</option>
+                                <option key={u.id} value={u.id} className="text-dark">{u.name.toUpperCase()} [{u.role}]</option>
                             ))}
                         </select>
                     </div>
@@ -186,59 +190,50 @@ const CallLogDashboard = () => {
                     <table className="table table-hover align-middle mb-0 border-0 bg-transparent text-main">
                         <thead>
                             <tr className="border-bottom border-white border-opacity-5">
-                                <th className="ps-4 py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Staff Identifier</th>
-                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Operational Slot</th>
-                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Channel</th>
-                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Node / Contact</th>
-                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Resolution</th>
-                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Memo</th>
-                                <th className="pe-4 py-3 text-end text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Media</th>
+                                <th className="ps-4 py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>SNo</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Name</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Phone</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Email</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Status</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Emp Name</th>
+                                <th className="py-3 text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Duration</th>
+                                <th className="pe-4 py-3 text-end text-muted small fw-black text-uppercase tracking-widest" style={{ fontSize: '9px' }}>Call Log</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {logs.map((log) => {
+                            {logs.map((log, index) => {
                                 const isConnected = log.status === 'CONNECTED' || log.status === 'PAID';
                                 const isFailed = log.status === 'NOT_INTERESTED' || log.status === 'PAYMENT_FAILED';
 
                                 return (
                                     <tr key={log.id} className="border-bottom border-white border-opacity-5 transition-all">
-                                        <td className="ps-4 py-3">
-                                            <div className="d-flex align-items-center gap-2">
-                                                <div className="p-1.5 bg-surface rounded-circle text-muted border border-white border-opacity-5">
-                                                    <User size={12} />
-                                                </div>
-                                                <span className="fw-bold text-main" style={{ fontSize: '13px' }}>{log.user?.name || "Unknown"}</span>
-                                            </div>
+                                        <td className="ps-4 py-3 text-muted small fw-bold">
+                                            {index + 1}
+                                        </td>
+                                        <td className="py-3 text-main fw-black small">
+                                            {log.lead?.name || "MANUAL ENTRY"}
+                                        </td>
+                                        <td className="py-3 text-primary font-monospace small fw-bold">
+                                            {log.phoneNumber}
+                                        </td>
+                                        <td className="py-3 text-muted small opacity-75">
+                                            {log.lead?.email || "—"}
                                         </td>
                                         <td className="py-3">
-                                            <div className="d-flex flex-column">
-                                                <span className="fw-bold text-main" style={{ fontSize: '12px' }}>{new Date(log.startTime).toLocaleDateString()}</span>
-                                                <span className="text-muted fw-bold opacity-50" style={{ fontSize: '9px' }}>{new Date(log.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3">
-                                            <span className={`ui-badge rounded-pill fw-black ${log.callType === 'OUTGOING' ? 'bg-primary bg-opacity-10 text-primary border-primary border-opacity-20' : 'bg-info bg-opacity-10 text-info border-info border-opacity-20'}`} style={{ fontSize: '8px' }}>
-                                                {log.callType}
+                                            <span className={`badge rounded-1 px-2 py-1 text-uppercase fw-black ${isConnected ? 'bg-success bg-opacity-10 text-success' : isFailed ? 'bg-danger bg-opacity-10 text-danger' : 'bg-warning bg-opacity-10 text-warning'}`} style={{ fontSize: '8px', width: 'fit-content' }}>
+                                                {log.status.replace(/_/g, ' ')}
                                             </span>
                                         </td>
                                         <td className="py-3">
-                                            <div className="d-flex flex-column">
-                                                <span className="fw-bold text-main" style={{ fontSize: '13px' }}>{log.lead?.name || "Manual Log"}</span>
-                                                <span className="text-muted font-monospace opacity-50" style={{ fontSize: '10px' }}>{log.phoneNumber}</span>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <div className="p-1 rounded-circle bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10">
+                                                    <User size={10} />
+                                                </div>
+                                                <span className="fw-black text-main small" style={{ fontSize: '11px' }}>{log.user?.name || "SYSTEM"}</span>
                                             </div>
                                         </td>
-                                        <td className="py-3">
-                                            <div className="d-flex flex-column gap-1">
-                                                <span className={`badge rounded-1 px-2 py-1 text-uppercase fw-black ${isConnected ? 'bg-success bg-opacity-10 text-success' : isFailed ? 'bg-danger bg-opacity-10 text-danger' : 'bg-warning bg-opacity-10 text-warning'}`} style={{ fontSize: '8px', width: 'fit-content' }}>
-                                                    {log.status.replace(/_/g, ' ')}
-                                                </span>
-                                                <span className="text-muted d-flex align-items-center gap-1 fw-bold" style={{ fontSize: '9px' }}><Clock size={10} /> {formatDuration(log.duration)}</span>
-                                            </div>
-                                        </td>
-                                        <td className="py-3">
-                                            <div className="text-muted small fw-medium" style={{ maxWidth: '200px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                {log.note || '--'}
-                                            </div>
+                                        <td className="py-3 text-muted fw-black" style={{ fontSize: '11px' }}>
+                                            <Clock size={12} className="me-1 opacity-50" /> {formatDuration(log.duration)}
                                         </td>
                                         <td className="pe-4 py-3 text-end">
                                             {log.recordingPath ? (
@@ -249,18 +244,10 @@ const CallLogDashboard = () => {
                                                     onClick={() => toggleAudio(log.id)}
                                                     style={{ fontSize: '10px' }}
                                                 >
-                                                    {playingId === log.id ? (
-                                                        <>
-                                                            <div className="spinner-grow spinner-grow-sm" role="status" style={{ width: '8px', height: '8px' }}></div> LIVE
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Play size={10} fill="currentColor" /> ARCHIVE
-                                                        </>
-                                                    )}
+                                                    {playingId === log.id ? "PAUSE" : "PLAY"}
                                                 </button>
                                             ) : (
-                                                <span className="text-muted fw-black opacity-25" style={{ fontSize: '9px' }}>NO MEDIA</span>
+                                                <span className="text-muted fw-black opacity-25" style={{ fontSize: '9px' }}>NO RECORD</span>
                                             )}
                                         </td>
                                     </tr>

@@ -10,6 +10,7 @@ const AttendanceSettings = () => {
     const [loading, setLoading] = useState(true);
     const [activeSection, setActiveSection] = useState('offices');
     const [editingPolicyId, setEditingPolicyId] = useState(null);
+    const [editingShiftId, setEditingShiftId] = useState(null);
 
     const [newOffice, setNewOffice] = useState({ name: '', latitude: 0, longitude: 0, radius: 100 });
     const [newShift, setNewShift] = useState({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 15, minHalfDayMinutes: 240, minFullDayMinutes: 480 });
@@ -33,7 +34,7 @@ const AttendanceSettings = () => {
             const [officesRes, policiesRes, shiftsRes] = await Promise.all([
                 adminService.fetchOffices(),
                 adminService.fetchPolicies(),
-                adminService.fetchShifts()
+                adminService.fetchAttendanceShifts()
             ]);
             
             const offData = officesRes.data.data;
@@ -92,12 +93,18 @@ const AttendanceSettings = () => {
     const handleCreateShift = async (e) => {
         e.preventDefault();
         try {
-            await adminService.createShift(newShift);
-            toast.success('Work shift created');
+            if (editingShiftId) {
+                await adminService.updateShift(editingShiftId, newShift);
+                toast.success('Work shift updated');
+            } else {
+                await adminService.createShift(newShift);
+                toast.success('Work shift created');
+            }
+            setEditingShiftId(null);
             setNewShift({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 15, minHalfDayMinutes: 240, minFullDayMinutes: 480 });
             fetchData();
         } catch (err) {
-            toast.error('Failed to create shift');
+            toast.error(editingShiftId ? 'Failed to update shift' : 'Failed to create shift');
         }
     };
 
@@ -144,6 +151,18 @@ const AttendanceSettings = () => {
             maxAccuracyMeters: policy.maxAccuracyMeters || 100,
             minimumWorkMinutes: policy.minimumWorkMinutes,
             maxIdleMinutes: policy.maxIdleMinutes || 30
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const handleEditShift = (shift) => {
+        setEditingShiftId(shift.id);
+        setNewShift({
+            name: shift.name,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            graceMinutes: shift.graceMinutes,
+            minHalfDayMinutes: shift.minHalfDayMinutes,
+            minFullDayMinutes: shift.minFullDayMinutes
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -459,7 +478,7 @@ const AttendanceSettings = () => {
                              <div className="premium-card p-4">
                                 <h6 className="text-main fw-black mb-4 d-flex align-items-center gap-2">
                                     <Clock size={18} className="text-primary" />
-                                    CONFIGURE SYSTEM SHIFT
+                                    {editingShiftId ? 'MODIFY SYSTEM SHIFT' : 'CONFIGURE SYSTEM SHIFT'}
                                 </h6>
                                 <form onSubmit={handleCreateShift}>
                                     <div className="row g-4">
@@ -503,8 +522,18 @@ const AttendanceSettings = () => {
                                             <div className="d-flex justify-content-end">
                                                 <button type="submit" className="ui-btn ui-btn-primary px-5 rounded-pill shadow-glow">
                                                     <Save size={18} />
-                                                    Synchronize Shift
+                                                    {editingShiftId ? 'Update Shift' : 'Synchronize Shift'}
                                                 </button>
+                                                {editingShiftId && (
+                                                    <button 
+                                                        type="button" 
+                                                        className="btn btn-link text-muted small mt-2 w-100" 
+                                                        onClick={() => {
+                                                            setEditingShiftId(null);
+                                                            setNewShift({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 15, minHalfDayMinutes: 240, minFullDayMinutes: 480 });
+                                                        }}
+                                                    >Cancel Edit</button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -527,7 +556,15 @@ const AttendanceSettings = () => {
                                                     </button>
                                                 </div>
                                                 <div className="flex-grow-1 overflow-hidden">
-                                                    <h6 className="mb-0 fw-bold text-main text-truncate">{shift.name}</h6>
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                        <h6 className="mb-0 fw-bold text-main text-truncate">{shift.name}</h6>
+                                                        <button 
+                                                            onClick={() => handleEditShift(shift)}
+                                                            className="btn btn-link text-primary p-0 border-0 opacity-50 hover-opacity-100 transition-all"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                    </div>
                                                     <span className="text-muted fw-black opacity-50" style={{fontSize: '8px', textTransform: 'uppercase'}}>Identity: {shift.id}</span>
                                                 </div>
                                             </div>

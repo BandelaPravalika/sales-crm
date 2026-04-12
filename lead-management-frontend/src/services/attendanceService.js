@@ -46,6 +46,11 @@ export const attendanceService = {
   endBreak: async () => {
     const response = await api.post('/attendance/break/end', {});
     return response.data;
+  },
+
+  forceClockOut: async (userId) => {
+    const response = await api.post(`/admin/attendance/force-clock-out/${userId}`);
+    return response.data;
   }
 };
 

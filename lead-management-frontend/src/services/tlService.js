@@ -6,6 +6,7 @@ const tlService = {
   fetchMemberPerformance: (filters) => api.get('/tl/reports/member-performance', { params: filters }),
   fetchSubordinates: () => api.get('/tl/subordinates'),
   fetchTrendData: (filters) => api.get('/reports/trend', { params: filters }),
+  fetchDashboardSummary: (filters) => api.get('/stats/summary', { params: filters }),
   addLead: (leadData) => api.post('/tl/leads', leadData),
   updateLeadStatus: (leadId, status, note) => api.put(`/tl/leads/${leadId}/status`, null, { params: { status, note } }),
   recordCallOutcome: (leadId, outcomeData) => api.post(`/leads/${leadId}/record-outcome`, outcomeData),
@@ -19,7 +20,9 @@ const tlService = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  createTask: (taskData) => api.post('/tasks', taskData)
+  createTask: (taskData) => api.post('/tasks', taskData),
+  fetchCallLogs: (filters) => api.get('/call-records/admin/all', { params: filters }),
+  fetchGlobalCallStats: (filters) => api.get('/call-records/admin/stats', { params: filters })
 };
 
 export default tlService;

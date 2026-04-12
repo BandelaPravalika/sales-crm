@@ -65,7 +65,7 @@ const LoginPage = () => {
           >
             <Sparkles size={24} color="#6366f1" />
           </div>
-          <h4 className="fw-bold mb-1" style={{ color: '#f9fafb' }}>Lead Management System</h4>
+          <h4 className="fw-bold mb-1" style={{ color: '#f9fafb' }}>GYNATRIX CRM</h4>
           <p className="mb-0" style={{ color: '#6b7280', fontSize: '13px' }}>Sign in to your account</p>
         </div>
 

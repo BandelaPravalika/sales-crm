@@ -7,19 +7,23 @@ export const useDashboardData = (filters) => {
         stats: null,
         performance: [],
         teamTree: null,
-        trend: []
+        trend: [],
+        callStats: null,
+        summary: null
     });
     const [loading, setLoading] = useState(false);
 
     const load = async () => {
         setLoading(true);
         try {
-            const [statsRes, perfRes, treeRes, trendRes] = await managerService.fetchDashboardData(filters);
+            const [statsRes, perfRes, treeRes, trendRes, callRes, summaryRes] = await managerService.fetchDashboardData(filters);
             setData({
                 stats: statsRes.data,
                 performance: perfRes.data,
                 teamTree: treeRes.data,
-                trend: trendRes.data
+                trend: trendRes.data,
+                callStats: callRes.data?.data || callRes.data,
+                summary: summaryRes.data
             });
         } catch (err) {
             toast.error('Dashboard synchronization failed');

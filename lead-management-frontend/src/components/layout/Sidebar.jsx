@@ -10,45 +10,55 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
     switch (role) {
       case 'ADMIN':
         return [
-          { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'hierarchy', label: 'Team Hierarchy', icon: Layers },
-          { id: 'pipeline', label: 'Lead Pipeline', icon: Target },
-          { id: 'users', label: 'User Access', icon: Users },
-          { id: 'revenue', label: 'Financials', icon: TrendingUp },
-          { id: 'ingestion', label: 'Ingestion Hub', icon: Upload },
+          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+          { id: 'hierarchy', label: 'Management Matrix', icon: Layers },
+          { id: 'pipeline', label: 'Leads', icon: Target },
+          { id: 'tasks', label: 'Task Matrix', icon: Layers },
+          { id: 'users', label: 'Staff Node', icon: Users },
+          { id: 'revenue', label: 'Revenues', icon: TrendingUp },
+          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
           { id: 'attendance-logs', label: 'Attendance', icon: FileText },
-          { id: 'attendance-settings', label: 'Settings', icon: Settings },
           { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
+          { id: 'tickets', label: 'Support Ledger', icon: ShieldHalf },
+          { id: 'attendance-settings', label: 'Settings', icon: Settings },
         ];
       case 'MANAGER':
         return [
-          { id: 'overview', label: 'Analytics', icon: LayoutDashboard },
-          { id: 'hierarchy', label: 'Hierarchy', icon: Layers },
-          { id: 'pipeline', label: 'Pipeline', icon: Target },
-          { id: 'users', label: 'Staffing', icon: Users },
-          { id: 'ingestion', label: 'Ingestion', icon: Upload },
-          { id: 'payments', label: 'Ledger', icon: IndianRupee },
+          { id: 'my-stats', label: 'Personal Command', icon: ShieldHalf },
+          { id: 'overview', label: 'Team Performance', icon: LayoutDashboard },
+          { id: 'hierarchy', label: 'Management Matrix', icon: Layers },
+          { id: 'pipeline', label: 'Leads', icon: Target },
+          { id: 'tasks', label: 'Task Matrix', icon: Layers },
+          { id: 'users', label: 'Staff Node', icon: Users },
+          { id: 'payments', label: 'Revenues', icon: IndianRupee },
+          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
           { id: 'attendance-logs', label: 'Attendance', icon: FileText },
-          { id: 'call-logs', label: 'Calls', icon: PhoneIcon },
+          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
+          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
         ];
       case 'TEAM_LEADER':
         return [
-          { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'pipeline', label: 'My Leads', icon: Target },
-          { id: 'tasks', label: 'Task Board', icon: Layers },
-          { id: 'reports', label: 'Performance', icon: TrendingUp },
-          { id: 'ingestion', label: 'Ingestion Hub', icon: Upload },
-          { id: 'payments', label: 'Revenue', icon: IndianRupee },
+          { id: 'my-stats', label: 'Personal Command', icon: ShieldHalf },
+          { id: 'overview', label: 'Team Performance', icon: LayoutDashboard },
+          { id: 'pipeline', label: 'Leads', icon: Target },
+          { id: 'tasks', label: 'Task Matrix', icon: Layers },
+          { id: 'payments', label: 'Revenues', icon: IndianRupee },
           { id: 'attendance', label: 'Attendance', icon: FileText },
+          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
+          { id: 'reports', label: 'Reports', icon: TrendingUp },
+          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
+          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
         ];
       case 'ASSOCIATE':
         return [
-          { id: 'performance', label: 'Performance', icon: LayoutDashboard },
-          { id: 'leads', label: 'Lead Pool', icon: Target },
+          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+          { id: 'leads', label: 'Leads', icon: Target },
           { id: 'tasks', label: 'Task Matrix', icon: Layers },
-          { id: 'ingestion', label: 'Data Input', icon: Upload },
-          { id: 'payments', label: 'Financials', icon: IndianRupee },
+          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
+          { id: 'payments', label: 'Revenues', icon: IndianRupee },
           { id: 'attendance', label: 'Attendance', icon: FileText },
+          { id: 'reports', label: 'Reports', icon: TrendingUp },
+          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
         ];
       default:
         return [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }];
@@ -75,7 +85,7 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
                 <div className="p-1.5 bg-primary rounded-pill">
                   <ShieldHalf size={18} className="text-white" />
                 </div>
-                <span className="fw-black tracking-widest small text-main">NEXUS CRM</span>
+                <span className="fw-black tracking-widest small text-main">GYNATRIX</span>
               </div>
             )}
             {isCollapsed && <ShieldHalf size={24} className="text-primary mx-auto" />}

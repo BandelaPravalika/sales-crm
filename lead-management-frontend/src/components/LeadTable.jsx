@@ -22,8 +22,18 @@ const LeadTable = ({
   const { isDarkMode } = useTheme();
   const [selectedOutcomeLead, setSelectedOutcomeLead] = useState(null);
   const [selectedLinkLead, setSelectedLinkLead] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const isLocked = (status) => ['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(status);
+
+  const filteredLeads = leads.filter(l => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (l.name && l.name.toLowerCase().includes(term)) ||
+      (l.mobile && l.mobile.includes(term)) ||
+      (l.email && l.email.toLowerCase().includes(term))
+    );
+  });
 
   const getStatusBadge = (status) => {
     let variant = 'bg-surface text-muted';
@@ -42,17 +52,33 @@ const LeadTable = ({
 
   return (
     <div className="w-100 animate-fade-in">
+      <div className="p-3 border-bottom border-white border-opacity-5 d-flex justify-content-end">
+        <div style={{ maxWidth: '300px', width: '100%' }}>
+          <Input 
+            placeholder="Search by mail/name/contact..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="mb-0 py-1.5"
+            style={{ fontSize: '12px' }}
+          />
+        </div>
+      </div>
       <Table 
-        headers={['Lead Entity', 'Current Status', 'Assignment Node', 'Operational Notes', ...(showActions ? ['Engagement'] : [])]}
-        data={leads}
-        renderRow={(lead) => (
+        headers={['SNo', 'Name', 'Phone', 'Email', 'Status', 'Emp Name', ...(showActions ? ['Actions'] : [])]}
+        data={filteredLeads}
+        renderRow={(lead, index) => (
           <>
+            <td className="ps-4">
+               <span className="text-muted small fw-bold">{index + 1}</span>
+            </td>
             <td>
-              <div className="d-flex flex-column gap-0.5">
-                <span className="fw-bold text-main">{lead.name}</span>
-                <span className="text-muted small opacity-75">{lead.email}</span>
-                <span className="text-primary small fw-semibold">{lead.mobile}</span>
-              </div>
+               <span className="fw-black text-main small">{lead.name}</span>
+            </td>
+            <td>
+               <span className="text-primary small fw-black tracking-tighter">{lead.mobile}</span>
+            </td>
+            <td>
+               <span className="text-muted small opacity-75">{lead.email || '—'}</span>
             </td>
             <td className="text-center">
               {getStatusBadge(lead.status)}
@@ -61,19 +87,19 @@ const LeadTable = ({
               {role === 'TEAM_LEADER' ? (
                 <select 
                   className={`ui-input py-1 px-2 mb-0 ${isLocked(lead.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  style={{ fontSize: '11px', width: 'fit-content', border: isDarkMode ? 'none' : '1px solid #ddd' }}
+                  style={{ fontSize: '10px', width: 'fit-content', border: isDarkMode ? 'none' : '1px solid #ddd' }}
                   value={lead.assignedToId || ""}
                   onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
                   disabled={isLocked(lead.status)}
                 >
-                  <option value="">Assign...</option>
+                  <option value="">Select Asst...</option>
                   {currentUser && currentUser.id && (
                     <option key="me" value={currentUser.id} className="fw-black text-primary bg-primary bg-opacity-10 text-uppercase">
-                      ★ ME ({currentUser.name || 'Owner'})
+                      ★ SELF ({currentUser.name})
                     </option>
                   )}
                   {associates && associates.length > 0 && (
-                    <optgroup label="Squad Nodes (Associates)">
+                    <optgroup label="SQUAD NODES">
                       {associates.map((a) => (
                         <option key={a.id} value={a.id}>↳ {a.name}</option>
                       ))}
@@ -83,40 +109,37 @@ const LeadTable = ({
               ) : (
                 <div className="d-flex align-items-center gap-2">
                   <div className={`p-1 rounded-circle ${lead.assignedToId ? 'bg-success' : 'bg-muted opacity-25'}`} style={{ width: '6px', height: '6px' }}></div>
-                  <span className={`small fw-bold ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`}>
-                    {lead.assignedToName || 'Awaiting Node'}
+                  <span className={`small fw-black text-uppercase tracking-tighter ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`} style={{ fontSize: '10px' }}>
+                    {lead.assignedToName || 'AWAITING NODE'}
                   </span>
                 </div>
               )}
             </td>
-            <td>
-              <div className="d-flex align-items-center gap-2 bg-surface rounded-3 px-2 py-1.5 border" style={{ borderColor: 'var(--border-color)' }}>
-                <MessageSquare size={12} className="text-muted" />
-                <input 
-                  type="text" 
-                  placeholder="Annotate..."
-                  className="bg-transparent border-0 shadow-none p-0 text-main small"
-                  style={{ fontSize: '12px', outline: 'none', width: '100%' }}
-                  defaultValue={lead.note || ""}
-                />
-              </div>
-            </td>
             {showActions && (
-              <td className="text-end">
+              <td className="pe-4 text-end">
                 <div className="d-flex align-items-center justify-content-end gap-2">
                   <button 
-                    className="btn btn-link text-primary p-2 border-0" 
+                    className="p-1 text-primary border-0 bg-transparent hover-scale transition-smooth" 
+                    title="Record Call Outcome"
                     onClick={() => setSelectedOutcomeLead(lead)}
                   >
-                    <Phone size={16} />
+                    <Phone size={14} />
                   </button>
-                  <Button variant="primary" className="py-1 px-3" style={{ fontSize: '11px' }} onClick={() => setSelectedLinkLead(lead)}>
-                    <Zap size={12} className="me-1" /> LINK
-                  </Button>
+                  <button 
+                    className="p-1 text-success border-0 bg-transparent hover-scale transition-smooth" 
+                    title="Generate Payment Link"
+                    onClick={() => setSelectedLinkLead(lead)}
+                  >
+                    <Zap size={14} />
+                  </button>
                   {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
-                    <Button variant="secondary" className="py-1 px-3" style={{ fontSize: '11px' }} onClick={() => onViewInvoice && onViewInvoice(lead)}>
-                      <BookOpen size={12} className="me-1" /> BILL
-                    </Button>
+                    <button 
+                      className="p-1 text-info border-0 bg-transparent hover-scale transition-smooth" 
+                      title="View Invoice"
+                      onClick={() => onViewInvoice && onViewInvoice(lead)}
+                    >
+                      <BookOpen size={14} />
+                    </button>
                   )}
                 </div>
               </td>

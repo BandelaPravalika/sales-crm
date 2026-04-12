@@ -11,15 +11,22 @@ const LeadForm = ({ onSubmit, title = "Add New Lead", initialData = {} }) => {
     ...initialData
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await onSubmit(formData);
-    if (success) {
-      setFormData({ name: '', email: '', mobile: '' });
+    setIsSubmitting(true);
+    try {
+      const success = await onSubmit(formData);
+      if (success) {
+        setFormData({ name: '', email: '', mobile: '', college: '' });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -37,51 +44,72 @@ const LeadForm = ({ onSubmit, title = "Add New Lead", initialData = {} }) => {
         </div>
         
         <form onSubmit={handleSubmit} className="d-flex flex-column flex-grow-1 justify-content-between">
-          <div className="row g-4 mb-4">
-            <div className="col-12">
-              <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Full Name</label>
+          <div className="row g-2 mb-4">
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Full Name</label>
               <input 
                 name="name"
-                className="form-control bg-surface border-0 text-main py-2.5 shadow-none rounded-3" 
-                placeholder="e.g. John Doe" 
+                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
+                placeholder="John Doe" 
                 value={formData.name}
                 onChange={handleChange}
                 autoComplete="off"
                 required 
               />
             </div>
-            <div className="col-12">
-              <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Email Address <span className="text-lowercase fw-normal">(Optional)</span></label>
-              <input 
-                name="email"
-                type="email"
-                className="form-control bg-surface border-0 text-main py-2.5 shadow-none rounded-3" 
-                placeholder="e.g. john@example.com" 
-                value={formData.email}
-                onChange={handleChange}
-                autoComplete="off"
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label small fw-black text-uppercase text-muted mb-2 tracking-widest" style={{ fontSize: '10px' }}>Phone Number</label>
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Phone Number</label>
               <input 
                 name="mobile"
-                className="form-control bg-surface border-0 text-main py-2.5 shadow-none rounded-3" 
-                placeholder="e.g. 919876543210" 
+                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
+                placeholder="919876543210" 
                 value={formData.mobile}
                 onChange={handleChange}
                 autoComplete="off"
                 required 
               />
             </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>College / Inst.</label>
+              <input 
+                name="college"
+                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
+                placeholder="e.g. IIT Delhi" 
+                value={formData.college || ''}
+                onChange={handleChange}
+                autoComplete="off"
+              />
+            </div>
+            <div className="col-12 col-md-6">
+              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Email (Opt.)</label>
+              <input 
+                name="email"
+                type="email"
+                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
+                placeholder="john@ex.com" 
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="off"
+              />
+            </div>
           </div>
           
           <button 
             type="submit" 
-            className="btn btn-primary w-100 py-3 rounded-pill fw-black text-uppercase d-flex align-items-center justify-content-center gap-2 mt-auto shadow-glow border-0 transition-smooth hover-up"
-            style={{ letterSpacing: '1px' }}
+            disabled={isSubmitting}
+            className={`btn btn-primary w-100 py-2.5 rounded-pill fw-black text-uppercase d-flex align-items-center justify-content-center gap-2 mt-auto shadow-glow border-0 transition-smooth ${isSubmitting ? 'opacity-50' : 'hover-up'}`}
+            style={{ letterSpacing: '1px', fontSize: '11px' }}
           >
-             <UserPlus size={18} /> COMMIT LEAD NODE
+             {isSubmitting ? (
+               <>
+                 <div className="spinner-border spinner-border-sm" role="status"></div>
+                 <span>TRANSMITTING...</span>
+               </>
+             ) : (
+               <>
+                 <UserPlus size={16} /> COMMIT LEAD NODE
+               </>
+             )}
           </button>
         </form>
       </div>
