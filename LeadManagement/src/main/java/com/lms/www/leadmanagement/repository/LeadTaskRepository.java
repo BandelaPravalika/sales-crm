@@ -2,6 +2,8 @@ package com.lms.www.leadmanagement.repository;
 
 import com.lms.www.leadmanagement.entity.LeadTask;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -19,4 +21,7 @@ public interface LeadTaskRepository extends JpaRepository<LeadTask, Long> {
     List<LeadTask> findByLeadAssignedToIn(java.util.Collection<com.lms.www.leadmanagement.entity.User> users);
 
     List<LeadTask> findByLeadAssignedToInAndDueDateBetween(java.util.Collection<com.lms.www.leadmanagement.entity.User> users, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT t FROM LeadTask t WHERE t.lead.assignedTo.id IN :userIds AND t.dueDate >= :start AND t.dueDate <= :end")
+    List<LeadTask> findFilteredByUserIds(@Param("userIds") java.util.Collection<Long> userIds, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

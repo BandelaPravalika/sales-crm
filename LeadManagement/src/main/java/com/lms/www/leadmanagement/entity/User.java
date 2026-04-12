@@ -27,7 +27,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
     private String mobile;
 
     private String password;
@@ -62,6 +62,8 @@ public class User {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "shift_id")
     private AttendanceShift shift;
+
+    private java.math.BigDecimal monthlyTarget;
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)

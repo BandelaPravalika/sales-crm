@@ -2,7 +2,6 @@ package com.lms.www.leadmanagement.service;
 
 import com.lms.www.leadmanagement.entity.Lead;
 import com.lms.www.leadmanagement.entity.Payment;
-import com.lms.www.leadmanagement.entity.Role;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.entity.LeadTask;
 import com.lms.www.leadmanagement.repository.LeadRepository;
@@ -38,22 +37,13 @@ public class LeadPaymentService {
     private PaymentRepository paymentRepository;
 
     @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private LeadTaskRepository leadTaskRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private MailService mailService;
-
-    @Autowired
-    private JavaMailSender mailSender;
 
     @Value("${lms.base-url}")
     private String baseUrl;
@@ -68,8 +58,17 @@ public class LeadPaymentService {
 
     @Transactional
     public Map<String, String> createPaymentLink(Long leadId, BigDecimal initialAmount, BigDecimal totalAmount, com.lms.www.leadmanagement.dto.PaymentSplitRequest split) {
+        if (leadId == null) throw new IllegalArgumentException("Lead ID cannot be null");
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
+
+        // Cancel previous pending manual payments for this lead to ensure a single active link
+        List<Payment> pendingPayments = paymentRepository.findByLeadIdAndStatus(leadId, Payment.Status.PENDING);
+        for (Payment p : pendingPayments) {
+            p.setStatus(Payment.Status.CANCELLED);
+            p.setUpdatedAt(LocalDateTime.now());
+            paymentRepository.save(p);
+        }
 
         String orderId = "MAN_PAY_" + System.currentTimeMillis();
         
@@ -84,7 +83,7 @@ public class LeadPaymentService {
                 .updatedAt(LocalDateTime.now())
                 .build();
         
-        paymentRepository.save(payment);
+        java.util.Objects.requireNonNull(paymentRepository.save(payment));
 
         if (split != null && split.getInstallments() != null && !split.getInstallments().isEmpty()) {
             for (int i = 0; i < split.getInstallments().size(); i++) {
@@ -112,7 +111,7 @@ public class LeadPaymentService {
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
                         .build();
-                paymentRepository.save(futurePayment);
+                java.util.Objects.requireNonNull(paymentRepository.save(futurePayment));
             }
         }
         
@@ -146,7 +145,7 @@ public class LeadPaymentService {
                      .paymentGatewayId(orderId)
                      .createdAt(LocalDateTime.now())
                      .build();
-             paymentRepository.save(manualPayment);
+             java.util.Objects.requireNonNull(paymentRepository.save(manualPayment));
         }
         
         handlePaymentSuccess(orderId);
@@ -166,7 +165,7 @@ public class LeadPaymentService {
         payment.setStatus(Payment.Status.PAID);
         paymentRepository.save(payment);
 
-        Lead lead = leadRepository.findById(payment.getLeadId())
+        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId()))
                 .orElseThrow(() -> new RuntimeException("Lead not found for payment"));
 
         if (lead.getStatus() == Lead.Status.CONVERTED) {
@@ -204,7 +203,7 @@ public class LeadPaymentService {
         payment.setStatus(Payment.Status.FAILED);
         paymentRepository.save(payment);
 
-        Lead lead = leadRepository.findById(payment.getLeadId())
+        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId()))
                 .orElseThrow(() -> new RuntimeException("Lead not found for payment"));
 
         lead.setStatus(Lead.Status.LOST);
@@ -240,7 +239,7 @@ public class LeadPaymentService {
             // Post-Status Steps: Try email and account creation, but don't fail the payment if they skip
             try {
                 Payment payment = paymentRepository.findByPaymentGatewayId(orderId).orElseThrow();
-                Lead lead = leadRepository.findById(payment.getLeadId()).orElseThrow();
+                Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId())).orElseThrow();
                 
                 // Step 2: Email notification
                 sendAdmissionSuccessEmail(lead, payment);
@@ -267,7 +266,7 @@ public class LeadPaymentService {
             paymentRepository.save(payment);
         }
 
-        Lead lead = leadRepository.findById(payment.getLeadId())
+        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId()))
                 .orElseThrow(() -> new RuntimeException("Lead not found for payment"));
         
         if (lead.getStatus() != lStatus) {
@@ -450,7 +449,7 @@ public class LeadPaymentService {
                         nextInstallment.setDueDate(dDate);
                         
                         // Update Lead's follow-up date and status to point to this installment
-                        Lead lead = leadRepository.findById(payment.getLeadId()).orElse(null);
+                        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId())).orElse(null);
                         if (lead != null) {
                             lead.setFollowUpDate(dDate);
                             lead.setFollowUpRequired(true);
@@ -513,14 +512,14 @@ public class LeadPaymentService {
     }
 
     private PaymentDTO convertToDTO(Payment payment) {
-        Lead lead = leadRepository.findById(payment.getLeadId()).orElse(null);
+        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId())).orElse(null);
         return PaymentDTO.fromEntity(payment, lead);
     }
 
 
     @Transactional
     public void splitPayment(Long existingPaymentId, com.lms.www.leadmanagement.dto.PaymentSplitRequest splitRequest) {
-        Payment original = paymentRepository.findById(existingPaymentId)
+        Payment original = paymentRepository.findById(java.util.Objects.requireNonNull(existingPaymentId))
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
         
         if (original.getStatus() == Payment.Status.PAID) {
@@ -528,7 +527,7 @@ public class LeadPaymentService {
         }
 
         // Create new parts based on the request
-        Lead lead = leadRepository.findById(original.getLeadId()).orElse(null);
+        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(original.getLeadId())).orElse(null);
 
         for (int i = 0; i < splitRequest.getInstallments().size(); i++) {
             com.lms.www.leadmanagement.dto.PaymentSplitRequest.InstallmentPart part = splitRequest.getInstallments().get(i);
@@ -594,7 +593,7 @@ public class LeadPaymentService {
             }
         }
 
-        Payment payment = paymentRepository.findById(id)
+        Payment payment = paymentRepository.findById(java.util.Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
         if (payment.getStatus() == Payment.Status.PAID && newStatus != null && !newStatus.equalsIgnoreCase("PAID")) {
@@ -626,7 +625,7 @@ public class LeadPaymentService {
                 .status(LeadTask.TaskStatus.PENDING)
                 .taskType(type)
                 .build();
-        leadTaskRepository.save(task);
+        java.util.Objects.requireNonNull(leadTaskRepository.save(task));
         log.info(">>> Created LeadTask for lead {} with type {} for date {}", lead.getId(), type, dueDate);
     }
 }

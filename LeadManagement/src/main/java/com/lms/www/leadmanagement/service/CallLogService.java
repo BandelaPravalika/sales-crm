@@ -34,14 +34,18 @@ public class CallLogService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private com.lms.www.leadmanagement.repository.LeadNoteRepository leadNoteRepository;
+
     private static final String UPLOAD_DIR = "uploads/recordings/";
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
     @Transactional
     public CallRecord saveCallRecord(Long userId, Long leadId, String phoneNumber, String callType,
                                      String status, String note, Integer duration,
+                                     LocalDateTime clientStartTime,
                                      MultipartFile file) throws IOException {
-
+        if (userId == null) throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Lead lead = leadId != null ? leadRepository.findById(leadId).orElse(null) : null;
 
@@ -65,6 +69,12 @@ public class CallLogService {
         Files.copy(file.getInputStream(), filePath);
 
         try {
+            LocalDateTime effectiveStart = clientStartTime != null ? clientStartTime : 
+                                         LocalDateTime.now(INDIA_ZONE).minusSeconds(duration != null ? duration : 0);
+            LocalDateTime effectiveEnd = clientStartTime != null ? 
+                                         effectiveStart.plusSeconds(duration != null ? duration : 0) : 
+                                         LocalDateTime.now(INDIA_ZONE);
+
             CallRecord callRecord = CallRecord.builder()
                     .user(user)
                     .lead(lead)
@@ -73,12 +83,36 @@ public class CallLogService {
                     .status(status)
                     .note(note)
                     .duration(duration)
-                    .startTime(LocalDateTime.now(INDIA_ZONE).minusSeconds(duration != null ? duration : 0))
-                    .endTime(LocalDateTime.now(INDIA_ZONE))
+                    .startTime(effectiveStart)
+                    .endTime(effectiveEnd)
                     .recordingPath(filePath.toAbsolutePath().toString())
                     .build();
 
-            return callRecordRepository.save(callRecord);
+            // 4. Sync Lead State if associated
+            if (lead != null && status != null && !status.isEmpty()) {
+                try {
+                    lead.setStatus(Lead.Status.valueOf(status.toUpperCase()));
+                    lead.setNote(note);
+                    lead.setUpdatedBy(user);
+                    leadRepository.save(lead);
+
+                    // Add History Note
+                    com.lms.www.leadmanagement.entity.LeadNote leadNote = com.lms.www.leadmanagement.entity.LeadNote.builder()
+                            .lead(lead)
+                            .content("[Mobile Call Record] " + (note != null ? note : "No additional notes"))
+                            .status(status)
+                            .createdBy(user)
+                            .createdAt(LocalDateTime.now(INDIA_ZONE))
+                            .build();
+                    leadNoteRepository.save(leadNote);
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid status received from mobile client: {}. Lead state not updated.", status);
+                }
+            }
+
+            CallRecord savedRecord = callRecordRepository.save(callRecord);
+            if (savedRecord == null) throw new RuntimeException("Failed to save call record in database");
+            return savedRecord;
         } catch (Exception e) {
             Files.deleteIfExists(filePath);
             log.error("Rolling back audio file save for user {} due to DB error", userId);
@@ -95,22 +129,72 @@ public class CallLogService {
         return callRecordRepository.findByUserIdOrderByStartTimeDesc(userId);
     }
 
-    public Map<String, Object> getStats(Long userId) {
-        Map<String, Object> stats = callRecordRepository.getStatsForUser(userId);
-        
-        // Manual calculation for conversion rate if needed, or structured map
-        Map<String, Object> result = new HashMap<>(stats);
-        Long total = (Long) stats.get("totalCalls");
-        Long connected = (Long) stats.get("connectedCalls");
-        
-        if (total != null && total > 0 && connected != null) {
-            double rate = (connected.doubleValue() / total.doubleValue()) * 100;
-            result.put("conversionRate", Math.round(rate * 100.0) / 100.0);
+    public Map<String, Object> getStats(Long userId, LocalDate from, LocalDate to) {
+        Map<String, Object> stats;
+        if (from != null) {
+            LocalDateTime start = from.atStartOfDay();
+            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
+            stats = callRecordRepository.getStatsForUserByDate(userId, start, end);
         } else {
-            result.put("conversionRate", 0.0);
+            stats = callRecordRepository.getStatsForUser(userId);
         }
+        return processStats(stats);
+    }
+
+    public Map<String, Object> getGlobalStats(LocalDate from, LocalDate to) {
+        Map<String, Object> stats;
+        if (from != null) {
+            LocalDateTime start = from.atStartOfDay();
+            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
+            stats = callRecordRepository.getGlobalStatsByDate(start, end);
+        } else {
+            stats = callRecordRepository.getGlobalStats();
+        }
+        return processStats(stats);
+    }
+
+    private Map<String, Object> processStats(Map<String, Object> stats) {
+        Map<String, Object> result = new HashMap<>();
         
+        // Handle nulls correctly using a helper
+        result.put("totalCalls", asLong(stats.get("totalCalls")));
+        result.put("totalDuration", asLong(stats.get("totalDuration")));
+        result.put("totalDurationFormatted", formatDuration(asLong(stats.get("totalDuration"))));
+
+        result.put("incomingCount", asLong(stats.get("incomingCount")));
+        result.put("incomingDuration", asLong(stats.get("incomingDuration")));
+        result.put("incomingDurationFormatted", formatDuration(asLong(stats.get("incomingDuration"))));
+
+        result.put("outgoingCount", asLong(stats.get("outgoingCount")));
+        result.put("outgoingDuration", asLong(stats.get("outgoingDuration")));
+        result.put("outgoingDurationFormatted", formatDuration(asLong(stats.get("outgoingDuration"))));
+
+        result.put("missedCount", asLong(stats.get("missedCount")));
+        result.put("rejectedCount", asLong(stats.get("rejectedCount")));
+        result.put("neverAttendedCount", asLong(stats.get("neverAttendedCount")));
+        result.put("notPickedCount", asLong(stats.get("notPickedCount")));
+        result.put("uniqueCount", asLong(stats.get("uniqueCount")));
+
         return result;
+    }
+
+    private Long asLong(Object o) {
+        if (o == null) return 0L;
+        if (o instanceof Number) return ((Number) o).longValue();
+        return 0L;
+    }
+
+    private String formatDuration(Long totalSeconds) {
+        if (totalSeconds == null || totalSeconds == 0) return "0s";
+        long h = totalSeconds / 3600;
+        long m = (totalSeconds % 3600) / 60;
+        long s = totalSeconds % 60;
+        
+        StringBuilder sb = new StringBuilder();
+        if (h > 0) sb.append(h).append("h ");
+        if (m > 0) sb.append(m).append("m ");
+        if (s > 0 || sb.length() == 0) sb.append(s).append("s");
+        return sb.toString().trim();
     }
 
     public Path getAudioFile(Long recordId, Long requestingUserId, boolean isAdmin) {
@@ -132,23 +216,19 @@ public class CallLogService {
 
     // --- Administrative Reporting ---
 
-    public List<CallRecord> getAllLogsAdmin(LocalDate date, Long userId) {
-        if (date != null && userId != null) {
-            LocalDateTime start = date.atStartOfDay();
-            LocalDateTime end = date.atTime(23, 59, 59);
+    public List<CallRecord> getAllLogsAdmin(LocalDate from, LocalDate to, Long userId) {
+        if (from != null && userId != null) {
+            LocalDateTime start = from.atStartOfDay();
+            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
             return callRecordRepository.findByUserIdAndStartTimeBetweenOrderByStartTimeDesc(userId, start, end);
-        } else if (date != null) {
-            LocalDateTime start = date.atStartOfDay();
-            LocalDateTime end = date.atTime(23, 59, 59);
+        } else if (from != null) {
+            LocalDateTime start = from.atStartOfDay();
+            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
             return callRecordRepository.findByStartTimeBetweenOrderByStartTimeDesc(start, end);
         } else if (userId != null) {
             return callRecordRepository.findByUserIdOrderByStartTimeDesc(userId);
         } else {
             return callRecordRepository.findAll();
         }
-    }
-
-    public Map<String, Object> getGlobalStats() {
-        return callRecordRepository.getGlobalStats();
     }
 }

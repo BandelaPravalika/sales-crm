@@ -33,6 +33,8 @@ public class AttendanceDTO {
     private Double officeRadius;
     
     private Integer totalWorkMinutes;
-
     private String totalWorkHours; // Formatted "5h 30m"
+
+    private Integer totalBreakMinutes;
+    private String totalBreakHours; // Formatted "0h 45m"
 }

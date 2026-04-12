@@ -47,7 +47,7 @@ public class DataInitializer implements CommandLineRunner {
         seedRole("ADMIN", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS", "ASSIGN_LEADS"), ReportScope.ALL);
         seedRole("MANAGER", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS", "ASSIGN_LEADS"), ReportScope.ALL);
         seedRole("TEAM_LEADER", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.TEAM);
-        seedRole("ASSOCIATE", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "VIEW_REPORTS"), ReportScope.OWN);
+        seedRole("ASSOCIATE", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.OWN);
         seedRole("USER", java.util.Set.of("VIEW_LEADS"), ReportScope.OWN);
 
         if (!userRepository.existsByEmail("admin@lms.com")) {

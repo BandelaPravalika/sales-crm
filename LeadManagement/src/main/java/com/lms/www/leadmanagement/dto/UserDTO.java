@@ -28,6 +28,7 @@ public class UserDTO {
     private boolean active;
     private Long shiftId;
     private String shiftName;
+    private java.math.BigDecimal monthlyTarget;
     private java.util.List<UserDTO> subordinates;
 
     private static final ThreadLocal<java.util.Set<Long>> visitedIds = ThreadLocal.withInitial(java.util.HashSet::new);
@@ -78,6 +79,7 @@ public class UserDTO {
                 .active(user.isActive())
                 .shiftId(user.getShift() != null ? user.getShift().getId() : null)
                 .shiftName(user.getShift() != null ? user.getShift().getName() : null)
+                .monthlyTarget(user.getMonthlyTarget())
                 .build();
 
         if (user.getDirectPermissions() != null && !user.getDirectPermissions().isEmpty()) {

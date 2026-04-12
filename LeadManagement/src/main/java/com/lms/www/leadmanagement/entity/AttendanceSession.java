@@ -62,6 +62,8 @@ public class AttendanceSession {
     @Builder.Default
     private Integer outsideCount = 0;
 
+    private boolean isLate;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

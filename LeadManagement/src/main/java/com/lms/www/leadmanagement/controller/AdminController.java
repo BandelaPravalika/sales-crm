@@ -170,6 +170,28 @@ public class AdminController {
         return ResponseEntity.ok(adminService.assignLead(leadId, tlId));
     }
 
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/assign-supervisor/{assocId}/{supId}")
+    public ResponseEntity<UserDTO> assignSupervisor(@PathVariable Long assocId, @PathVariable Long supId) {
+        return ResponseEntity.ok(adminService.assignSupervisor(assocId, supId));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/bulk-assign-supervisor")
+    public ResponseEntity<List<UserDTO>> bulkAssignSupervisor(@RequestBody Map<String, Object> body) {
+        List<Long> associateIds = ((List<?>) body.get("associateIds")).stream()
+                .map(id -> Long.valueOf(id.toString()))
+                .collect(Collectors.toList());
+        Long supervisorId = Long.valueOf(body.get("supervisorId").toString());
+        return ResponseEntity.ok(adminService.bulkAssignSupervisor(associateIds, supervisorId));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/bulk-assign-hierarchy")
+    public ResponseEntity<Map<String, Object>> bulkAssignHierarchy(@RequestBody Map<String, String> emailMap) {
+        return ResponseEntity.ok(adminService.bulkAssignSupervisorByEmail(emailMap));
+    }
+
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/leads/bulk-assign")
     public ResponseEntity<List<LeadDTO>> bulkAssignLeads(@RequestBody java.util.Map<String, Object> body) {

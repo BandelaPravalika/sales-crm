@@ -34,4 +34,9 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
     
     @Query("SELECT s FROM AttendanceSession s WHERE s.user.id = :userId AND s.checkInTime >= :startOfDay AND s.checkInTime <= :endOfDay")
     List<AttendanceSession> findSessionsForDate(@Param("userId") Long userId, @Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
+
+    @Query("SELECT s FROM AttendanceSession s WHERE s.user.id IN :userIds AND s.checkInTime >= :start AND s.checkInTime <= :end")
+    List<AttendanceSession> findFilteredByUserIds(@Param("userIds") java.util.Collection<Long> userIds, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    boolean existsByOfficeId(Long officeId);
 }

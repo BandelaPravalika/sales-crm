@@ -46,6 +46,10 @@ public class AttendanceMapper {
                 .officeRadius(radius)
                 .totalWorkMinutes(dayWorkMinutes)
                 .totalWorkHours(dayWorkHours)
+                .totalBreakMinutes(s.getTotalBreakMinutes())
+                .totalBreakHours(String.format("%dh %dm", 
+                    (s.getTotalBreakMinutes() != null ? s.getTotalBreakMinutes() : 0) / 60, 
+                    (s.getTotalBreakMinutes() != null ? s.getTotalBreakMinutes() : 0) % 60))
                 .build();
     }
 

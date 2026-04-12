@@ -15,6 +15,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -60,7 +62,7 @@ public class ManagerService {
                 .role(tlRole)
                 .manager(manager)
                 .build();
-        User savedUser = userRepository.save(user);
+        User savedUser = java.util.Objects.requireNonNull(userRepository.save(user));
         
         // Send Credentials to Mail
         try {
@@ -129,7 +131,7 @@ public class ManagerService {
                 .manager(manager)
                 .supervisor(supervisor)
                 .build();
-        User savedUser = userRepository.save(user);
+        User savedUser = java.util.Objects.requireNonNull(userRepository.save(user));
         
         // Send Credentials to Mail
         try {
@@ -142,6 +144,7 @@ public class ManagerService {
     }
 
     public UserDTO assignToSupervisor(Long associateId, Long supervisorId) {
+        if (associateId == null || supervisorId == null) throw new IllegalArgumentException("IDs cannot be null");
         User associate = userRepository.findById(associateId).orElseThrow(() -> new RuntimeException("Associate not found"));
         User supervisor = userRepository.findById(supervisorId).orElseThrow(() -> new RuntimeException("Supervisor not found"));
         
@@ -156,7 +159,72 @@ public class ManagerService {
         return UserDTO.fromEntity(userRepository.save(associate));
     }
 
+    public List<UserDTO> bulkAssignSupervisor(List<Long> associateIds, Long supervisorId) {
+        if (associateIds == null || supervisorId == null) throw new IllegalArgumentException("IDs cannot be null");
+        User supervisor = userRepository.findById(supervisorId)
+                .orElseThrow(() -> new RuntimeException("Supervisor not found"));
+        
+        User currentManager = getCurrentUser();
+        if (supervisor.getManager() == null || !supervisor.getManager().getId().equals(currentManager.getId())) {
+            throw new RuntimeException("Unauthorized: Supervisor does not belong to your team");
+        }
+
+        List<User> associates = userRepository.findAllById(associateIds);
+        for (User associate : associates) {
+            if (associate.getManager() == null || !associate.getManager().getId().equals(currentManager.getId())) {
+                throw new RuntimeException("Unauthorized: Associate " + associate.getName() + " does not belong to your team");
+            }
+            associate.setSupervisor(supervisor);
+        }
+        
+        return userRepository.saveAll(associates).stream()
+                .map(UserDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> bulkAssignHierarchy(Map<String, String> emailMap) {
+        User curManager = getCurrentUser();
+        int success = 0;
+        int failure = 0;
+        List<String> errors = new java.util.ArrayList<>();
+        
+        for (Map.Entry<String, String> entry : emailMap.entrySet()) {
+            String assocEmail = entry.getKey();
+            String supEmail = entry.getValue();
+            
+            Optional<User> assocOpt = userRepository.findByEmail(assocEmail);
+            Optional<User> supOpt = userRepository.findByEmail(supEmail);
+            
+            if (assocOpt.isPresent() && supOpt.isPresent()) {
+                User associate = assocOpt.get();
+                User supervisor = supOpt.get();
+                
+                // Safety: check manage rights
+                if (associate.getManager() != null && associate.getManager().getId().equals(curManager.getId()) &&
+                    supervisor.getManager() != null && supervisor.getManager().getId().equals(curManager.getId())) {
+                    associate.setSupervisor(supervisor);
+                    userRepository.save(associate);
+                    success++;
+                } else {
+                    failure++;
+                    errors.add("Security Violation: " + assocEmail + " or " + supEmail + " is outside your nodal branch.");
+                }
+            } else {
+                failure++;
+                errors.add("Mapping failed: " + assocEmail + " -> " + supEmail + " (Nodes not found)");
+            }
+        }
+        
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("successCount", success);
+        result.put("failureCount", failure);
+        result.put("errors", errors);
+        return result;
+    }
+
     public UserDTO updateUser(Long id, UserDTO userDTO) {
+        if (id == null) throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         
         if (userDTO.getName() != null) user.setName(userDTO.getName());
@@ -170,6 +238,7 @@ public class ManagerService {
 
         if (userDTO.getSupervisorId() != null) {
             Long editSupId = userDTO.getSupervisorId();
+            if (editSupId == null) throw new IllegalArgumentException("Supervisor ID cannot be null");
             User supervisor = userRepository.findById(editSupId)
                     .orElseThrow(() -> new RuntimeException("Supervisor not found: " + editSupId));
             user.setSupervisor(supervisor);
@@ -179,8 +248,10 @@ public class ManagerService {
         }
 
         if (userDTO.getShiftId() != null) {
-            AttendanceShift shift = attendanceShiftRepository.findById(userDTO.getShiftId())
-                    .orElseThrow(() -> new RuntimeException("Shift not found: " + userDTO.getShiftId()));
+            Long sId = userDTO.getShiftId();
+            if (sId == null) throw new IllegalArgumentException("Shift ID cannot be null");
+            AttendanceShift shift = attendanceShiftRepository.findById(sId)
+                    .orElseThrow(() -> new RuntimeException("Shift not found: " + sId));
             user.setShift(shift);
         } else {
             user.setShift(null);
@@ -216,7 +287,9 @@ public class ManagerService {
     }
 
     public void deleteUser(Long id) {
+        if (id == null) throw new IllegalArgumentException("User ID cannot be null");
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (user == null) throw new RuntimeException("Unexpected null user instance");
         userRepository.delete(user);
     }
 
@@ -237,6 +310,6 @@ public class ManagerService {
     }
 
     public User getUserById(Long id) {
-        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        return userRepository.findById(java.util.Objects.requireNonNull(id)).orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 }

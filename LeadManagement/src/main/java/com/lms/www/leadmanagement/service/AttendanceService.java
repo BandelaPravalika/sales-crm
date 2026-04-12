@@ -97,14 +97,21 @@ public class AttendanceService {
 
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        AttendancePolicy policy = attendancePolicyRepository.findByOfficeId(office.getId())
+                .orElseGet(() -> AttendancePolicy.builder().office(office).build());
+        
+        LocalDateTime now = nowInIndia();
+        boolean isLate = now.toLocalTime().isAfter(policy.getShiftStartTime().plusMinutes(policy.getGracePeriodMinutes() != null ? policy.getGracePeriodMinutes() : 0));
+
         AttendanceSession session = AttendanceSession.builder()
-                .user(user).office(office).checkInTime(nowInIndia()).status(AttendanceStatus.WORKING)
+                .user(user).office(office).checkInTime(now).status(AttendanceStatus.WORKING)
                 .lastLat(request.getLat()).lastLng(request.getLng())
                 .lastAccuracy(request.getAccuracy() != null ? request.getAccuracy() : 0.0)
-                .lastLocationTime(nowInIndia()).lastSeenTime(nowInIndia())
+                .lastLocationTime(now).lastSeenTime(now)
                 .deviceId(request.getDeviceId() != null ? request.getDeviceId() : "WEB_BROWSER")
                 .userAgent(ua).ipHash(getIpHash(ip))
                 .totalWorkMinutes(0).totalBreakMinutes(0).isAutoCheckout(false)
+                .isLate(isLate)
                 .build();
 
         return convertToDTO(attendanceSessionRepository.save(session));
@@ -196,12 +203,27 @@ public class AttendanceService {
                 session.getOffice().getLatitude(), session.getOffice().getLongitude());
         boolean isInside = distance <= session.getOffice().getRadius();
 
+        // Multi-location support: if not inside current office, check all others
+        if (!isInside) {
+            Optional<OfficeLocation> otherOffice = officeLocationRepository.findAll().stream()
+                    .filter(o -> calculateDistance(request.getLat(), request.getLng(), o.getLatitude(), o.getLongitude()) <= o.getRadius())
+                    .findFirst();
+            if (otherOffice.isPresent()) {
+                session.setOffice(otherOffice.get());
+                isInside = true;
+            }
+        }
+
         long deltaMins = Duration.between(session.getLastSeenTime(), now).toMinutes();
         LocalTime currentTime = now.toLocalTime();
 
         if (isInside) {
             if (session.getStatus() == AttendanceStatus.WORKING) {
                 session.setTotalWorkMinutes(session.getTotalWorkMinutes() + (int) deltaMins);
+            } else if (session.getStatus() == AttendanceStatus.ON_SHORT_BREAK || 
+                       session.getStatus() == AttendanceStatus.ON_LONG_BREAK || 
+                       session.getStatus() == AttendanceStatus.AUTO_BREAK) {
+                session.setTotalBreakMinutes(session.getTotalBreakMinutes() + (int) deltaMins);
             }
             session.setStatus(AttendanceStatus.WORKING);
             session.setLastSeenTime(now);
@@ -268,8 +290,17 @@ public class AttendanceService {
     @Transactional
     public void deleteOffice(Long id) {
         if (!officeLocationRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Office not found");
+            throw new ResourceNotFoundException("Office node not found");
         }
+        
+        // Critical: Check if any attendance history exists for this node
+        if (attendanceSessionRepository.existsByOfficeId(id)) {
+            throw new IllegalStateException("Operational integrity violation: Identified active or historical attendance logs linked to this node. Archive logs before decommissioning the branch.");
+        }
+
+        // Automated cleanup: Remove linked policies if no history exists
+        attendancePolicyRepository.deleteByOfficeId(id);
+        
         officeLocationRepository.deleteById(id);
     }
 
@@ -357,12 +388,46 @@ public class AttendanceService {
     }
 
     @Transactional
+    public AttendanceShift updateShift(Long id, AttendanceShift updatedShift) {
+        if (id == null) {
+            throw new IllegalArgumentException("Shift ID must not be null");
+        }
+        AttendanceShift shift = attendanceShiftRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Shift not found"));
+        
+        shift.setName(updatedShift.getName());
+        shift.setStartTime(updatedShift.getStartTime());
+        shift.setEndTime(updatedShift.getEndTime());
+        shift.setGraceMinutes(updatedShift.getGraceMinutes());
+        shift.setMinHalfDayMinutes(updatedShift.getMinHalfDayMinutes());
+        shift.setMinFullDayMinutes(updatedShift.getMinFullDayMinutes());
+        
+        return attendanceShiftRepository.save(shift);
+    }
+
+    @Transactional
     public void deleteShift(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Shift ID must not be null");
+        }
         if (!attendanceShiftRepository.existsById(id)) {
             throw new ResourceNotFoundException("Shift not found");
         }
         attendanceShiftRepository.deleteById(id);
     }
+
+
+    @Transactional
+    public OfficeLocation updateOffice(Long id, OfficeLocation updated) {
+        OfficeLocation office = officeLocationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Office not found"));
+        office.setName(updated.getName());
+        office.setLatitude(updated.getLatitude());
+        office.setLongitude(updated.getLongitude());
+        office.setRadius(updated.getRadius());
+        return officeLocationRepository.save(office);
+    }
+
 
     @Transactional(readOnly = true)
     public List<AttendanceDTO> getDailySummaries(LocalDate date, Long userId) {
@@ -588,15 +653,23 @@ public class AttendanceService {
         
         Long userId = (s.getUser() != null) ? s.getUser().getId() : null;
         int dayWork = 0;
+        int dayBreak = 0;
         if (userId != null) {
             AttendanceDaily daily = attendanceDailyRepository.findByUserIdAndDate(userId, date).orElse(null);
             dayWork = (daily != null && daily.getTotalWorkMinutes() != null) ? daily.getTotalWorkMinutes() : 
                       (s.getTotalWorkMinutes() != null ? s.getTotalWorkMinutes() : 0);
+            dayBreak = (daily != null && daily.getTotalBreakMinutes() != null) ? daily.getTotalBreakMinutes() : 
+                       (s.getTotalBreakMinutes() != null ? s.getTotalBreakMinutes() : 0);
         } else {
             dayWork = (s.getTotalWorkMinutes() != null) ? s.getTotalWorkMinutes() : 0;
+            dayBreak = (s.getTotalBreakMinutes() != null) ? s.getTotalBreakMinutes() : 0;
         }
         
         String dayHours = String.format("%dh %dm", dayWork / 60, dayWork % 60);
+
+        // Update dummy session values if needed for mapper consistency
+        s.setTotalWorkMinutes(dayWork);
+        s.setTotalBreakMinutes(dayBreak);
 
         return attendanceMapper.toDTO(s, policy, dayWork, dayHours);
     }

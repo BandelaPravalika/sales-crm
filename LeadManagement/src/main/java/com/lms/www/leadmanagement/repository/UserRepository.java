@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
+    boolean existsByMobile(String mobile);
     List<User> findByRoleName(String roleName);
     List<User> findBySupervisor(User supervisor);
     List<User> findByManager(User manager);
@@ -22,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
                    "  SELECT id FROM users WHERE id = :managerId " +
                    "  UNION ALL " +
                    "  SELECT u.id FROM users u " +
-                   "  INNER JOIN Subordinates s ON u.manager_id = s.id " +
+                   "  INNER JOIN Subordinates s ON (u.manager_id = s.id OR u.supervisor_id = s.id) " +
                    ") SELECT id FROM Subordinates WHERE id != :managerId",
            nativeQuery = true)
     List<Long> findSubordinateIds(@Param("managerId") Long managerId);

@@ -167,6 +167,24 @@ public class ManagerController {
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/users/bulk-assign-supervisor")
+    public ResponseEntity<List<UserDTO>> bulkAssignSupervisor(@RequestBody Map<String, Object> body) {
+        List<Long> associateIds = ((List<?>) body.get("associateIds")).stream()
+                .map(id -> Long.valueOf(id.toString()))
+                .collect(Collectors.toList());
+        Long supervisorId = Long.valueOf(body.get("supervisorId").toString());
+        // Since ManagerService doesn't have bulkAssignSupervisor yet, we can call AdminService or add it to ManagerService.
+        // Let's add it to ManagerService for consistency.
+        return ResponseEntity.ok(managerService.bulkAssignSupervisor(associateIds, supervisorId));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/users/bulk-assign-hierarchy")
+    public ResponseEntity<Map<String, Object>> bulkAssignHierarchy(@RequestBody Map<String, String> emailMap) {
+        return ResponseEntity.ok(managerService.bulkAssignHierarchy(emailMap));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/roles")
     public ResponseEntity<List<RoleDTO>> getAllRoles() {
         return ResponseEntity.ok(managerService.getAllRoles());

@@ -41,5 +41,8 @@ public class AttendancePolicy {
     private Integer minimumWorkMinutes = 240; // 4 Hours
     @Builder.Default
     private Integer maxIdleMinutes = 30; // Heartbeat failure timeout
+
+    @Builder.Default
+    private java.time.LocalTime shiftStartTime = java.time.LocalTime.of(9, 30);
 }
 

@@ -100,6 +100,13 @@ public class AdminService {
     public UserDTO createManager(UserDTO userDTO) {
         Role managerRole = roleRepository.findByName("MANAGER")
                 .orElseThrow(() -> new RuntimeException("Role MANAGER not found"));
+        User requester = getCurrentUser();
+        String requesterRole = requester.getRole().getName();
+
+        if (!"ADMIN".equals(requesterRole)) {
+            throw new RuntimeException("Hierarchy Violation: Only Admins can initialize new Branch Managers");
+        }
+
         User user = User.builder()
                 .name(userDTO.getName())
                 .email(userDTO.getEmail())
@@ -174,19 +181,35 @@ public class AdminService {
             throw new RuntimeException("Invalid email format: " + email);
         }
 
-        // 3. Email Uniqueness
+        // 3. Email & Mobile Uniqueness
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email already exists: " + email);
+        }
+        if (userDTO.getMobile() != null && userRepository.existsByMobile(userDTO.getMobile())) {
+            throw new RuntimeException("Mobile number already exists: " + userDTO.getMobile());
         }
 
         Role role = roleRepository.findByName(userDTO.getRole())
                 .orElseThrow(() -> new RuntimeException("Role not found: " + userDTO.getRole()));
 
+        User requester = getCurrentUser();
+        String requesterRole = requester.getRole().getName();
+        String targetRole = role.getName();
+
+        // Enforcement of Hierarchical Creation Law
+        if ("MANAGER".equals(requesterRole)) {
+            if ("ADMIN".equals(targetRole) || "MANAGER".equals(targetRole)) {
+                throw new RuntimeException("Hierarchy Violation: Branch Managers are restricted to provisioning Team Leaders and BDAs only.");
+            }
+        } else if (!"ADMIN".equals(requesterRole)) {
+            throw new RuntimeException("Insufficient Clearance: Identity provisioning requires ADMIN or MANAGER administrative level.");
+        }
+
         // Assign default report scope based on role
         ReportScope scope = ReportScope.OWN;
-        if ("ADMIN".equals(role.getName()) || "MANAGER".equals(role.getName())) {
+        if ("ADMIN".equals(role.getName())) {
             scope = ReportScope.ALL;
-        } else if ("TEAM_LEADER".equals(role.getName())) {
+        } else if ("MANAGER".equals(role.getName()) || "TEAM_LEADER".equals(role.getName())) {
             scope = ReportScope.TEAM;
         }
 
@@ -279,6 +302,10 @@ public class AdminService {
             user.setShift(null);
         }
 
+        if (userDTO.getMonthlyTarget() != null) {
+            user.setMonthlyTarget(userDTO.getMonthlyTarget());
+        }
+
         if (userDTO.getPermissions() != null) {
             System.out.println(">>> Updating permissions for user: " + user.getEmail());
             System.out.println(">>> New Permissions Request: " + userDTO.getPermissions());
@@ -333,11 +360,11 @@ public class AdminService {
 
         // Scope-based user collection
         com.lms.www.leadmanagement.entity.ReportScope scope = requester.getReportScope();
-        if (scope == null && requester.getRole() != null) {
-            String roleName = requester.getRole().getName();
-            if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+        if (scope == null) {
+            String roleName = (requester.getRole() != null) ? requester.getRole().getName() : "ASSOCIATE";
+            if ("ADMIN".equals(roleName)) {
                 scope = ReportScope.ALL;
-            } else if ("TEAM_LEADER".equals(roleName)) {
+            } else if ("MANAGER".equals(roleName) || "TEAM_LEADER".equals(roleName)) {
                 scope = ReportScope.TEAM;
             } else {
                 scope = ReportScope.OWN;
@@ -442,13 +469,13 @@ public class AdminService {
                 .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID
                         || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED
                         || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.SUCCESS)
-                .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.put("totalPayments", totalPayments);
 
         BigDecimal pendingRevenue = payments.stream()
                 .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PENDING)
-                .map(com.lms.www.leadmanagement.entity.Payment::getAmount)
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.put("pendingRevenue", pendingRevenue);
 
@@ -458,6 +485,10 @@ public class AdminService {
 
         stats.put("partPayments", partPayments);
         stats.put("fullPayments", fullPayments);
+        
+        // Final Global Stats (Ignoring Date Filters)
+        stats.put("totalGlobalLeads", leadRepository.count());
+        
         return stats;
     }
 
@@ -475,11 +506,11 @@ public class AdminService {
 
         // Use identical scope logic for performance reports
         com.lms.www.leadmanagement.entity.ReportScope scope = requester.getReportScope();
-        if (scope == null && requester.getRole() != null) {
-            String roleName = requester.getRole().getName();
-            if ("ADMIN".equals(roleName) || "MANAGER".equals(roleName)) {
+        if (scope == null) {
+            String roleName = (requester.getRole() != null) ? requester.getRole().getName() : "ASSOCIATE";
+            if ("ADMIN".equals(roleName)) {
                 scope = ReportScope.ALL;
-            } else if ("TEAM_LEADER".equals(roleName)) {
+            } else if ("MANAGER".equals(roleName) || "TEAM_LEADER".equals(roleName)) {
                 scope = ReportScope.TEAM;
             } else {
                 scope = ReportScope.OWN;
@@ -504,44 +535,60 @@ public class AdminService {
                 break;
         }
 
-        return userList.stream()
+        if (userList.isEmpty()) return new ArrayList<>();
+
+        // Exclude system admins from performance reports
+        List<User> filteredUsers = userList.stream()
                 .filter(u -> u.getRole() != null && !"ADMIN".equals(u.getRole().getName()))
-                .map(u -> {
-                    java.util.Map<String, Object> uStats = new java.util.HashMap<>();
-                    uStats.put("userId", u.getId());
-                    uStats.put("username", u.getName());
-                    uStats.put("role", u.getRole() != null ? u.getRole().getName() : "UNASSIGNED");
+                .collect(Collectors.toList());
 
-                    @SuppressWarnings("null")
-                    java.util.List<com.lms.www.leadmanagement.entity.Lead> uLeads = leadRepository.findByAssignedTo(u);
-                    long totalLeads = uLeads.size();
-                    long interestedLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.INTERESTED
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.UNDER_REVIEW)
-                            .count();
-                    long convertedLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONVERTED
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.PAID
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.SUCCESS
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.EMI)
-                            .count();
-                    long lostLeads = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.LOST
-                                    || l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.NOT_INTERESTED)
-                            .count();
-                    long callsMade = uLeads.stream()
-                            .filter(l -> l.getStatus() == com.lms.www.leadmanagement.entity.Lead.Status.CONTACTED
-                                    && l.getUpdatedAt() != null
-                                    && !l.getUpdatedAt().isBefore(fStart) && !l.getUpdatedAt().isAfter(fEnd))
-                            .count();
+        if (filteredUsers.isEmpty()) return new ArrayList<>();
 
-                    uStats.put("totalLeads", totalLeads);
-                    uStats.put("interestedLeads", interestedLeads);
-                    uStats.put("convertedLeads", convertedLeads);
-                    uStats.put("lostLeads", lostLeads);
-                    uStats.put("callsMade", callsMade);
+        List<Long> userIds = filteredUsers.stream().map(User::getId).collect(Collectors.toList());
 
+        // 1. Fetch Lead Interaction Base Stats
+        List<Map<String, Object>> performanceStats = leadRepository.getMemberPerformanceStats(filteredUsers, fStart, fEnd);
+
+        // 2. Fetch Financial Transmission Data
+        List<Map<String, Object>> revenueData = paymentRepository.getRevenuePerUser(userIds, fStart, fEnd);
+        List<Map<String, Object>> pendingData = paymentRepository.getPendingRevenuePerUser(userIds, fStart, fEnd);
+
+        // Map for fast lookups
+        Map<Long, BigDecimal> revenueMap = revenueData.stream()
+                .collect(Collectors.toMap(m -> (Long)m.get("userId"), m -> m.get("amount") != null ? (BigDecimal)m.get("amount") : BigDecimal.ZERO));
+        Map<Long, BigDecimal> pendingMap = pendingData.stream()
+                .collect(Collectors.toMap(m -> (Long)m.get("userId"), m -> m.get("amount") != null ? (BigDecimal)m.get("amount") : BigDecimal.ZERO));
+        Map<Long, BigDecimal> targetMap = filteredUsers.stream()
+                .filter(u -> u.getMonthlyTarget() != null)
+                .collect(Collectors.toMap(User::getId, User::getMonthlyTarget));
+
+        // 3. Composite Merge
+        return performanceStats.stream()
+                .map(row -> {
+                    Map<String, Object> uStats = new HashMap<>(row);
+                    Long userId = (Long) uStats.get("userId");
+
+                    BigDecimal revenue = revenueMap.getOrDefault(userId, BigDecimal.ZERO);
+                    BigDecimal pending = pendingMap.getOrDefault(userId, BigDecimal.ZERO);
+                    BigDecimal target = targetMap.getOrDefault(userId, BigDecimal.ZERO);
+
+                    uStats.put("revenueGenerated", revenue);
+                    uStats.put("pendingReceivables", pending);
+                    uStats.put("monthlyTarget", target);
+
+                    // Ratio derivation
+                    double achievement = (target.compareTo(BigDecimal.ZERO) > 0)
+                            ? revenue.multiply(new BigDecimal(100)).divide(target, 2, java.math.RoundingMode.HALF_UP).doubleValue()
+                            : 0.0;
+                    uStats.put("targetAchievement", achievement);
+
+                    uStats.keySet().forEach(key -> {
+                        Object val = uStats.get(key);
+                        if (val instanceof Number && !key.equals("userId") && !key.equals("revenueGenerated")
+                                && !key.equals("pendingReceivables") && !key.equals("monthlyTarget")) {
+                            uStats.put(key, ((Number) val).longValue());
+                        }
+                    });
                     return uStats;
                 })
                 .collect(Collectors.toList());
@@ -575,5 +622,59 @@ public class AdminService {
         return userRepository.findBySupervisor(tl).stream()
                 .map(UserDTO::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    public UserDTO assignSupervisor(Long associateId, Long supervisorId) {
+        if (associateId == null || supervisorId == null) throw new IllegalArgumentException("IDs cannot be null");
+        User associate = userRepository.findById(associateId).orElseThrow(() -> new RuntimeException("Associate not found"));
+        User supervisor = userRepository.findById(supervisorId).orElseThrow(() -> new RuntimeException("Supervisor not found"));
+        
+        associate.setSupervisor(supervisor);
+        return UserDTO.fromEntity(userRepository.save(associate));
+    }
+
+    public List<UserDTO> bulkAssignSupervisor(List<Long> associateIds, Long supervisorId) {
+        if (associateIds == null || supervisorId == null) throw new IllegalArgumentException("IDs cannot be null");
+        User supervisor = userRepository.findById(supervisorId)
+                .orElseThrow(() -> new RuntimeException("Supervisor not found"));
+        
+        List<User> associates = userRepository.findAllById(associateIds);
+        associates.forEach(a -> a.setSupervisor(supervisor));
+        
+        return userRepository.saveAll(associates).stream()
+                .map(UserDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> bulkAssignSupervisorByEmail(Map<String, String> emailMap) {
+        int success = 0;
+        int failure = 0;
+        List<String> errors = new java.util.ArrayList<>();
+        
+        for (Map.Entry<String, String> entry : emailMap.entrySet()) {
+            String associateEmail = entry.getKey();
+            String supervisorEmail = entry.getValue();
+            
+            Optional<User> associateOpt = userRepository.findByEmail(associateEmail);
+            Optional<User> supervisorOpt = userRepository.findByEmail(supervisorEmail);
+            
+            if (associateOpt.isPresent() && supervisorOpt.isPresent()) {
+                User associate = associateOpt.get();
+                User supervisor = supervisorOpt.get();
+                associate.setSupervisor(supervisor);
+                userRepository.save(associate);
+                success++;
+            } else {
+                failure++;
+                errors.add("Mapping failed: " + associateEmail + " -> " + supervisorEmail + " (One or both nodes not found)");
+            }
+        }
+        
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("successCount", success);
+        result.put("failureCount", failure);
+        result.put("errors", errors);
+        return result;
     }
 }

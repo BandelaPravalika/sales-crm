@@ -19,9 +19,13 @@ public class Lead {
 
     private String name;
 
+    @Column(unique = true)
     private String email;
 
+    @Column(unique = true, nullable = false)
     private String mobile;
+
+    private String college;
 
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "VARCHAR(30)")

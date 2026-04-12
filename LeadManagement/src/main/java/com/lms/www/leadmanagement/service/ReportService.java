@@ -64,10 +64,14 @@ public class ReportService {
         Set<User> users = new HashSet<>();
 
         if (filter.getUserId() != null) {
-            userRepository.findById(filter.getUserId()).ifPresent(users::add);
+            Long uId = filter.getUserId();
+            if (uId == null) throw new IllegalArgumentException("User ID from filter is null");
+            userRepository.findById(uId).ifPresent(users::add);
             return users;
         } else if (filter.getTeamLeaderId() != null) {
-            userRepository.findById(filter.getTeamLeaderId()).ifPresent(tl -> {
+            Long tlId = filter.getTeamLeaderId();
+            if (tlId == null) throw new IllegalArgumentException("Team Leader ID from filter is null");
+            userRepository.findById(tlId).ifPresent(tl -> {
                 users.add(tl);
                 collectSubordinates(tl, users);
             });
@@ -111,6 +115,7 @@ public class ReportService {
             List<Long> ids = allowedUsers.stream().map(User::getId).collect(Collectors.toList());
             if (!ids.isEmpty()) {
                 totalRevenue = paymentRepository.findFilteredByUserIds(ids, start, end).stream()
+                        .filter(p -> p.getAmount() != null)
                         .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID || 
                                      p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
                         .mapToDouble(p -> p.getAmount().doubleValue())
@@ -119,6 +124,7 @@ public class ReportService {
         } else {
             stats = leadRepository.getGlobalSummaryStats(start, end);
             totalRevenue = paymentRepository.findByCreatedAtBetween(start, end).stream()
+                    .filter(p -> p.getAmount() != null)
                     .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID || 
                                  p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
                     .mapToDouble(p -> p.getAmount().doubleValue())
@@ -126,15 +132,22 @@ public class ReportService {
         }
 
         return LeadStatsDTO.builder()
-                .total(stats.getOrDefault("total", 0L))
-                .newCount(stats.getOrDefault("newCount", 0L))
-                .interestedCount(stats.getOrDefault("interestedCount", 0L))
-                .contactedCount(stats.getOrDefault("contactedCount", 0L))
-                .followUpCount(stats.getOrDefault("followUpCount", 0L))
-                .convertedCount(stats.getOrDefault("convertedCount", 0L))
-                .lostCount(stats.getOrDefault("lostCount", 0L))
+                .total(asLong(stats.get("total")))
+                .newCount(asLong(stats.get("newCount")))
+                .interestedCount(asLong(stats.get("interestedCount")))
+                .contactedCount(asLong(stats.get("contactedCount")))
+                .followUpCount(asLong(stats.get("followUpCount")))
+                .convertedCount(asLong(stats.get("convertedCount")))
+                .lostCount(asLong(stats.get("lostCount")))
                 .totalRevenue(totalRevenue)
                 .build();
+    }
+
+    private long asLong(Object val) {
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        return 0L;
     }
 
     @PreAuthorize("hasAuthority('VIEW_REPORTS')")
@@ -182,8 +195,14 @@ public class ReportService {
             else if (dateObj instanceof java.time.LocalDate)
                 date = (java.time.LocalDate) dateObj;
 
-            if (date != null)
-                leadsByDate.put(date, (Long) row.get("count"));
+            if (date != null) {
+                Object countObj = row.get("count");
+                long count = 0;
+                if (countObj instanceof Number) {
+                    count = ((Number) countObj).longValue();
+                }
+                leadsByDate.put(date, count);
+            }
         }
 
         Map<LocalDate, Long> lostByDate = new HashMap<>();
@@ -195,16 +214,22 @@ public class ReportService {
             else if (dateObj instanceof java.time.LocalDate)
                 date = (java.time.LocalDate) dateObj;
 
-            if (date != null)
-                lostByDate.put(date, (Long) row.get("count"));
+            if (date != null) {
+                Object countObj = row.get("count");
+                long count = 0;
+                if (countObj instanceof Number) {
+                    count = ((Number) countObj).longValue();
+                }
+                lostByDate.put(date, count);
+            }
         }
 
         Map<LocalDate, BigDecimal> revenueByDate = payments.stream()
                 .filter(p -> p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.PAID
                         || p.getStatus() == com.lms.www.leadmanagement.entity.Payment.Status.APPROVED)
                 .collect(Collectors.groupingBy(
-                        p -> p.getCreatedAt().toLocalDate(),
-                        Collectors.reducing(BigDecimal.ZERO, p -> p.getAmount(), BigDecimal::add)));
+                        p -> p.getCreatedAt() != null ? p.getCreatedAt().toLocalDate() : LocalDate.of(1970, 1, 1),
+                        Collectors.reducing(BigDecimal.ZERO, p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO, BigDecimal::add)));
 
         List<TimeSeriesStatsDTO> result = new ArrayList<>();
         LocalDate current = start.toLocalDate();

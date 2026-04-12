@@ -99,7 +99,7 @@ public class LeadBulkUploadService {
                         finalAssignee = assignees.get(assigneeIndex % assignees.size());
                         assigneeIndex++;
                     } else {
-                        finalAssignee = creator;
+                        finalAssignee = null;
                     }
 
                     // Duplicate Check

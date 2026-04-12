@@ -25,6 +25,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     
     List<Payment> findAllByStatus(Payment.Status status);
+    
+    List<Payment> findByLeadIdAndStatus(Long leadId, Payment.Status status);
 
     @Query("SELECT p FROM Payment p WHERE (:status IS NULL OR p.status = :status) " +
             "AND (:leadIds IS NULL OR p.leadId IN :leadIds) " +
@@ -42,6 +44,32 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "AND (:start IS NULL OR p.createdAt >= :start) " +
             "AND (:end IS NULL OR p.createdAt <= :end)")
     List<Payment> findFilteredByUserIds(
+            @Param("userIds") java.util.Collection<Long> userIds,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT new map(l.assignedTo.id as userId, sum(p.amount) as amount) " +
+            "FROM Payment p JOIN Lead l ON p.leadId = l.id " +
+            "WHERE (p.status = com.lms.www.leadmanagement.entity.Payment$Status.PAID " +
+            "OR p.status = com.lms.www.leadmanagement.entity.Payment$Status.APPROVED " +
+            "OR p.status = com.lms.www.leadmanagement.entity.Payment$Status.SUCCESS) " +
+            "AND l.assignedTo.id IN :userIds " +
+            "AND (:start IS NULL OR p.createdAt >= :start) " +
+            "AND (:end IS NULL OR p.createdAt <= :end) " +
+            "GROUP BY l.assignedTo.id")
+    List<java.util.Map<String, Object>> getRevenuePerUser(
+            @Param("userIds") java.util.Collection<Long> userIds,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT new map(l.assignedTo.id as userId, sum(p.amount) as amount) " +
+            "FROM Payment p JOIN Lead l ON p.leadId = l.id " +
+            "WHERE p.status = com.lms.www.leadmanagement.entity.Payment$Status.PENDING " +
+            "AND l.assignedTo.id IN :userIds " +
+            "AND (:start IS NULL OR p.createdAt >= :start) " +
+            "AND (:end IS NULL OR p.createdAt <= :end) " +
+            "GROUP BY l.assignedTo.id")
+    List<java.util.Map<String, Object>> getPendingRevenuePerUser(
             @Param("userIds") java.util.Collection<Long> userIds,
             @Param("start") java.time.LocalDateTime start,
             @Param("end") java.time.LocalDateTime end);

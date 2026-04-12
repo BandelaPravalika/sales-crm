@@ -8,4 +8,6 @@ import java.util.Optional;
 @Repository
 public interface AttendancePolicyRepository extends JpaRepository<AttendancePolicy, Long> {
     Optional<AttendancePolicy> findByOfficeId(Long officeId);
+    boolean existsByOfficeId(Long officeId);
+    void deleteByOfficeId(Long officeId);
 }

@@ -33,7 +33,7 @@ public class CallLogController {
     private CallBulkUploadService bulkUploadService;
 
     @PostMapping("/bulk-upload")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     public ResponseEntity<ApiResponse<?>> bulkUploadCalls(@RequestParam("file") MultipartFile file) {
         try {
             return ResponseEntity.ok(ApiResponse.success(bulkUploadService.uploadCallLogs(file)));
@@ -58,9 +58,24 @@ public class CallLogController {
             @RequestParam("callType") String callType,
             @RequestParam("status") String status,
             @RequestParam(value = "note", required = false) String note,
-            @RequestParam("duration") Integer duration) {
+            @RequestParam("duration") Integer duration,
+            @RequestParam(value = "startTime", required = false) String startTimeStr) {
 
         try {
+            java.time.LocalDateTime startTime = null;
+            if (startTimeStr != null && !startTimeStr.isEmpty()) {
+                try {
+                    // Try parsing with T (Standard ISO)
+                    startTime = java.time.LocalDateTime.parse(startTimeStr);
+                } catch (Exception e) {
+                    try {
+                        // Fallback: Try parsing with space (Common for mobile)
+                        startTime = java.time.LocalDateTime.parse(startTimeStr.replace(" ", "T"));
+                    } catch (Exception ex) {
+                        System.err.println("Failed to parse startTime from mobile: " + startTimeStr);
+                    }
+                }
+            }
             String ct = file.getContentType();
             if (ct == null) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Missing content type"));
@@ -75,7 +90,7 @@ public class CallLogController {
             }
 
             CallRecord record = callLogService.saveCallRecord(
-                getCurrentUserId(), leadId, phoneNumber, callType, status, note, duration, file
+                getCurrentUserId(), leadId, phoneNumber, callType, status, note, duration, startTime, file
             );
             return ResponseEntity.ok(ApiResponse.success(record));
         } catch (Exception e) {
@@ -94,9 +109,11 @@ public class CallLogController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStats(
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate to) {
         try {
-            Map<String, Object> stats = callLogService.getStats(getCurrentUserId());
+            Map<String, Object> stats = callLogService.getStats(getCurrentUserId(), from, to);
             return ResponseEntity.ok(ApiResponse.success(stats));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
@@ -175,12 +192,13 @@ public class CallLogController {
     @GetMapping("/admin/all")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     public ResponseEntity<ApiResponse<List<CallRecord>>> getAllLogsAdmin(
-            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate to,
             @RequestParam(required = false) Long userId) {
         try {
             // Diagnostic logging for 400 errors
-            System.out.println("DEBUG: GET /admin/all - date=" + date + ", userId=" + userId);
-            List<CallRecord> logs = callLogService.getAllLogsAdmin(date, userId);
+            System.out.println("DEBUG: GET /admin/all - from=" + from + ", to=" + to + ", userId=" + userId);
+            List<CallRecord> logs = callLogService.getAllLogsAdmin(from, to, userId);
             return ResponseEntity.ok(ApiResponse.success(logs));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
@@ -189,9 +207,11 @@ public class CallLogController {
 
     @GetMapping("/admin/stats")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getGlobalStats() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getGlobalStats(
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate to) {
         try {
-            Map<String, Object> stats = callLogService.getGlobalStats();
+            Map<String, Object> stats = callLogService.getGlobalStats(from, to);
             return ResponseEntity.ok(ApiResponse.success(stats));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
