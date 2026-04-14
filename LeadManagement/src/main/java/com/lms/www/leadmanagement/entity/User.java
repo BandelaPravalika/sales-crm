@@ -29,6 +29,8 @@ public class User {
 
     @Column(unique = true, nullable = false)
     private String mobile;
+    
+    private java.time.LocalDate joiningDate;
 
     private String password;
 
@@ -63,6 +65,10 @@ public class User {
     @JoinColumn(name = "shift_id")
     private AttendanceShift shift;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "office_id")
+    private OfficeLocation assignedOffice;
+
     private java.math.BigDecimal monthlyTarget;
 
     @Builder.Default
@@ -78,6 +84,9 @@ public class User {
 
     @Builder.Default
     private boolean active = true;
+
+    private String resetOtp;
+    private LocalDateTime resetOtpExpiry;
 
     @PrePersist
     protected void onCreate() {

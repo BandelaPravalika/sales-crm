@@ -72,7 +72,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
     };
 
     const downloadTemplate = () => {
-        const csvContent = "data:text/csv;charset=utf-8,Name,Email,Mobile\nJohn Doe,john@example.com,9999999999";
+        const csvContent = "data:text/csv;charset=utf-8,S.No,Name,Email,Mobile,College\n1,John Doe,john@example.com,9999999999,State University";
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -99,7 +99,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
     };
 
     const renderContent = () => (
-        <div className={`${!isInline ? 'modal-content border border-white border-opacity-10 rounded-4 shadow-lg overflow-hidden' : 'premium-card p-4'} h-100 flex-column d-flex`} style={{ backgroundColor: !isInline ? '#131826' : 'transparent' }}>
+        <div className={`${!isInline ? 'ui-modal-content border border-white border-opacity-10 rounded-4 shadow-lg overflow-hidden' : 'premium-card p-4'} h-100 flex-column d-flex`}>
             {/* Header - Only if inline or first step */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div className="d-flex align-items-center gap-3">
@@ -121,7 +121,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                             <div className="flex-grow-1 d-flex flex-column gap-3 h-100">
                                 <div 
                                     className={`p-5 rounded-4 border-2 border-dashed d-flex flex-column align-items-center justify-content-center transition-smooth flex-grow-1 ${
-                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 bg-surface'
+                                        dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-white border-opacity-10 ui-glass-card'
                                     }`}
                                     onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
                                     style={{ minHeight: '250px' }}
@@ -148,13 +148,13 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                     )}
                                 </div>
                                 <div className="bg-primary text-white p-4 rounded-4 d-flex gap-3 mb-0 align-items-center justify-content-center shadow-glow">
-                                    <div className="fw-black text-uppercase tracking-widest small">Schema Requirement: Name, Email, Mobile</div>
+                                    <div className="fw-black text-uppercase tracking-widest small">Schema Requirement: S.No, Name, Email, Mobile, College</div>
                                 </div>
                             </div>
                         </div>
 
                         <div className={isAssociate ? "d-none" : "col-lg-6"}>
-                            <div className="bg-surface bg-opacity-40 p-4 rounded-4 border border-white border-opacity-5 h-100 d-flex flex-column shadow-sm">
+                            <div className="ui-glass-card p-4 rounded-4 border border-white border-opacity-5 h-100 d-flex flex-column shadow-sm">
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <label className="small fw-bold text-muted text-uppercase mb-0" style={{ fontSize: '10px', letterSpacing: '1px' }}>Assignment Strategy</label>
                                     <div className="btn-group btn-group-sm rounded-pill p-1 bg-surface border border-white border-opacity-5 shadow-sm">
@@ -167,7 +167,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                     <button 
                                         type="button"
                                         onClick={() => setAssignedToIds([])}
-                                        className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 bg-card text-main'}`}
+                                        className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.length === 0 ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 ui-glass-card text-main'}`}
                                     >
                                         <div className="d-flex align-items-center justify-content-between">
                                             <span className="fw-black text-uppercase small tracking-widest" style={{fontSize: '10px'}}>Unassigned Pool</span>
@@ -180,7 +180,7 @@ const BulkUploadModal = ({ isOpen, onClose, onSuccess, assignees = [], isInline 
                                             key={user.id} 
                                             type="button"
                                             onClick={() => toggleAssociate(user.id)}
-                                            className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.includes(user.id) ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 bg-card text-main'}`}
+                                            className={`w-100 text-start p-3 rounded-4 border transition-smooth small ${assignedToIds.includes(user.id) ? 'border-primary bg-primary bg-opacity-10 text-primary shadow-glow' : 'border-white border-opacity-5 ui-glass-card text-main'}`}
                                         >
                                             <div className="d-flex align-items-center justify-content-between">
                                                 <div className="d-flex flex-column">

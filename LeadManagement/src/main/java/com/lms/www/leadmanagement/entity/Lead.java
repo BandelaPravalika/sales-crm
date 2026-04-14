@@ -26,6 +26,7 @@ public class Lead {
     private String mobile;
 
     private String college;
+    private String serialNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "VARCHAR(30)")

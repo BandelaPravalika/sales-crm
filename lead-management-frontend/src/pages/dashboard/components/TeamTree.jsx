@@ -87,7 +87,7 @@ const TeamTreeItem = ({ item, level = 0, onFocus, currentFocusId }) => {
   );
 };
 
-const TeamTree = ({ data, onFocus, currentFocusId }) => {
+const TeamTree = ({ data, onFocus, currentFocusId, onAddUser }) => {
   return (
     <div className="premium-card overflow-hidden h-100">
       <div className="card-header bg-transparent p-4 border-0 border-bottom border-white border-opacity-5">
@@ -101,6 +101,14 @@ const TeamTree = ({ data, onFocus, currentFocusId }) => {
               <p className="mb-0 text-muted fw-bold" style={{ fontSize: '9px' }}>Real-time Chain of Command</p>
             </div>
           </div>
+          
+          <button 
+            className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-primary border-opacity-30 fw-black" 
+            style={{ fontSize: '10px' }}
+            onClick={() => onAddUser && onAddUser()}
+          >
+            ADD USER
+          </button>
         </div>
       </div>
       

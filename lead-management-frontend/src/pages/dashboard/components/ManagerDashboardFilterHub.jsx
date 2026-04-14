@@ -1,0 +1,378 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Users,
+  User,
+  Layers,
+  BarChart3,
+  Phone,
+  IndianRupee,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  History,
+  CheckCircle2,
+  Calendar,
+  Filter,
+  ShieldHalf
+} from 'lucide-react';
+import { Card } from '../../../components/common/Components';
+import LeadsTable from './LeadsTable';
+import CallLogDashboard from './CallLogDashboard';
+import PaymentHistory from '../../../components/PaymentHistory';
+import TicketManager from '../../../components/TicketManager';
+import StatCard from '../../../components/StatCard';
+import { useAuth } from '../../../context/AuthContext';
+
+const ManagerDashboardFilterHub = ({
+  teamTree,
+  stats,
+  callStats,
+  leads,
+  loadLeads,
+  filters,
+  setFilters,
+  onEdit,
+  handleAssignLead,
+  onUpdateLead,
+  onRecordCallOutcome,
+  onSendPaymentLink,
+  onDeleteLead,
+  teamLeaders: initialTeamLeaders,
+  loading
+}) => {
+  const { user } = useAuth();
+  const [selectedMgrId, setSelectedMgrId] = useState('');
+  const [selectedTlId, setSelectedTlId] = useState('');
+  const [selectedAssocId, setSelectedAssocId] = useState('');
+  const [dataType, setDataType] = useState('Leads');
+
+  // Role-based scoping logic
+  const isManager = user?.role === 'MANAGER';
+
+  // API Driven States
+  const [managers, setManagers] = useState([]);
+  const [tls, setTls] = useState([]);
+  const [associates, setAssociates] = useState([]);
+
+  // Fetch Managers on Load
+  useEffect(() => {
+    if (!isManager) {
+      import('../../../services/adminService').then(({ default: adminService }) => {
+        adminService.fetchManagers().then(res => setManagers(res.data)).catch(() => { });
+      });
+    }
+  }, [isManager]);
+
+  // Fetch Teams on Manager Change
+  useEffect(() => {
+    const targetMgrId = isManager ? user.id : selectedMgrId;
+    if (targetMgrId) {
+      import('../../../services/adminService').then(({ default: adminService }) => {
+        adminService.fetchTeamsByManager(targetMgrId).then(res => setTls(res.data)).catch(() => { });
+      });
+    } else {
+      setTls([]);
+    }
+  }, [selectedMgrId, isManager, user?.id]);
+
+  // Fetch Associates on Team Change
+  useEffect(() => {
+    const targetMgrId = isManager ? user.id : selectedMgrId;
+    if (selectedTlId) {
+      import('../../../services/adminService').then(({ default: adminService }) => {
+        adminService.fetchAssociates(selectedTlId, null).then(res => setAssociates(res.data)).catch(() => { });
+      });
+    } else if (targetMgrId) {
+      // If "All Teams" is selected, fetch all under Manager
+      import('../../../services/adminService').then(({ default: adminService }) => {
+        adminService.fetchAssociates(null, targetMgrId).then(res => setAssociates(res.data)).catch(() => { });
+      });
+    } else {
+      setAssociates([]);
+    }
+  }, [selectedTlId, selectedMgrId, isManager, user?.id]);
+
+  const effectiveMgr = isManager ? user : managers.find(m => m.id.toString() === selectedMgrId);
+
+  useEffect(() => {
+    let targetUserId = null;
+    if (selectedAssocId) {
+      targetUserId = selectedAssocId;
+    } else if (selectedTlId) {
+      targetUserId = selectedTlId;
+    } else if (selectedMgrId) {
+      targetUserId = selectedMgrId;
+    } else if (isManager) {
+      targetUserId = user.id;
+    }
+
+    if (filters?.userId !== targetUserId) {
+      setFilters(prev => ({ ...prev, userId: targetUserId }));
+    }
+  }, [selectedMgrId, selectedTlId, selectedAssocId, isManager, user?.id, filters?.userId]);
+
+  const renderCards = () => {
+    if (loading) {
+      return (
+        <div className="row g-3 mb-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="col-12 col-md-4">
+              <div className="premium-card p-4 d-flex flex-column gap-2 opacity-50 bg-surface bg-opacity-20 backdrop-blur" style={{ minHeight: '120px', borderRadius: '24px' }}>
+                <div className="skeleton-line w-50 h-10 mb-2"></div>
+                <div className="skeleton-line w-75 h-20"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    switch (dataType) {
+      case 'Leads':
+        return (
+          <div className="row g-3 mb-4 animate-fade-in">
+            <div className="col-12 col-md-4">
+              <StatCard title="Total Leads" value={leads?.length || 0} sub="Global Dataset Overflow" icon={<Users />} color="primary" />
+            </div>
+            <div className="col-12 col-md-4">
+              <StatCard title="Converted" value={stats?.convertedCount || 0} sub="Revenue Success Nodes" icon={<CheckCircle2 />} color="success" />
+            </div>
+            <div className="col-12 col-md-4">
+              <StatCard title="Pending" value={stats?.pendingCount || 0} sub="In-Pipeline Objects" icon={<Clock />} color="warning" />
+            </div>
+          </div>
+        );
+      case 'Calls':
+        return (
+          <div className="row g-3 mb-4 animate-fade-in">
+            <div className="col-12 col-md-6">
+              <StatCard title="Total Dials" value={callStats?.totalCalls || 0} sub="Nodal Connectivity" icon={<Phone />} color="primary" />
+            </div>
+            <div className="col-12 col-md-6">
+              <StatCard title="Connected Calls" value={callStats?.connectedCalls || 0} sub="Successful Connects" icon={<TrendingUp />} color="success" />
+            </div>
+          </div>
+        );
+      case 'Payments':
+        return (
+          <div className="row g-3 mb-4 animate-fade-in">
+            <div className="col-12 col-md-6">
+              <StatCard title="Total Collection" value={`\u20B9${(stats?.monthlyRevenue || 0).toLocaleString()}`} sub="Revenue Channel" icon={<IndianRupee />} color="success" />
+            </div>
+            <div className="col-12 col-md-6">
+              <StatCard title="Achievement" value={`${stats?.targetAchievement?.toFixed(1) || 0}%`} sub="Target vs Achieved" icon={<BarChart3 />} color="warning" />
+            </div>
+          </div>
+        );
+      case 'Follow Ups':
+        return (
+          <div className="row g-3 mb-4 animate-fade-in">
+            <div className="col-12 col-md-6">
+              <StatCard title="Pending Follow Ups" value={stats?.pendingFollowups || 0} sub="Awaiting Action" icon={<Clock />} color="danger" />
+            </div>
+            <div className="col-12 col-md-6">
+              <StatCard title="Completed Today" value={stats?.todayFollowups || 0} sub="Daily Protocol Progress" icon={<CheckCircle2 />} color="success" />
+            </div>
+          </div>
+        );
+      case 'Raised Tickets':
+        return (
+          <div className="row g-3 mb-4 animate-fade-in">
+            <div className="col-12 col-md-6">
+              <StatCard title="Open Tickets" value={stats?.openTickets || 0} sub="Pending Support" icon={<AlertCircle />} color="warning" />
+            </div>
+            <div className="col-12 col-md-6">
+              <StatCard title="Resolved" value={stats?.resolvedTickets || 0} sub="Closed Nodes" icon={<CheckCircle2 />} color="success" />
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const [hubSearchTerm, setHubSearchTerm] = useState('');
+
+  const renderTable = () => {
+    if (loading) {
+      return (
+        <div className="premium-card p-5 text-center mt-3 shadow-lg bg-surface bg-opacity-10 backdrop-blur" style={{ borderRadius: '24px' }}>
+          <div className="spinner-border text-primary opacity-25" style={{ width: '3rem', height: '3rem' }}></div>
+          <p className="mt-3 text-muted fw-bold small tracking-widest">SYNCHRONIZING SECURE LEDGER...</p>
+        </div>
+      );
+    }
+    switch (dataType) {
+      case 'Leads':
+        return null; // Deactivated per user request: "do nt sho eLead Transmission Ledger"
+      // case 'Leads':
+      //   return (
+      //     <div className="premium-card overflow-hidden shadow-lg animate-fade-in">
+      //       <div className="p-4 border-bottom border-white border-opacity-5">
+      //         <h6 className="fw-black mb-1 text-uppercase tracking-widest small">Lead Transmission Ledger</h6>
+      //         <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>CORE DATASET: LEADS</p>
+      //       </div>
+      //       <LeadsTable
+      //         leads={leads || []}
+      //         loadLeads={loadLeads}
+      //         teamLeaders={initialTeamLeaders}
+      //         hideFilters={true}
+      //         searchTerm={hubSearchTerm}
+      //         setSearchTerm={setHubSearchTerm}
+      //         selectedLeadIds={[]}
+      //         toggleSelection={() => { }}
+      //         onEdit={onEdit}
+      //         handleAssignLead={handleAssignLead}
+      //         onUpdateLead={onUpdateLead}
+      //         onRecordCallOutcome={onRecordCallOutcome}
+      //         onSendPaymentLink={onSendPaymentLink}
+      //         onDeleteLead={onDeleteLead}
+      //       />
+      //     </div>
+      //   );
+      case 'Calls':
+        return <CallLogDashboard hideHeader={true} userId={filters.userId} />;
+      case 'Payments':
+        return <PaymentHistory role="MANAGER" hideHeader={true} userId={filters.userId} />;
+      case 'Follow Ups':
+        return (
+          <div className="premium-card overflow-hidden shadow-lg animate-fade-in">
+            <div className="p-4 border-bottom border-white border-opacity-5">
+              <h6 className="fw-black mb-1 text-uppercase tracking-widest small">Follow-up Registry</h6>
+              <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>PENDING ENGAGEMENT NODES</p>
+            </div>
+            <LeadsTable
+              leads={(leads || []).filter(l => l.status === 'FOLLOW_UP')}
+              loadLeads={loadLeads}
+              teamLeaders={initialTeamLeaders}
+              hideFilters={true}
+              searchTerm={hubSearchTerm}
+              setSearchTerm={setHubSearchTerm}
+              selectedLeadIds={[]}
+              toggleSelection={() => { }}
+              onEdit={onEdit}
+              handleAssignLead={handleAssignLead}
+              onUpdateLead={onUpdateLead}
+              onRecordCallOutcome={onRecordCallOutcome}
+              onSendPaymentLink={onSendPaymentLink}
+              onDeleteLead={onDeleteLead}
+            />
+          </div>
+        );
+      case 'Raised Tickets':
+        return <TicketManager role="MANAGER" />;
+      default:
+        return null;
+    }
+  };
+
+  const hubReset = () => {
+    setSelectedMgrId('');
+    setSelectedTlId('');
+    setSelectedAssocId('');
+    setDataType('Leads');
+  };
+
+  return (
+    <div className="d-flex flex-column gap-4">
+      <div className="premium-card p-2 border-0 shadow-lg bg-surface bg-opacity-10 backdrop-blur rounded-pill px-4" style={{ backdropFilter: 'blur(20px)' }}>
+        <div className="d-flex align-items-center justify-content-between gap-2 overflow-x-auto no-scrollbar">
+          {/* Left: Title & Analysis Type */}
+          <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-2 pe-3 border-end border-white border-opacity-10">
+              <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+                <Filter size={14} />
+              </div>
+              <div className="d-none d-xl-block">
+                <h6 className="fw-black mb-0 text-main tracking-widest text-uppercase" style={{ fontSize: '10px' }}>Command Center</h6>
+                <small className="text-muted fw-bold opacity-50" style={{ fontSize: '7px' }}>HIERARCHICAL ANALYSIS</small>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-2">
+              {!isManager && (
+                <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-30 p-1 px-3 rounded-pill border border-white border-opacity-5">
+                  <Users size={12} className="text-primary opacity-50" />
+                  <select
+                    className="bg-transparent border-0 text-main fw-black small text-uppercase tracking-wider outline-none py-1"
+                    style={{ fontSize: '9px', minWidth: '130px' }}
+                    value={selectedMgrId}
+                    onChange={(e) => setSelectedMgrId(e.target.value)}
+                  >
+                    <option value="">CHOOSE MANAGER</option>
+                    {managers.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-30 p-1 px-3 rounded-pill border border-white border-opacity-5">
+                <ShieldHalf size={12} className="text-warning opacity-50" />
+                <select
+                  className="bg-transparent border-0 text-main fw-black small text-uppercase tracking-wider outline-none py-1"
+                  style={{ fontSize: '9px', minWidth: '130px' }}
+                  value={selectedTlId}
+                  onChange={(e) => setSelectedTlId(e.target.value)}
+                  disabled={!isManager && !selectedMgrId}
+                >
+                  <option value="">{(isManager || selectedMgrId) ? 'ALL TEAMS' : '---'}</option>
+                  {tls.map(tl => (
+                    <option key={tl.id} value={tl.id}>{tl.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-30 p-1 px-3 rounded-pill border border-white border-opacity-5">
+                <User size={12} className="text-info opacity-50" />
+                <select
+                  className="bg-transparent border-0 text-main fw-black small text-uppercase tracking-wider outline-none py-1"
+                  style={{ fontSize: '9px', minWidth: '130px' }}
+                  value={selectedAssocId}
+                  onChange={(e) => setSelectedAssocId(e.target.value)}
+                  disabled={!effectiveMgr}
+                >
+                  <option value="">{effectiveMgr ? 'ALL ASSOCIATES' : '---'}</option>
+                  {associates.map(member => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="d-flex align-items-center gap-2 bg-primary bg-opacity-10 p-1 px-3 rounded-pill border border-primary border-opacity-20">
+                <Layers size={12} className="text-primary opacity-50" />
+                <select
+                  className="bg-transparent border-0 text-primary fw-black small text-uppercase tracking-wider outline-none py-1"
+                  style={{ fontSize: '9px' }}
+                  value={dataType}
+                  onChange={(e) => setDataType(e.target.value)}
+                >
+                  <option value="Leads">Leads Mode</option>
+                  <option value="Calls">Call Analysis</option>
+                  <option value="Payments">Revenue Mode</option>
+                  <option value="Follow Ups">Follow-ups</option>
+                  <option value="Raised Tickets">Tickets</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-white border-opacity-10 fw-black transition-all hover-scale"
+            style={{ fontSize: '9px', whiteSpace: 'nowrap' }}
+            onClick={hubReset}
+          >
+            RESET ALL
+          </button>
+        </div>
+      </div>
+
+      {renderCards()}
+
+      <div className="animate-slide-up">
+        {renderTable()}
+      </div>
+    </div>
+  );
+};
+
+export default ManagerDashboardFilterHub;

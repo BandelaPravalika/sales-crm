@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-  LayoutDashboard, Users, Layers, Target, TrendingUp, Settings, 
-  LogOut, Phone as PhoneIcon, Upload, IndianRupee, FileText, Menu, X, ShieldHalf 
+import {
+  LayoutDashboard, Users, UserPlus, Layers, Target, TrendingUp, Settings,
+  LogOut, Phone as PhoneIcon, Upload, IndianRupee, FileText, Menu, X, ShieldHalf, LifeBuoy
 } from 'lucide-react';
 import AttendanceWidget from './AttendanceWidget';
 
@@ -10,55 +10,54 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
     switch (role) {
       case 'ADMIN':
         return [
-          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-          { id: 'hierarchy', label: 'Management Matrix', icon: Layers },
-          { id: 'pipeline', label: 'Leads', icon: Target },
-          { id: 'tasks', label: 'Task Matrix', icon: Layers },
-          { id: 'users', label: 'Staff Node', icon: Users },
-          { id: 'revenue', label: 'Revenues', icon: TrendingUp },
-          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
-          { id: 'attendance-logs', label: 'Attendance', icon: FileText },
-          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
-          { id: 'tickets', label: 'Support Ledger', icon: ShieldHalf },
-          { id: 'attendance-settings', label: 'Settings', icon: Settings },
+          // { id: 'my-stats', label: 'My Dashboard', icon: ShieldHalf },
+          { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'team-dashboard', label: 'Team Dashboard', icon: LayoutDashboard },
+          { id: 'hierarchy', label: 'Users', icon: Layers },
+          { id: 'pipeline', label: 'Team Leads ', icon: Target },
+          { id: 'tasks', label: 'Team Task ', icon: Layers },
+          // { id: 'onboard', label: 'Add User', icon: UserPlus },
+          { id: 'revenue', label: 'Revenue Stats', icon: IndianRupee },
+          { id: 'attendance-logs', label: 'Team Attendance', icon: FileText },
+          // { id: 'tickets', label: 'Support Queue', icon: LifeBuoy },
+          { id: 'attendance-settings', label: 'Global Settings', icon: Settings },
+          // { id: 'revenue-targets', label: 'Revenue Targets', icon: Target },
         ];
       case 'MANAGER':
         return [
-          { id: 'my-stats', label: 'Personal Command', icon: ShieldHalf },
-          { id: 'overview', label: 'Team Performance', icon: LayoutDashboard },
-          { id: 'hierarchy', label: 'Management Matrix', icon: Layers },
-          { id: 'pipeline', label: 'Leads', icon: Target },
-          { id: 'tasks', label: 'Task Matrix', icon: Layers },
-          { id: 'users', label: 'Staff Node', icon: Users },
-          { id: 'payments', label: 'Revenues', icon: IndianRupee },
-          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
-          { id: 'attendance-logs', label: 'Attendance', icon: FileText },
-          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
-          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
+          { id: 'my-stats', label: 'My Dashboard', icon: ShieldHalf },
+          { id: 'overview', label: 'Team Dashboard', icon: LayoutDashboard },
+          { id: 'pipeline', label: 'Team Leads', icon: Target },
+          { id: 'payments', label: 'Team Revenue', icon: IndianRupee },
+          { id: 'call-logs', label: 'Team Calllogs', icon: PhoneIcon },
+          { id: 'attendance-logs', label: 'Team Attendance', icon: FileText }
+          , { id: 'tasks', label: 'Team Task ', icon: Layers },
+          // { id: 'tickets', label: 'Team Raise ticket', icon: ShieldHalf },
+          // { id: 'hierarchy', label: 'Team member', icon: Users },
+          { id: 'reports', label: 'Team Reports', icon: TrendingUp },
         ];
       case 'TEAM_LEADER':
         return [
-          { id: 'my-stats', label: 'Personal Command', icon: ShieldHalf },
-          { id: 'overview', label: 'Team Performance', icon: LayoutDashboard },
-          { id: 'pipeline', label: 'Leads', icon: Target },
-          { id: 'tasks', label: 'Task Matrix', icon: Layers },
-          { id: 'payments', label: 'Revenues', icon: IndianRupee },
-          { id: 'attendance', label: 'Attendance', icon: FileText },
-          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
-          { id: 'reports', label: 'Reports', icon: TrendingUp },
-          { id: 'ingestion', label: 'Bulk Ingestion', icon: Upload },
-          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
+          { id: 'my-stats', label: 'My Dashboard', icon: ShieldHalf },
+          { id: 'overview', label: 'Team Dashboard', icon: LayoutDashboard },
+          { id: 'pipeline', label: 'Team Leads', icon: Target },
+          { id: 'tasks', label: 'Team Task ', icon: Layers },
+          { id: 'payments', label: 'Team Revenues', icon: IndianRupee },
+          { id: 'attendance', label: 'Team Attendance', icon: FileText },
+          { id: 'call-logs', label: 'Team Call Logs', icon: PhoneIcon },
+          { id: 'reports', label: 'Team Reports', icon: TrendingUp },
+          // { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
         ];
       case 'ASSOCIATE':
         return [
-          { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+          { id: 'overview', label: 'My Dashboard', icon: LayoutDashboard },
           { id: 'leads', label: 'Leads', icon: Target },
-          { id: 'tasks', label: 'Task Matrix', icon: Layers },
-          { id: 'call-logs', label: 'Call Logs', icon: PhoneIcon },
+          { id: 'tasks', label: 'Follow up', icon: Layers },
+          { id: 'call-logs', label: 'Call Up', icon: PhoneIcon },
           { id: 'payments', label: 'Revenues', icon: IndianRupee },
           { id: 'attendance', label: 'Attendance', icon: FileText },
           { id: 'reports', label: 'Reports', icon: TrendingUp },
-          { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
+          // { id: 'tickets', label: 'Raise Ticket', icon: ShieldHalf },
         ];
       default:
         return [{ id: 'overview', label: 'Dashboard', icon: LayoutDashboard }];
@@ -69,13 +68,13 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
 
   return (
     <>
-      <div 
-        className={`fixed-top w-100 h-100 bg-black opacity-50 z-index-top d-lg-none ${isOpen ? 'd-block' : 'd-none'}`} 
-        style={{ zIndex: 1040 }} 
-        onClick={onClose} 
+      <div
+        className={`fixed-top w-100 h-100 bg-black opacity-50 z-index-top d-lg-none ${isOpen ? 'd-block' : 'd-none'}`}
+        style={{ zIndex: 1040 }}
+        onClick={onClose}
       />
-      
-      <aside 
+
+      <aside
         className={`glass-sidebar ${isCollapsed ? 'closed' : ''} ${isOpen ? 'show' : ''}`}
       >
         <div className="d-flex flex-column h-100">
@@ -89,11 +88,11 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
               </div>
             )}
             {isCollapsed && <ShieldHalf size={24} className="text-primary mx-auto" />}
-            
+
             {/* Desktop toggle button */}
-            <button 
-              className="btn btn-link text-main p-1 border-0 ms-2 hover-bg-surface rounded-circle transition-all d-none d-lg-flex" 
-              onClick={onToggle} 
+            <button
+              className="btn btn-link text-main p-1 border-0 ms-2 hover-bg-surface rounded-circle transition-all d-none d-lg-flex"
+              onClick={onToggle}
               title={isCollapsed ? "Expand" : "Collapse"}
             >
               <Menu size={18} className="opacity-75" />

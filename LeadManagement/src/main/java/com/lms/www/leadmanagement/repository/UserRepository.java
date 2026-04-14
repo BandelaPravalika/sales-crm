@@ -19,12 +19,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByManager(User manager);
 
     // Fetch full hierarchy of subordinates using a Recursive CTE (MySQL 8.0+)
+    // Includes cycle detection and depth limit to prevent infinite recursion
     @Query(value = "WITH RECURSIVE Subordinates AS (" +
-                   "  SELECT id FROM users WHERE id = :managerId " +
+                   "  SELECT id, CAST(id AS CHAR(1000)) as path, 1 as depth FROM users WHERE id = :managerId " +
                    "  UNION ALL " +
-                   "  SELECT u.id FROM users u " +
+                   "  SELECT u.id, CONCAT(s.path, ',', u.id), s.depth + 1 " +
+                   "  FROM users u " +
                    "  INNER JOIN Subordinates s ON (u.manager_id = s.id OR u.supervisor_id = s.id) " +
-                   ") SELECT id FROM Subordinates WHERE id != :managerId",
+                   "  WHERE FIND_IN_SET(u.id, s.path) = 0 AND s.depth < 20 " +
+                   ") SELECT DISTINCT id FROM Subordinates WHERE id != :managerId",
            nativeQuery = true)
     List<Long> findSubordinateIds(@Param("managerId") Long managerId);
+
+    org.springframework.data.domain.Page<User> findByIdIn(java.util.Collection<Long> ids, org.springframework.data.domain.Pageable pageable);
 }

@@ -23,6 +23,11 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     boolean existsByEmail(String email);
 
     List<Lead> findByAssignedTo(User assignedTo);
+    long countByAssignedTo(User assignedTo);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    long countByStatus(Lead.Status status);
+    long countByFollowUpDateBetween(LocalDateTime start, LocalDateTime end);
+    long countByFollowUpDateBefore(LocalDateTime now);
     List<Lead> findByAssignedToIsNull();
 
     List<Lead> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

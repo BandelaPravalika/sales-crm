@@ -13,10 +13,9 @@ import com.lms.www.leadmanagement.dto.PaymentDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.lms.www.leadmanagement.service.MailService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -326,29 +325,63 @@ public class LeadPaymentService {
         return convertToDTO(payment);
     }
 
-    public List<PaymentDTO> getFilteredPaymentHistory(Long tlId, Long associateId, java.time.LocalDateTime startDateTime, java.time.LocalDateTime endDateTime, String status) {
+    public List<PaymentDTO> getFilteredPaymentHistory(Long userId, Long tlId, Long associateId, java.time.LocalDateTime startDateTime, java.time.LocalDateTime endDateTime, String status) {
+        User requester = getCurrentUser();
+        
+        if (userId != null) {
+            User targetUser = userRepository.findById(userId).orElse(null);
+            if (targetUser != null) {
+                String roleName = targetUser.getRole().getName();
+                if (roleName.equals("ASSOCIATE")) {
+                    associateId = userId;
+                } else if (!roleName.equals("ADMIN")) {
+                    tlId = userId;
+                }
+            }
+        }
+
+        if (requester == null) return Collections.emptyList();
 
         List<Long> leadIds = null;
-        
+        String requesterRole = requester.getRole().getName();
+        List<User> subordinates = new ArrayList<>();
+        subordinates.add(requester);
+        collectSubordinates(requester, subordinates);
+        List<Long> allowedUserIds = subordinates.stream().map(User::getId).collect(Collectors.toList());
+
         if (associateId != null) {
-            User associate = userRepository.findById(associateId)
-                    .orElseThrow(() -> new RuntimeException("Associate not found"));
+            if (!"ADMIN".equals(requesterRole) && !allowedUserIds.contains(associateId)) return Collections.emptyList();
+            User associate = userRepository.findById(associateId).orElse(null);
+            if (associate == null) return Collections.emptyList();
             leadIds = leadRepository.findByAssignedTo(associate).stream()
                     .map(Lead::getId)
                     .collect(Collectors.toList());
         } else if (tlId != null) {
-            User tl = userRepository.findById(tlId)
-                    .orElseThrow(() -> new RuntimeException("TL not found"));
+            if (!"ADMIN".equals(requesterRole) && !allowedUserIds.contains(tlId)) return Collections.emptyList();
+            User targetTl = userRepository.findById(tlId).orElse(null);
+            if (targetTl == null) return Collections.emptyList();
             
-            // Get leads assigned directly to TL + all subordinates
-            List<User> subordinates = new ArrayList<>();
-            subordinates.add(tl); // TL might have leads
-            collectSubordinates(tl, subordinates);
+            List<User> targetSubs = new ArrayList<>();
+            targetSubs.add(targetTl);
+            collectSubordinates(targetTl, targetSubs);
             
             leadIds = leadRepository.findAll().stream()
-                    .filter(l -> l.getAssignedTo() != null && subordinates.contains(l.getAssignedTo()))
+                    .filter(l -> (l.getAssignedTo() != null && targetSubs.contains(l.getAssignedTo())) || 
+                                (l.getCreatedBy() != null && targetSubs.contains(l.getCreatedBy())))
                     .map(Lead::getId)
                     .collect(Collectors.toList());
+        } else {
+            // Default: requesters own hierarchy
+            if ("ADMIN".equals(requesterRole)) {
+                // Admin sees all leadIds = null (global)
+                leadIds = null;
+            } else {
+                leadIds = leadRepository.findAll().stream()
+                        .filter(l -> (l.getAssignedTo() != null && subordinates.contains(l.getAssignedTo())) || 
+                                    (l.getCreatedBy() != null && subordinates.contains(l.getCreatedBy())))
+                        .map(Lead::getId)
+                        .collect(Collectors.toList());
+            }
         }
 
         if (leadIds != null && leadIds.isEmpty()) return Collections.emptyList();
@@ -367,9 +400,19 @@ public class LeadPaymentService {
     }
 
     private void collectSubordinates(User user, List<User> collector) {
-        List<User> subs = userRepository.findBySupervisor(user);
-        for (User sub : subs) {
-            if (!collector.contains(sub)) { // Prevent circularity just in case
+        // Collect by manager relationship
+        List<User> byManager = userRepository.findByManager(user);
+        for (User sub : byManager) {
+            if (!collector.contains(sub)) {
+                collector.add(sub);
+                collectSubordinates(sub, collector);
+            }
+        }
+        
+        // Collect by supervisor relationship
+        List<User> bySupervisor = userRepository.findBySupervisor(user);
+        for (User sub : bySupervisor) {
+            if (!collector.contains(sub)) {
                 collector.add(sub);
                 collectSubordinates(sub, collector);
             }
@@ -393,11 +436,15 @@ public class LeadPaymentService {
     }
 
     public List<PaymentDTO> getPaymentHistoryForAdmin() {
-        return getFilteredPaymentHistory(null, null, null, null, null);
+        return getFilteredPaymentHistory(null, null, null, null, null, null);
     }
 
     public List<PaymentDTO> getPaymentHistoryForManager(String managerEmail) {
-        return getFilteredPaymentHistory(null, null, null, null, null);
+        User manager = userRepository.findByEmail(managerEmail).orElse(null);
+        if (manager != null) {
+            return getFilteredPaymentHistory(manager.getId(), null, null, null, null, null);
+        }
+        return java.util.Collections.emptyList();
     }
 
     public List<PaymentDTO> getPaymentHistoryForTL(String tlEmail) {
@@ -512,7 +559,10 @@ public class LeadPaymentService {
     }
 
     private PaymentDTO convertToDTO(Payment payment) {
-        Lead lead = leadRepository.findById(java.util.Objects.requireNonNull(payment.getLeadId())).orElse(null);
+        Lead lead = null;
+        if (payment.getLeadId() != null) {
+            lead = leadRepository.findById(payment.getLeadId()).orElse(null);
+        }
         return PaymentDTO.fromEntity(payment, lead);
     }
 
@@ -608,7 +658,6 @@ public class LeadPaymentService {
             payment.setPaymentType(paymentType);
         }
 
-        if (id == null) throw new RuntimeException("Payment ID cannot be null");
         return updatePaymentStatus(id, newStatus, method, note, actualPaidAmount, nextDueDateStr);
 
     }

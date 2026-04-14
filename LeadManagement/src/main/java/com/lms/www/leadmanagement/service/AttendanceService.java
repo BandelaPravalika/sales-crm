@@ -5,6 +5,7 @@ import com.lms.www.leadmanagement.dto.AttendancePolicyDTO;
 import com.lms.www.leadmanagement.dto.LocationRequestDTO;
 import com.lms.www.leadmanagement.dto.OfficeLocationDTO;
 import com.lms.www.leadmanagement.entity.*;
+import com.lms.www.leadmanagement.entity.GlobalTarget;
 import com.lms.www.leadmanagement.exception.ResourceNotFoundException;
 import com.lms.www.leadmanagement.mapper.AttendanceMapper;
 import com.lms.www.leadmanagement.repository.*;
@@ -16,8 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,9 +36,19 @@ public class AttendanceService {
     private UserRepository userRepository;
     @Autowired
     private AttendanceMapper attendanceMapper;
+    @Autowired
+    private GlobalTargetRepository globalTargetRepository;
+    @Autowired
+    private AttendanceAuditLogRepository auditLogRepository;
 
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
     private static final double MAX_SPEED_KMPH = 150.0;
+    private static final double MAX_ACCURACY_METERS = 50.0;
+    private static final double VELOCITY_JUMP_THRESHOLD_METERS = 500.0;
+    private static final int HEARTBEAT_TOLERANCE_MINS = 3;
+    private static final int PROGRESSIVE_GRACE_WARNING_MINS = 2;
+    private static final int PROGRESSIVE_GRACE_TERMINATION_MINS = 5;
+    private static final int MAX_TIME_INCREMENT_MINS = 2;
 
     // Default Policy Values
     private static final int DEFAULT_TRACKING_INTERVAL = 300;
@@ -181,17 +191,30 @@ public class AttendanceService {
     }
 
     private void performVelocityCheck(AttendanceSession session, LocationRequestDTO request, LocalDateTime now) {
+        // 1. Accuracy Filter
+        Double accuracy = request.getAccuracy();
+        if (accuracy != null && accuracy > MAX_ACCURACY_METERS) {
+            log.warn("Low accuracy GPS for user {}: {}m (Limit: {}m)", session.getUser().getId(), accuracy, MAX_ACCURACY_METERS);
+            throw new RuntimeException("Inaccurate location data. Please move to an open area.");
+        }
+
         if (session.getLastLat() != null && session.getLastLng() != null && session.getLastLocationTime() != null) {
             double metersMoved = calculateDistance(session.getLastLat(), session.getLastLng(), request.getLat(),
                     request.getLng());
             long secondsElapsed = Duration.between(session.getLastLocationTime(), now).toSeconds();
 
-            if (secondsElapsed > 5) {
+            if (secondsElapsed > 0) {
+                // 2. Velocity Check
                 double kmph = (metersMoved / 1000.0) / (secondsElapsed / 3600.0);
                 if (kmph > MAX_SPEED_KMPH) {
-                    log.warn("Suspicious movement (Fake GPS?) detected for user {}: {} km/h", session.getUser().getId(),
-                            kmph);
+                    log.warn("Suspicious velocity for user {}: {} km/h (Limit: {} km/h)", session.getUser().getId(), kmph, MAX_SPEED_KMPH);
                     throw new RuntimeException("Suspicious activity detected. Location rejected.");
+                }
+
+                // 3. Jump Detection (Teleportation Check)
+                if (secondsElapsed < 10 && metersMoved > VELOCITY_JUMP_THRESHOLD_METERS) {
+                    log.warn("Sudden location jump for user {}: {}m in {}s", session.getUser().getId(), metersMoved, secondsElapsed);
+                    throw new RuntimeException("System detected a sudden location jump. Please disable Mock GPS.");
                 }
             }
         }
@@ -199,11 +222,20 @@ public class AttendanceService {
 
     private void handleGeofenceAndWorkStatus(AttendanceSession session, LocationRequestDTO request,
             AttendancePolicy policy, LocalDateTime now) {
-        double distance = calculateDistance(request.getLat(), request.getLng(),
-                session.getOffice().getLatitude(), session.getOffice().getLongitude());
-        boolean isInside = distance <= session.getOffice().getRadius();
-
-        // Multi-location support: if not inside current office, check all others
+        
+        // 1. Priority Geofence Check
+        boolean isInside = false;
+        User user = session.getUser();
+        
+        if (user.getAssignedOffice() != null) {
+            double dist = calculateDistance(request.getLat(), request.getLng(), 
+                user.getAssignedOffice().getLatitude(), user.getAssignedOffice().getLongitude());
+            if (dist <= user.getAssignedOffice().getRadius()) {
+                session.setOffice(user.getAssignedOffice());
+                isInside = true;
+            }
+        }
+        
         if (!isInside) {
             Optional<OfficeLocation> otherOffice = officeLocationRepository.findAll().stream()
                     .filter(o -> calculateDistance(request.getLat(), request.getLng(), o.getLatitude(), o.getLongitude()) <= o.getRadius())
@@ -214,40 +246,109 @@ public class AttendanceService {
             }
         }
 
-        long deltaMins = Duration.between(session.getLastSeenTime(), now).toMinutes();
+        // 2. Heartbeat Buffer & Capped Interval
+        long secondsSinceLast = session.getLastSeenTime() != null ? Duration.between(session.getLastSeenTime(), now).toSeconds() : 0;
+        
+        // Cap interval to avoid massive time jumps from single delayed pings
+        int deltaMins = (int) Math.min(secondsSinceLast / 60.0, MAX_TIME_INCREMENT_MINS);
+        
+        // 3. Resolve State Machine
+        resolveAttendanceState(session, policy, now, isInside, deltaMins);
+    }
+
+    private void resolveAttendanceState(AttendanceSession session, AttendancePolicy policy, LocalDateTime now, boolean isInside, int deltaMins) {
+        AttendanceStatus oldStatus = session.getStatus();
         LocalTime currentTime = now.toLocalTime();
 
         if (isInside) {
+            // INSIDE GEOFENCE
             if (session.getStatus() == AttendanceStatus.WORKING) {
-                session.setTotalWorkMinutes(session.getTotalWorkMinutes() + (int) deltaMins);
-            } else if (session.getStatus() == AttendanceStatus.ON_SHORT_BREAK || 
-                       session.getStatus() == AttendanceStatus.ON_LONG_BREAK || 
-                       session.getStatus() == AttendanceStatus.AUTO_BREAK) {
-                session.setTotalBreakMinutes(session.getTotalBreakMinutes() + (int) deltaMins);
+                session.setTotalWorkMinutes(session.getTotalWorkMinutes() + deltaMins);
+            } else if (isStatusBreak(session.getStatus())) {
+                session.setTotalBreakMinutes(session.getTotalBreakMinutes() + deltaMins);
             }
+            
+            // Auto-revert to working if inside
             session.setStatus(AttendanceStatus.WORKING);
-            session.setLastSeenTime(now);
             session.setOutsideStartTime(null);
         } else {
+            // OUTSIDE GEOFENCE
             handleOutsideOffice(session, policy, now, currentTime, deltaMins);
+        }
+
+        // Update heartbeat
+        session.setLastSeenTime(now);
+
+        // 4. Audit Trail
+        if (oldStatus != session.getStatus()) {
+            logAudit(session, oldStatus.name(), session.getStatus().name(), "Auto-transition based on location/policy");
         }
     }
 
+    private boolean isStatusBreak(AttendanceStatus status) {
+        return status == AttendanceStatus.ON_SHORT_BREAK || 
+               status == AttendanceStatus.ON_LONG_BREAK || 
+               status == AttendanceStatus.AUTO_BREAK;
+    }
+
     private void handleOutsideOffice(AttendanceSession session, AttendancePolicy policy, LocalDateTime now,
-            LocalTime currentTime, long deltaMins) {
+            LocalTime currentTime, int deltaMins) {
+        
+        // 1. Authorized Break Check (Policy Window)
         boolean inShortBreak = isWithinBreak(currentTime, policy.getShortBreakStartTime(),
                 policy.getShortBreakEndTime(), DEFAULT_SHORT_BREAK_START, DEFAULT_SHORT_BREAK_END);
         boolean inLongBreak = isWithinBreak(currentTime, policy.getLongBreakStartTime(), policy.getLongBreakEndTime(),
                 DEFAULT_LONG_BREAK_START, DEFAULT_LONG_BREAK_END);
 
         if (inShortBreak || inLongBreak) {
-            session.setTotalBreakMinutes(session.getTotalBreakMinutes() + (int) deltaMins);
+            session.setTotalBreakMinutes(session.getTotalBreakMinutes() + deltaMins);
             session.setStatus(inLongBreak ? AttendanceStatus.ON_LONG_BREAK : AttendanceStatus.ON_SHORT_BREAK);
             session.setOutsideStartTime(null);
-        } else {
-            handleUnauthorizedExit(session, policy, now);
+            return;
         }
-        session.setLastSeenTime(now);
+
+        // 2. Progressive Grace Enforcement (Unauthorized Exit)
+        if (session.getOutsideStartTime() == null) {
+            session.setOutsideStartTime(now);
+            session.setOutsideCount((session.getOutsideCount() != null ? session.getOutsideCount() : 0) + 1);
+            logAudit(session, session.getStatus().name(), session.getStatus().name(), "User detected OUTSIDE. Starting grace period.");
+        }
+
+        long outsideDurationMins = Duration.between(session.getOutsideStartTime(), now).toMinutes();
+
+        if (outsideDurationMins > PROGRESSIVE_GRACE_TERMINATION_MINS) {
+            // TERMINATION (Auto Punch-Out)
+            finalizeSession(session);
+            logAudit(session, session.getStatus().name(), "TERMINATED", "Grace period exceeded (>" + PROGRESSIVE_GRACE_TERMINATION_MINS + "m). Auto punch-out.");
+            throw new RuntimeException("Operational violation: Geofence grace period exceeded. Session terminated.");
+        } else if (outsideDurationMins > PROGRESSIVE_GRACE_WARNING_MINS) {
+            // WARNING / UNAUTHORIZED STATUS
+            AttendanceStatus oldStatus = session.getStatus();
+            session.setStatus(AttendanceStatus.OUTSIDE_UNAUTHORIZED);
+            session.setUnauthorizedOutsideMinutes(session.getUnauthorizedOutsideMinutes() + deltaMins);
+            if (oldStatus != AttendanceStatus.OUTSIDE_UNAUTHORIZED) {
+                session.setBreakViolations(session.getBreakViolations() + 1);
+            }
+        } else {
+            // SILENT GRACE (Continue Previous State - usually WORKING)
+            if (session.getStatus() == AttendanceStatus.WORKING) {
+                session.setTotalWorkMinutes(session.getTotalWorkMinutes() + deltaMins);
+            }
+        }
+    }
+
+    private void logAudit(AttendanceSession session, String fromStatus, String toStatus, String reason) {
+        AttendanceAuditLog logEntry = AttendanceAuditLog.builder()
+                .user(session.getUser())
+                .session(session)
+                .fromStatus(fromStatus)
+                .toStatus(toStatus)
+                .latitude(session.getLastLat())
+                .longitude(session.getLastLng())
+                .accuracy(session.getLastAccuracy())
+                .reason(reason)
+                .build();
+        auditLogRepository.save(logEntry);
     }
 
     private boolean isWithinBreak(LocalTime current, LocalTime policyStart, LocalTime policyEnd, LocalTime defaultStart,
@@ -255,24 +356,6 @@ public class AttendanceService {
         LocalTime start = policyStart != null ? policyStart : defaultStart;
         LocalTime end = policyEnd != null ? policyEnd : defaultEnd;
         return !current.isBefore(start) && !current.isAfter(end);
-    }
-
-    private void handleUnauthorizedExit(AttendanceSession session, AttendancePolicy policy, LocalDateTime now) {
-        if (session.getOutsideStartTime() == null) {
-            session.setOutsideStartTime(now);
-            session.setOutsideCount((session.getOutsideCount() != null ? session.getOutsideCount() : 0) + 1);
-        }
-
-        long outsideDuration = Duration.between(session.getOutsideStartTime(), now).toMinutes();
-        int gracePeriod = policy.getGracePeriodMinutes() != null ? policy.getGracePeriodMinutes()
-                : DEFAULT_GRACE_PERIOD;
-
-        if (outsideDuration >= gracePeriod) {
-            finalizeSession(session);
-            throw new RuntimeException(
-                    "Auto punch-out: Unauthorized exit exceeded " + gracePeriod + " min grace period.");
-        }
-        session.setStatus(AttendanceStatus.ON_SHORT_BREAK);
     }
 
     @Transactional
@@ -401,6 +484,7 @@ public class AttendanceService {
         shift.setGraceMinutes(updatedShift.getGraceMinutes());
         shift.setMinHalfDayMinutes(updatedShift.getMinHalfDayMinutes());
         shift.setMinFullDayMinutes(updatedShift.getMinFullDayMinutes());
+        shift.setOffice(updatedShift.getOffice());
         
         return attendanceShiftRepository.save(shift);
     }
@@ -414,6 +498,23 @@ public class AttendanceService {
             throw new ResourceNotFoundException("Shift not found");
         }
         attendanceShiftRepository.deleteById(id);
+    }    @Transactional
+    public GlobalTarget getGlobalTarget() {
+        return globalTargetRepository.findFirstByOrderByIdAsc()
+                .orElseGet(() -> globalTargetRepository.save(GlobalTarget.defaultTarget()));
+    }
+
+    @Transactional
+    public GlobalTarget updateGlobalTarget(GlobalTarget updated) {
+        GlobalTarget existing = getGlobalTarget();
+        existing.setMonthlyLeadQuota(updated.getMonthlyLeadQuota());
+        existing.setTargetConversionRate(updated.getTargetConversionRate());
+        existing.setTargetRetentionRate(updated.getTargetRetentionRate());
+        existing.setMonthlyRevenueGoal(updated.getMonthlyRevenueGoal());
+        existing.setActiveMemberThreshold(updated.getActiveMemberThreshold());
+        existing.setBaseIncentiveAmount(updated.getBaseIncentiveAmount());
+        existing.setTargetIncentiveAmount(updated.getTargetIncentiveAmount());
+        return globalTargetRepository.save(existing);
     }
 
 
@@ -430,16 +531,50 @@ public class AttendanceService {
 
 
     @Transactional(readOnly = true)
-    public List<AttendanceDTO> getDailySummaries(LocalDate date, Long userId) {
-        List<AttendanceDaily> logs;
-        if (date != null && userId != null) {
-            logs = attendanceDailyRepository.findByUserIdAndDate(userId, date).map(List::of).orElse(List.of());
-        } else if (date != null) {
-            logs = attendanceDailyRepository.findByDate(date);
-        } else if (userId != null) {
-            logs = attendanceDailyRepository.findByUserIdOrderByDateDesc(userId);
+    public List<AttendanceDTO> getDailySummaries(LocalDate date, Long targetUserId, Long requesterId) {
+        User requester = userRepository.findById(requesterId).orElseThrow(() -> new ResourceNotFoundException("Requester not found"));
+        String role = requester.getRole().getName();
+        
+        List<User> visibleUsers;
+        if ("ADMIN".equals(role)) {
+            if (targetUserId != null) {
+                User target = userRepository.findById(targetUserId).orElseThrow(() -> new ResourceNotFoundException("Target user not found"));
+                visibleUsers = List.of(target);
+            } else {
+                visibleUsers = null; // Admin sees all
+            }
         } else {
-            logs = attendanceDailyRepository.findAll();
+            // Manager/TL hierarchy restriction
+            List<User> subordinates = new ArrayList<>();
+            subordinates.add(requester);
+            collectSubordinates(requester, subordinates);
+            
+            if (targetUserId != null) {
+                if (subordinates.stream().anyMatch(u -> u.getId().equals(targetUserId))) {
+                    User target = userRepository.findById(targetUserId).orElseThrow(() -> new ResourceNotFoundException("Target user not found"));
+                    visibleUsers = List.of(target);
+                } else {
+                    return Collections.emptyList(); // Unauthorized target
+                }
+            } else {
+                visibleUsers = subordinates;
+            }
+        }
+
+        List<AttendanceDaily> logs;
+        if (visibleUsers != null) {
+            if (date != null) {
+                logs = attendanceDailyRepository.findAllByUserInAndDate(visibleUsers, date);
+            } else {
+                logs = attendanceDailyRepository.findAllByUserInOrderByDateDesc(visibleUsers);
+            }
+        } else {
+            // Global (Admin only)
+            if (date != null) {
+                logs = attendanceDailyRepository.findByDate(date);
+            } else {
+                logs = attendanceDailyRepository.findAll();
+            }
         }
 
         return logs.stream().map(log -> {
@@ -453,6 +588,19 @@ public class AttendanceService {
                     .build();
             return convertToDTO(dummy);
         }).collect(Collectors.toList());
+    }
+
+    private void collectSubordinates(User user, List<User> collector) {
+        List<User> subs = new ArrayList<>();
+        subs.addAll(userRepository.findByManager(user));
+        subs.addAll(userRepository.findBySupervisor(user));
+        
+        for (User sub : subs) {
+            if (!collector.contains(sub)) {
+                collector.add(sub);
+                collectSubordinates(sub, collector);
+            }
+        }
     }
 
     private void finalizeSession(AttendanceSession s) {

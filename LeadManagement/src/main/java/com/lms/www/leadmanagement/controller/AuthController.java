@@ -18,4 +18,9 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         return ResponseEntity.ok(authService.authenticateUser(loginRequest));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<com.lms.www.leadmanagement.dto.UserDTO> getMe() {
+        return ResponseEntity.ok(authService.getCurrentUser());
+    }
 }

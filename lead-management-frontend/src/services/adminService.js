@@ -13,7 +13,10 @@ const adminService = {
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   fetchAssociatesByTl: (tlId) => api.get(`/admin/associates/${tlId}`),
   fetchTeamLeaders: () => api.get('/admin/team-leaders'),
-  fetchLeads: () => api.get('/admin/leads'),
+  fetchManagers: () => api.get('/admin/managers'),
+  fetchTeamsByManager: (managerId) => api.get('/admin/teams', { params: { managerId } }),
+  fetchAssociates: (teamId, managerId) => api.get('/admin/associates', { params: { teamId, managerId } }),
+  fetchLeads: (filters) => api.get('/admin/leads', { params: filters }),
   fetchTeamTree: () => api.get('/admin/team-tree'),
   assignLead: (leadId, tlId) => api.post(`/admin/assign-lead/${leadId}/${tlId}`),
   bulkAssignLeads: (leadIds, tlId) => api.post('/admin/leads/bulk-assign', { leadIds, tlId }),
@@ -21,6 +24,8 @@ const adminService = {
   assignSupervisor: (assocId, supId) => api.post(`/admin/assign-supervisor/${assocId}/${supId}`),
   bulkAssignSupervisor: (associateIds, supervisorId) => api.post('/admin/bulk-assign-supervisor', { associateIds, supervisorId }),
   bulkAssignHierarchy: (emailMap) => api.post('/admin/bulk-assign-hierarchy', emailMap),
+  updateLead: (id, data) => api.put(`/leads/${id}`, data),
+  recordCallOutcome: (leadId, data) => api.post(`/leads/${leadId}/record-outcome`, data),
 
   // Attendance Management
   fetchOffices: () => api.get('/admin/attendance/offices'),
@@ -35,6 +40,8 @@ const adminService = {
   createShift: (data) => api.post('/admin/attendance/shifts', data),
   updateShift: (id, data) => api.put(`/admin/attendance/shifts/${id}`, data),
   deleteShift: (id) => api.delete(`/admin/attendance/shifts/${id}`),
+  fetchGlobalTargets: () => api.get('/admin/attendance/global-targets'),
+  updateGlobalTargets: (data) => api.post('/admin/attendance/global-targets', data),
 
   // Call Records Audit
   fetchCallLogsAdmin: (filters) => api.get('/call-records/admin/all', { params: filters }),
@@ -60,7 +67,16 @@ const adminService = {
     return api.post('/call-records/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-  }
+  },
+
+  setRevenueTarget: (payload) => api.post('/targets/set', payload),
+  fetchRevenueTargets: (month, year) => api.get('/targets/all', { params: { month, year } }),
+
+  // Password Reset Logic
+  generateResetOtp: (userId) => api.post(`/admin/users/${userId}/reset-password-otp`),
+  verifyResetOtp: (userId, otp, newPassword) => api.post(`/admin/users/${userId}/verify-reset-otp`, { otp, newPassword }),
+  sendPaymentLink: (leadId, data) => api.post(`/leads/${leadId}/send-payment-link`, data),
+  deleteLead: (id) => api.delete(`/leads/${id}`)
 };
 
 export default adminService;

@@ -19,4 +19,6 @@ public interface AttendanceDailyRepository extends JpaRepository<AttendanceDaily
     List<AttendanceDaily> findByUserIdOrderByDateDesc(Long userId);
     
     List<AttendanceDaily> findAllByUserInAndDateBetween(List<User> users, LocalDate startDate, LocalDate endDate);
+    List<AttendanceDaily> findAllByUserInAndDate(List<User> users, LocalDate date);
+    List<AttendanceDaily> findAllByUserInOrderByDateDesc(List<User> users);
 }

@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import adminService from '../../../services/adminService';
+import managerService from '../../../services/managerService';
 import tlService from '../../../services/tlService';
+import associateService from '../../../services/associateService';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { Phone, PhoneOutgoing, Clock, User, Calendar, Search, Play, FileText, Upload } from 'lucide-react';
 import BulkUploadCallModal from './BulkUploadCallModal';
 import { toast } from 'react-toastify';
 
+import FiltersBar from './FiltersBar';
 import CallAnalyticsGrid from './CallAnalyticsGrid';
 
-const CallLogDashboard = () => {
+const CallLogDashboard = ({ userId: externalUserId, hideHeader = false }) => {
     const { user } = useAuth();
-    const { isDarkMode } = useTheme();
+    const { isDarkMode, theme } = useTheme();
     const role = user?.role;
     const [logs, setLogs] = useState([]);
     const [users, setUsers] = useState([]);
@@ -22,17 +25,26 @@ const CallLogDashboard = () => {
     const [audioObj, setAudioObj] = useState(null);
     
     const [filters, setFilters] = useState({
-        from: new Date().toISOString().split('T')[0],
-        to: new Date().toISOString().split('T')[0],
-        userId: ''
+        from: new Date().toISOString().split('T')[0] + 'T00:00:00',
+        to: new Date().toISOString().split('T')[0] + 'T23:59:59',
+        userId: externalUserId || ''
     });
+
+    useEffect(() => {
+        if (externalUserId !== undefined) {
+            setFilters(prev => ({ ...prev, userId: externalUserId || '' }));
+        }
+    }, [externalUserId]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const activeFilters = { ...filters };
-            // stats call takes same from/to
-            const statsFilters = { from: filters.from, to: filters.to };
+            const activeFilters = { 
+                ...filters,
+                from: filters.from.split('T')[0],
+                to: filters.to.split('T')[0]
+            };
+            const statsFilters = { from: activeFilters.from, to: activeFilters.to };
 
             let logsCall, usersCall, statsCall;
 
@@ -40,10 +52,18 @@ const CallLogDashboard = () => {
                 logsCall = adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = adminService.fetchUsers();
                 statsCall = adminService.fetchGlobalCallStats(statsFilters);
+            } else if (role === 'MANAGER') {
+                logsCall = adminService.fetchCallLogsAdmin(activeFilters); 
+                usersCall = managerService.fetchTeamLeaders(); 
+                statsCall = adminService.fetchGlobalCallStats(statsFilters);
             } else if (role === 'TEAM_LEADER') {
                 logsCall = tlService.fetchCallLogs ? tlService.fetchCallLogs(activeFilters) : adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = tlService.fetchSubordinates();
                 statsCall = tlService.fetchGlobalCallStats ? tlService.fetchGlobalCallStats(statsFilters) : adminService.fetchGlobalCallStats(statsFilters);
+            } else if (role === 'ASSOCIATE') {
+                logsCall = associateService.fetchMyLogs(activeFilters);
+                usersCall = Promise.resolve({ data: [] }); 
+                statsCall = associateService.fetchCallStats(statsFilters);
             } else {
                 logsCall = adminService.fetchCallLogsAdmin(activeFilters);
                 usersCall = adminService.fetchUsers();
@@ -69,7 +89,7 @@ const CallLogDashboard = () => {
 
     useEffect(() => {
         fetchData();
-    }, [filters]);
+    }, [filters.from, filters.to, filters.userId]);
 
     const formatDuration = (seconds) => {
         if (!seconds) return '0s';
@@ -97,92 +117,48 @@ const CallLogDashboard = () => {
 
     return (
         <div className="container-fluid p-0 animate-fade-in mt-2">
-            <div className="mb-4 d-flex justify-content-between align-items-center">
-                <div>
-                   <h6 className="fw-black text-muted text-uppercase mb-1 tracking-widest" style={{ fontSize: '10px' }}>
-                     {filters.from} {filters.from !== filters.to ? ` - ${filters.to}` : '12:00 AM - 11:59 PM'}
-                   </h6>
-                   <h4 className="fw-black text-main mb-0 tracking-tighter">Interaction Intelligence</h4>
-                </div>
-                <div className="d-flex align-items-center gap-3">
-                     <div className="d-flex align-items-center bg-surface border border-white border-opacity-10 rounded-3 shadow-sm px-3" style={{ height: '42px' }}>
-                        <span className="text-muted fw-bold small uppercase me-2" style={{fontSize: '9px'}}>Pre-sets</span>
-                        <select 
-                            className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
-                            onChange={e => {
-                                const val = e.target.value;
-                                const today = new Date().toISOString().split('T')[0];
-                                if (val === 'today') setFilters({...filters, from: today, to: today});
-                                else if (val === 'yesterday') {
-                                    const y = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-                                    setFilters({...filters, from: y, to: y});
-                                } else if (val === '7d') {
-                                    const start = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-                                    setFilters({...filters, from: start, to: today});
-                                }
-                            }}
-                            style={{ fontSize: '12px', outline: 'none' }}
+            {!hideHeader && (
+                <div className="mb-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 className="fw-black text-main mb-0 tracking-tighter">Interaction Intelligence</h4>
+                            <p className="text-muted small fw-bold opacity-60 mb-0" style={{ fontSize: '10px' }}>CONVERSATIONAL ANALYTICS & ARCHIVE</p>
+                        </div>
+                        <button 
+                            className="ui-btn ui-btn-primary px-4 rounded-pill shadow-glow py-2 fw-black d-flex align-items-center gap-2"
+                            onClick={() => setIsUploadModalOpen(true)}
+                            style={{ fontSize: '11px' }}
                         >
-                            <option value="today">Today</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="7d">Last 7 Days</option>
-                        </select>
-                     </div>
-                    <button 
-                        className="ui-btn ui-btn-primary px-4 rounded-3 shadow-glow py-2 fw-black"
-                        onClick={() => setIsUploadModalOpen(true)}
-                        style={{ fontSize: '11px' }}
-                    >
-                        <Upload size={14} /> IMPORT DATA
-                    </button>
-               </div>
-            </div>
+                            <Upload size={14} /> IMPORT CALL DATA
+                        </button>
+                    </div>
+
+                    <FiltersBar 
+                        filters={filters}
+                        onChange={setFilters}
+                        onSync={fetchData}
+                        title="INTERACTION HUB"
+                        role={role}
+                        currentUserId={user?.id}
+                    />
+                </div>
+            )}
 
             <div className="mb-4">
                 <CallAnalyticsGrid stats={stats} loading={loading} isDarkMode={isDarkMode} />
             </div>
 
             {/* Table Area */}
-            <div className="premium-card overflow-hidden">
-                <div className="card-header bg-transparent border-bottom border-white border-opacity-5 p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                    <div className="d-flex align-items-center gap-2">
-                        <div className="p-2 bg-surface rounded text-primary border border-white border-opacity-5">
+            <div className="premium-card overflow-hidden shadow-lg border-0 bg-surface bg-opacity-20">
+                <div className="card-header bg-transparent border-bottom border-white border-opacity-5 p-4 d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center gap-3">
+                        <div className="p-2 bg-primary bg-opacity-10 rounded-circle text-primary">
                            <FileText size={18} />
                         </div>
-                        <h6 className="fw-bold text-main mb-0 small text-uppercase tracking-wider">Interaction Archive</h6>
-                    </div>
-                    
-                    <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-                        <div className="d-flex align-items-center bg-surface border border-white border-opacity-10 rounded-pill shadow-sm px-3" style={{ height: '42px' }}>
-                            <Calendar size={14} className="text-primary opacity-50 me-2" />
-                            <input 
-                                type="date" 
-                                className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
-                                value={filters.from} 
-                                onChange={e => setFilters({...filters, from: e.target.value})}
-                                style={{ fontSize: '10px', outline: 'none', colorScheme: isDarkMode ? 'dark' : 'light' }}
-                            />
-                            <span className="mx-2 text-muted fw-bold">TO</span>
-                            <input 
-                                type="date" 
-                                className="bg-transparent border-0 shadow-none text-main fw-black p-0" 
-                                value={filters.to} 
-                                onChange={e => setFilters({...filters, to: e.target.value})}
-                                style={{ fontSize: '10px', outline: 'none', colorScheme: isDarkMode ? 'dark' : 'light' }}
-                            />
+                        <div>
+                            <h6 className="fw-black text-main mb-0 small text-uppercase tracking-widest">Interaction Archive</h6>
+                            <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '8px' }}>MASTER CALL LEDGER</p>
                         </div>
-
-                        <select 
-                            className="form-select border-white border-opacity-10 shadow-sm rounded-pill fw-black text-main px-4 bg-surface"
-                            style={{ fontSize: '11px', minWidth: '180px', height: '42px', outline: 'none', boxShadow: 'none' }}
-                            value={filters.userId} 
-                            onChange={e => setFilters({...filters, userId: e.target.value})}
-                        >
-                            <option value="" className="text-dark">ALL TEAM NODES</option>
-                            {users.map(u => (
-                                <option key={u.id} value={u.id} className="text-dark">{u.name.toUpperCase()} [{u.role}]</option>
-                            ))}
-                        </select>
                     </div>
                 </div>
 

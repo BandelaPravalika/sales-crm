@@ -16,14 +16,14 @@ import {
 import { toast } from 'react-toastify';
 import attendanceService from '../../services/attendanceService';
 
-const AttendanceDashboard = ({ role }) => {
+const AttendanceDashboard = ({ role, userId: externalUserId, date: externalDate }) => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // Filters
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [userId, setUserId] = useState('');
+  const [date, setDate] = useState(externalDate || new Date().toISOString().split('T')[0]);
+  const [userId, setUserId] = useState(externalUserId || '');
 
   // User History Detail Modal
   const [selectedUser, setSelectedUser] = useState(null);
@@ -31,16 +31,22 @@ const AttendanceDashboard = ({ role }) => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
+  useEffect(() => {
+    if (externalDate) setDate(externalDate);
+  }, [externalDate]);
+
+  useEffect(() => {
+    if (externalUserId !== undefined) setUserId(externalUserId || '');
+  }, [externalUserId]);
 
   const fetchLogs = async () => {
     try {
       setLoading(true);
       let response;
-      if (role === 'ASSOCIATE' || role === 'TEAM_LEADER') {
+      if (role === 'ASSOCIATE' || role === 'TEAM_LEADER' || (role === 'MANAGER' && !externalUserId && !externalDate && !userId && !date)) {
+        // Fallback or self-view if no external filters and no local filters selected
         response = await attendanceService.getMyLogs();
         if (response.success) {
-           // Map AttendanceDTOs to a format similar to Summary if needed
-           // Actually, getMyLogs returns List<AttendanceDTO>
            setLogs(response.data.map(log => ({
              ...log,
              userName: 'Me',
@@ -50,7 +56,8 @@ const AttendanceDashboard = ({ role }) => {
            setError(null);
         }
       } else {
-        response = await attendanceService.getAdminSummaries(date, userId);
+        const cleanDate = date?.includes('T') ? date.split('T')[0] : date;
+        response = await attendanceService.getAdminSummaries(cleanDate, userId);
         if (response.success) {
           setLogs(response.data);
           setError(null);
@@ -94,61 +101,65 @@ const AttendanceDashboard = ({ role }) => {
   };
 
   return (
-    <div className="container-fluid p-4 animate-fade-in">
+    <div className={`container-fluid animate-fade-in ${externalUserId || externalDate ? 'p-0' : 'p-4'}`}>
       {/* Header Area */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h4 className="fw-black text-main mb-1 text-uppercase tracking-widest">Attendance Activity</h4>
-          <p className="text-muted small fw-bold opacity-75 mb-0">Monitor team productivity and daily work sessions</p>
+      {(!externalUserId && !externalDate) && (
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 className="fw-black text-main mb-1 text-uppercase tracking-widest">Attendance Activity</h4>
+            <p className="text-muted small fw-bold opacity-75 mb-0">Monitor team productivity and daily work sessions</p>
+          </div>
+          <button className="btn btn-primary d-flex align-items-center gap-2 rounded-pill shadow-glow px-4 fw-black text-uppercase small">
+            <Download size={18} /> Export Logs
+          </button>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2 rounded-pill shadow-glow px-4 fw-black text-uppercase small">
-          <Download size={18} /> Export Logs
-        </button>
-      </div>
+      )}
 
       {/* Filter Bar */}
-      <div className="premium-card mb-4 border-0 shadow-lg">
-        <div className="card-body p-4">
-          <div className="row g-4 align-items-end">
-            <div className="col-md-4">
-              <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Filter by Date</label>
-              <div className="input-group">
-                <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
-                  <Calendar size={18} />
-                </span>
-                <input 
-                  type="date" 
-                  className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="col-md-4">
-              <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Identity Propagation (Staff ID)</label>
-              <div className="input-group">
-                <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
-                  <Search size={18} />
-                </span>
-                <input 
-                  type="text" 
-                  className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
-                  placeholder="Enter User ID..."
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="col-md-4 text-end">
-                <div className="d-flex align-items-center justify-content-end gap-3 text-muted small fw-bold opacity-50 mb-1">
-                   <div className="d-flex align-items-center gap-1"><div className="bg-success rounded-circle" style={{width: 8, height: 8}}></div> PRESENT</div>
-                   <div className="d-flex align-items-center gap-1"><div className="bg-warning rounded-circle" style={{width: 8, height: 8}}></div> HALF DAY</div>
-                   <div className="d-flex align-items-center gap-1"><div className="bg-danger rounded-circle" style={{width: 8, height: 8}}></div> ABSENT</div>
+      {(!externalUserId && !externalDate) && (
+        <div className="premium-card mb-4 border-0 shadow-lg">
+          <div className="card-body p-4">
+            <div className="row g-4 align-items-end">
+              <div className="col-md-4">
+                <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Filter by Date</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
+                    <Calendar size={18} />
+                  </span>
+                  <input 
+                    type="date" 
+                    className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
                 </div>
+              </div>
+              <div className="col-md-4">
+                <label className="small fw-black text-muted text-uppercase tracking-widest mb-2 d-block" style={{ fontSize: '10px' }}>Identity Propagation (Staff ID)</label>
+                <div className="input-group">
+                  <span className="input-group-text bg-surface border-0 text-primary rounded-start-4">
+                    <Search size={18} />
+                  </span>
+                  <input 
+                    type="text" 
+                    className="form-control bg-surface border-0 text-main shadow-none rounded-end-4 py-2.5"
+                    placeholder="Enter User ID..."
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="col-md-4 text-end">
+                  <div className="d-flex align-items-center justify-content-end gap-3 text-muted small fw-bold opacity-50 mb-1">
+                     <div className="d-flex align-items-center gap-1"><div className="bg-success rounded-circle" style={{width: 8, height: 8}}></div> PRESENT</div>
+                     <div className="d-flex align-items-center gap-1"><div className="bg-warning rounded-circle" style={{width: 8, height: 8}}></div> HALF DAY</div>
+                     <div className="d-flex align-items-center gap-1"><div className="bg-danger rounded-circle" style={{width: 8, height: 8}}></div> ABSENT</div>
+                  </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Logs Table */}
       <div className="premium-card border-0 shadow-lg overflow-hidden">

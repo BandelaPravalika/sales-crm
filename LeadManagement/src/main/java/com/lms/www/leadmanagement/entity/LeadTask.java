@@ -23,14 +23,14 @@ public class LeadTask {
 
     private String title;
     private String description;
-    
+
     private LocalDateTime dueDate;
-    
+
     @Enumerated(EnumType.STRING)
     private TaskStatus status;
-    
+
     private String taskType; // FOLLOW_UP, EMI_COLLECTION, INVITATION
-    
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

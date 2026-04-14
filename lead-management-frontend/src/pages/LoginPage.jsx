@@ -65,7 +65,7 @@ const LoginPage = () => {
           >
             <Sparkles size={24} color="#6366f1" />
           </div>
-          <h4 className="fw-bold mb-1" style={{ color: '#f9fafb' }}>GYNATRIX CRM</h4>
+          <h4 className="fw-bold mb-1" style={{ color: '#f9fafb' }}>GYANTRIX CRM</h4>
           <p className="mb-0" style={{ color: '#6b7280', fontSize: '13px' }}>Sign in to your account</p>
         </div>
 
@@ -137,10 +137,10 @@ const LoginPage = () => {
           {/* Demo Role Buttons */}
           <div className="row g-2">
             {[
-              { role: 'ADMIN',       label: 'Admin',     Icon: ShieldCheck, color: '#6366f1' },
-              { role: 'MANAGER',     label: 'Manager',   Icon: UserCog,     color: '#22d3ee' },
-              { role: 'TEAM_LEADER', label: 'Team Lead', Icon: Users,       color: '#10b981' },
-              { role: 'ASSOCIATE',   label: 'Associate', Icon: User,        color: '#f59e0b' },
+              { role: 'ADMIN', label: 'Admin', Icon: ShieldCheck, color: '#6366f1' },
+              { role: 'MANAGER', label: 'Manager', Icon: UserCog, color: '#22d3ee' },
+              { role: 'TEAM_LEADER', label: 'Team Lead', Icon: Users, color: '#10b981' },
+              { role: 'ASSOCIATE', label: 'Associate', Icon: User, color: '#f59e0b' },
             ].map(({ role, label, Icon, color }) => (
               <div key={role} className="col-6">
                 <button

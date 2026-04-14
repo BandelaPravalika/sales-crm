@@ -10,24 +10,35 @@ import RecordPaymentModal from './RecordPaymentModal';
 import ManualPaymentModal from './ManualPaymentModal';
 import InvoiceModal from '../pages/dashboard/components/InvoiceModal';
 
-const PaymentHistory = ({ role }) => {
+const PaymentHistory = ({ role, userId: externalUserId, from: externalFrom, to: externalTo, hideHeader = false }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [teamLeaders, setTeamLeaders] = useState([]);
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: externalFrom || '',
+    endDate: externalTo || '',
     tlId: '',
     associateId: '',
     status: ''
   });
+
+  // Sync with external filters
+  useEffect(() => {
+    if (externalFrom || externalTo || externalUserId) {
+      setFilters(prev => ({
+        ...prev,
+        startDate: externalFrom || prev.startDate,
+        endDate: externalTo || prev.endDate
+      }));
+    }
+  }, [externalFrom, externalTo, externalUserId]);
+
   const [associates, setAssociates] = useState([]);
   const [fetchingAssociates, setFetchingAssociates] = useState(false);
   const [selectedSplitPayment, setSelectedSplitPayment] = useState(null);
   const [selectedClearPayment, setSelectedClearPayment] = useState(null);
   const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  // Client-side EMI filters
   const [studentSearch, setStudentSearch] = useState('');
   const [dueFrom, setDueFrom] = useState('');
   const [dueTo, setDueTo] = useState('');
@@ -44,7 +55,7 @@ const PaymentHistory = ({ role }) => {
   };
 
   const fetchTeamLeaders = async () => {
-    if (role === 'ADMIN' || role === 'MANAGER') {
+    if ((role === 'ADMIN' || role === 'MANAGER') && !externalUserId) {
       try {
         const res = role === 'ADMIN' ? await adminService.fetchUsers() : await managerService.fetchTeamLeaders();
         const users = res.data.content || res.data;
@@ -58,7 +69,15 @@ const PaymentHistory = ({ role }) => {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await paymentService.fetchHistory(role, filters);
+      const queryFilters = { ...filters };
+      if (externalUserId) queryFilters.userId = externalUserId;
+      // Map startDate/endDate to from/to for the API if necessary
+      const apiFilters = {
+        ...queryFilters,
+        from: queryFilters.startDate ? queryFilters.startDate.split('T')[0] : '',
+        to: queryFilters.endDate ? queryFilters.endDate.split('T')[0] : ''
+      };
+      const res = await paymentService.fetchHistory(role, apiFilters);
       setPayments(res.data);
     } catch (err) {
       toast.error('Failed to sync financial history');
@@ -115,7 +134,7 @@ const PaymentHistory = ({ role }) => {
   useEffect(() => {
     fetchHistory();
     fetchTeamLeaders();
-  }, [role, filters.startDate, filters.endDate, filters.tlId, filters.status]);
+  }, [role, filters.startDate, filters.endDate, filters.tlId, filters.associateId, filters.status, externalUserId]);
 
   useEffect(() => {
     if (filters.tlId) {
@@ -131,7 +150,7 @@ const PaymentHistory = ({ role }) => {
   };
 
   const resetFilters = () => {
-    setFilters({ startDate: '', endDate: '', tlId: '', associateId: '', status: '' });
+    setFilters({ startDate: externalFrom || '', endDate: externalTo || '', tlId: '', associateId: '', status: '' });
     setStudentSearch('');
     setDueFrom('');
     setDueTo('');
@@ -157,83 +176,107 @@ const PaymentHistory = ({ role }) => {
 
   return (
     <div className="animate-fade-in mt-2">
-      <div className="mt-2"></div>
+      <div className="mt-1"></div>
 
-      <div className="premium-card overflow-hidden">
-        <div className="card-header bg-transparent border-bottom border-white border-opacity-5 p-4 d-flex justify-content-between align-items-center">
-          <div className="d-flex align-items-center gap-3">
-            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-3 border border-primary border-opacity-10 shadow-sm">
-                <Clock size={18} />
-            </div>
-            <div>
-                <h6 className="fw-bold text-main mb-0 small text-uppercase tracking-wider">Active EMI Schedule</h6>
-                <p className="mb-0 text-muted fw-bold" style={{fontSize: '9px'}}>TOTAL {filteredPayments.length} ENTRIES MAPPED</p>
+      <div className="premium-card overflow-hidden shadow-lg border-0 bg-surface bg-opacity-20">
+        {!hideHeader && !externalUserId && (
+          <div className="card-header bg-transparent border-bottom border-white border-opacity-5 p-4 d-flex justify-content-between align-items-center">
+            <div className="d-flex align-items-center gap-3">
+              <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-3 border border-primary border-opacity-10 shadow-sm">
+                  <Clock size={18} />
+              </div>
+              <div>
+                  <h6 className="fw-bold text-main mb-0 small text-uppercase tracking-wider">Active EMI Schedule</h6>
+                  <p className="mb-0 text-muted fw-bold" style={{fontSize: '9px'}}>TOTAL {filteredPayments.length} ENTRIES MAPPED</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Filters Wrapper */}
-        <div className="p-4 bg-surface bg-opacity-50 border-bottom border-white border-opacity-5 d-flex flex-wrap gap-4 align-items-end">
-          <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
-            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Operational Status</label>
-            <select className="ui-input py-1.5" name="status" value={filters.status} onChange={handleFilterChange}>
-              <option value="" className="text-dark">All Statuses</option>
-              <option value="PAID" className="text-dark">Cleared (Paid)</option>
-              <option value="PENDING" className="text-dark">Upcoming (Pending)</option>
-              <option value="FAILED" className="text-dark">Overdue (Failed)</option>
-            </select>
-          </div>
-          {(role === 'ADMIN' || role === 'MANAGER') && (
-             <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
-               <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Team Leader Focus</label>
-               <select className="ui-input py-1.5" name="tlId" value={filters.tlId} onChange={handleFilterChange}>
-                 <option value="" className="text-dark">Universal Access</option>
-                 {teamLeaders.map(tl => <option key={tl.id} value={tl.id} className="text-dark">{tl.name}</option>)}
-               </select>
-             </div>
-          )}
-          {(role === 'ADMIN' || role === 'MANAGER' || role === 'TEAM_LEADER') && filters.tlId && (
+        {/* Filters Wrapper - Conditionally hide if external filters provided */}
+        {(!externalUserId && !externalFrom) && (
+          <div className="p-4 bg-surface bg-opacity-50 border-bottom border-white border-opacity-5 d-flex flex-wrap gap-4 align-items-end">
             <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
-              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Associate Node</label>
-              <select className="ui-input py-1.5" name="associateId" value={filters.associateId} onChange={handleFilterChange} disabled={fetchingAssociates}>
-                 <option value="" className="text-dark">All Sub-Nodes</option>
-                 {associates.map(a => <option key={a.id} value={a.id} className="text-dark">{a.name}</option>)}
+              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Operational Status</label>
+              <select className="ui-input py-1.5" name="status" value={filters.status} onChange={handleFilterChange}>
+                <option value="" className="text-dark">All Statuses</option>
+                <option value="PAID" className="text-dark">Cleared (Paid)</option>
+                <option value="PENDING" className="text-dark">Upcoming (Pending)</option>
+                <option value="FAILED" className="text-dark">Overdue (Failed)</option>
               </select>
             </div>
-          )}
-          <div className="flex-grow-1" style={{ minWidth: '160px' }}>
-            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Student Search</label>
-            <input
-              type="text"
-              className="ui-input py-1.5"
-              placeholder="Filter by name..."
-              value={studentSearch}
-              onChange={e => setStudentSearch(e.target.value)}
-            />
+            {(role === 'ADMIN' || role === 'MANAGER') && !externalUserId && (
+               <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
+                 <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Team Leader Focus</label>
+                 <select className="ui-input py-1.5" name="tlId" value={filters.tlId} onChange={handleFilterChange}>
+                   <option value="" className="text-dark">Universal Access</option>
+                   {teamLeaders.map(tl => <option key={tl.id} value={tl.id} className="text-dark">{tl.name}</option>)}
+                 </select>
+               </div>
+            )}
+            {(role === 'ADMIN' || role === 'MANAGER' || role === 'TEAM_LEADER') && filters.tlId && !externalUserId && (
+              <div className="flex-grow-1" style={{ maxWidth: '180px' }}>
+                <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Associate Node</label>
+                <select className="ui-input py-1.5" name="associateId" value={filters.associateId} onChange={handleFilterChange} disabled={fetchingAssociates}>
+                   <option value="" className="text-dark">All Sub-Nodes</option>
+                   {associates.map(a => <option key={a.id} value={a.id} className="text-dark">{a.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="flex-grow-1" style={{ minWidth: '160px' }}>
+              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Student Search</label>
+              <input
+                type="text"
+                className="ui-input py-1.5"
+                placeholder="Filter by name..."
+                value={studentSearch}
+                onChange={e => setStudentSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex-grow-1" style={{ minWidth: '140px' }}>
+              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Floor)</label>
+              <input
+                type="date"
+                className="ui-input py-1.5"
+                value={dueFrom}
+                onChange={e => setDueFrom(e.target.value)}
+              />
+            </div>
+            <div className="flex-grow-1" style={{ minWidth: '140px' }}>
+              <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Ceiling)</label>
+              <input
+                type="date"
+                className="ui-input py-1.5"
+                value={dueTo}
+                onChange={e => setDueTo(e.target.value)}
+              />
+            </div>
+            <div className="d-flex gap-2">
+              <button onClick={fetchHistory} className="ui-btn ui-btn-primary px-4 rounded-pill shadow-glow py-1.5" style={{fontSize: '11px'}}>SYNC</button>
+              <button onClick={resetFilters} className="ui-btn ui-btn-secondary px-4 rounded-pill py-1.5" style={{fontSize: '11px'}}>RESET</button>
+            </div>
           </div>
-          <div className="flex-grow-1" style={{ minWidth: '140px' }}>
-            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Floor)</label>
-            <input
-              type="date"
-              className="ui-input py-1.5"
-              value={dueFrom}
-              onChange={e => setDueFrom(e.target.value)}
-            />
+        )}
+
+        {/* Local Search for External Filter Mode */}
+        {(externalUserId || externalFrom) && (
+          <div className="p-3 bg-surface bg-opacity-20 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
+             <div className="d-flex align-items-center gap-2">
+                <FileText size={16} className="text-primary opacity-50" />
+                <h6 className="fw-black text-main mb-0 small text-uppercase tracking-widest">Master Financial Ledger</h6>
+             </div>
+             <div className="d-flex gap-2">
+                <input
+                  type="text"
+                  className="bg-dark bg-opacity-40 border-0 text-main py-1 px-4 rounded-pill"
+                  placeholder="Seach Student..."
+                  value={studentSearch}
+                  onChange={e => setStudentSearch(e.target.value)}
+                  style={{ fontSize: '11px', outline: 'none', width: '200px' }}
+                />
+             </div>
           </div>
-          <div className="flex-grow-1" style={{ minWidth: '140px' }}>
-            <label className="text-muted small fw-bold text-uppercase mb-2 d-block" style={{ fontSize: '9px', opacity: 0.6 }}>Due Date (Ceiling)</label>
-            <input
-              type="date"
-              className="ui-input py-1.5"
-              value={dueTo}
-              onChange={e => setDueTo(e.target.value)}
-            />
-          </div>
-          <div className="d-flex gap-2">
-            <button onClick={fetchHistory} className="ui-btn ui-btn-primary px-4 rounded-pill shadow-glow py-1.5" style={{fontSize: '11px'}}>SYNC</button>
-            <button onClick={resetFilters} className="ui-btn ui-btn-secondary px-4 rounded-pill py-1.5" style={{fontSize: '11px'}}>RESET</button>
-          </div>
-        </div>
+        )}
 
         {/* Desktop Table View */}
         <div className="table-responsive d-none d-md-block p-0">
@@ -293,18 +336,11 @@ const PaymentHistory = ({ role }) => {
                        )}
                     </td>
                     <td className="pe-4 py-4 text-end">
-                      <div className="d-flex align-items-center justify-content-end gap-3">
-                         {(isPending || isOverdue) && (
-                           <>
-                             <button 
-                               onClick={() => setSelectedSplitPayment(payment)}
-                               className="btn btn-link text-muted p-0 text-decoration-none d-flex align-items-center gap-2 hover-text-primary transition-all opacity-50 hover-opacity-100"
-                               style={{ fontSize: '11px', fontWeight: '900' }}
-                             >
-                               <Scissors size={12} /> SPLIT DIST
-                             </button>
-                             <button 
-                               onClick={() => setSelectedClearPayment(payment)}
+                          <div className="d-flex align-items-center justify-content-end gap-3">
+                             {(isPending || isOverdue) && (
+                               <>
+                                 <button 
+                                   onClick={() => setSelectedClearPayment(payment)}
                                className="ui-btn ui-btn-primary btn-sm rounded-pill px-4 fw-black shadow-glow"
                                style={{ fontSize: '10px' }}
                              >

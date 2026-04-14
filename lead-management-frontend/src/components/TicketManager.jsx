@@ -15,13 +15,20 @@ import {
 import { toast } from 'react-toastify';
 import ticketService from '../services/ticketService';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
-const TicketManager = ({ role }) => {
+const TicketManager = ({ role, userId, memberIds = [] }) => {
   const { user } = useAuth();
+  const { isDarkMode } = useTheme();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showRaiseModal, setShowRaiseModal] = useState(false);
-  const [newTicket, setNewTicket] = useState({ subject: '', description: '', category: 'SYSTEM', priority: 'MEDIUM' });
+  const [view, setView] = useState('ledger'); // 'ledger' or 'raise'
+  const [newTicket, setNewTicket] = useState({
+    subject: '',
+    category: 'System/Technical',
+    priority: 'Medium',
+    description: ''
+  });
 
   const isAdmin = role === 'ADMIN';
 
@@ -29,7 +36,16 @@ const TicketManager = ({ role }) => {
     try {
       setLoading(true);
       const res = isAdmin ? await ticketService.getAllTickets() : await ticketService.getMyTickets();
-      setTickets(res.data);
+      
+      let data = res.data;
+      if (isAdmin && userId) {
+        data = data.filter(t => 
+          t.createdBy?.id == userId || 
+          memberIds.some(id => id == t.createdBy?.id)
+        );
+      }
+      
+      setTickets(data);
     } catch (err) {
       toast.error('Failed to sync ticket ledger');
     } finally {
@@ -37,20 +53,22 @@ const TicketManager = ({ role }) => {
     }
   };
 
+  const memberIdsKey = JSON.stringify(memberIds);
+
   useEffect(() => {
     fetchTickets();
-  }, [isAdmin]);
+  }, [isAdmin, userId, memberIdsKey]);
 
   const handleRaiseTicket = async (e) => {
     e.preventDefault();
     try {
-      await ticketService.raiseTicket(newTicket);
-      toast.success('Ticket transmission successful - Admin notified');
-      setShowRaiseModal(false);
-      setNewTicket({ subject: '', description: '', category: 'SYSTEM', priority: 'MEDIUM' });
-      fetchTickets();
+      await ticketService.createTicket(newTicket);
+      toast.success('Ticket Transmission Successful');
+      setNewTicket({ subject: '', category: 'System/Technical', priority: 'Medium', description: '' });
+      setView('ledger');
+      await fetchTickets();
     } catch (err) {
-      toast.error('Transmission failed');
+      toast.error('Transmission Blocked');
     }
   };
 
@@ -71,8 +89,101 @@ const TicketManager = ({ role }) => {
 
   const getStatusBadge = (s) => {
     const colors = { OPEN: 'bg-primary text-primary', IN_PROGRESS: 'bg-warning text-warning', RESOLVED: 'bg-success text-success', CLOSED: 'bg-surface text-muted' };
-    return <span className={`ui-badge ${colors[s]} bg-opacity-10 border border-current border-opacity-10 fw-black`} style={{ fontSize: '9px' }}>{s.replace('_', ' ')}</span>;
+    return <span className={`ui-badge ${colors[s]} bg-opacity-10 border border-current border-opacity-10 fw-black`} style={{ fontSize: '9px' }}>{s?.replace('_', ' ')}</span>;
   };
+
+  const textClass = isDarkMode ? 'text-white' : 'text-dark';
+  const borderClass = isDarkMode ? 'border-white border-opacity-10' : 'border-dark border-opacity-10';
+  const cardBg = isDarkMode ? 'bg-surface bg-opacity-10' : 'bg-white shadow-sm';
+
+  if (view === 'raise') {
+    return (
+      <div className={`animate-fade-in d-flex flex-column gap-4 min-vh-100 p-2 ${isDarkMode ? '' : 'text-dark'}`}>
+         <div className="d-flex align-items-center justify-content-between mb-4">
+            <div>
+               <h3 className={`fw-black ${isDarkMode ? 'text-main' : 'text-dark'} text-uppercase tracking-widest mb-1`}>Initialize Ticket Node</h3>
+               <p className="text-muted fw-bold opacity-50 small mb-0">ESTABLISHING DIRECT CONNECTION WITH STRATEGIC SUPPORT</p>
+            </div>
+            <button 
+              onClick={() => setView('ledger')}
+              className="ui-btn ui-btn-outline px-4 rounded-pill small fw-black text-uppercase tracking-wider"
+              style={{ fontSize: '10px' }}
+            >
+              ← BACK TO LEDGER
+            </button>
+         </div>
+
+         <div className="row g-4 justify-content-center">
+            <div className="col-12 col-xl-8">
+               <div className={`premium-card p-5 border-0 ${cardBg} rounded-5`}>
+                  <form onSubmit={handleRaiseTicket} className="d-flex flex-column gap-4">
+                     <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                        <label className="small fw-black text-primary text-uppercase tracking-widest opacity-75 mb-3 d-block" style={{ fontSize: '10px' }}>Issue Synopsis</label>
+                        <input 
+                           className={`form-control bg-transparent ${borderClass} ${textClass} py-3 px-4 shadow-none rounded-4 focus:border-primary transition-all`}
+                           placeholder="Enter high-level issue summary..."
+                           required
+                           value={newTicket.subject}
+                           onChange={(e) => setNewTicket({ ...newTicket, subject: e.target.value })}
+                        />
+                     </div>
+
+                     <div className="row g-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                        <div className="col-md-6">
+                           <label className="small fw-black text-info text-uppercase tracking-widest opacity-75 mb-3 d-block" style={{ fontSize: '10px' }}>Category Select</label>
+                           <select 
+                              className={`form-select bg-transparent ${borderClass} ${textClass} py-3 px-4 shadow-none rounded-4 focus:border-primary transition-all`}
+                              value={newTicket.category}
+                              onChange={(e) => setNewTicket({ ...newTicket, category: e.target.value })}
+                           >
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="System/Technical">System/Technical</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Operational">Operational</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Financial">Financial</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Account/Access">Account/Access</option>
+                           </select>
+                        </div>
+                        <div className="col-md-6">
+                           <label className="small fw-black text-warning text-uppercase tracking-widest opacity-75 mb-3 d-block" style={{ fontSize: '10px' }}>Priority Level</label>
+                           <select 
+                              className={`form-select bg-transparent ${borderClass} ${textClass} py-3 px-4 shadow-none rounded-4 focus:border-primary transition-all`}
+                              value={newTicket.priority}
+                              onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
+                           >
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Low">Standard Level</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Medium">Elevated Level</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="High">Critical Priority</option>
+                              <option className={isDarkMode ? "bg-dark text-white" : "bg-white text-dark"} value="Urgent">Immediate Action</option>
+                           </select>
+                        </div>
+                     </div>
+
+                     <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                        <label className={`small fw-black ${isDarkMode ? 'text-main' : 'text-dark-50'} text-uppercase tracking-widest opacity-50 mb-3 d-block`} style={{ fontSize: '10px' }}>Detailed Intelligence</label>
+                        <textarea 
+                           className={`form-control bg-transparent ${borderClass} ${textClass} py-3 px-4 shadow-none rounded-4 focus:border-primary transition-all`}
+                           rows="6" 
+                           placeholder="Provide exhaustive details about the operational block..."
+                           required
+                           value={newTicket.description}
+                           onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
+                        ></textarea>
+                     </div>
+
+                     <div className="mt-2 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+                        <button 
+                           type="submit" 
+                           className="ui-btn ui-btn-primary w-100 py-3 rounded-pill fw-black text-uppercase tracking-widest shadow-glow"
+                        >
+                           Initialize Ticket Node
+                        </button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid p-0 animate-fade-in">
@@ -83,7 +194,7 @@ const TicketManager = ({ role }) => {
           <p className="text-muted small fw-bold opacity-75 mb-0">System tickets & operational assistance requests</p>
         </div>
         <button 
-          onClick={() => setShowRaiseModal(true)}
+          onClick={() => setView('raise')}
           className="btn btn-primary d-flex align-items-center gap-2 rounded-pill shadow-glow px-4 fw-black text-uppercase small"
         >
           <Plus size={18} /> Raise Ticket
@@ -166,7 +277,7 @@ const TicketManager = ({ role }) => {
                     <td className="px-4 py-4 text-center">
                        <div className="d-flex flex-column align-items-center">
                           <span className="small fw-black text-main">{t.createdBy?.name || 'UNKNOWN'}</span>
-                          <span className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>{t.createdBy?.role}</span>
+                          <span className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>{t.createdBy?.role?.name || t.createdBy?.role || 'ASSOCIATE'}</span>
                        </div>
                     </td>
                     <td className="px-4 py-4 text-center">
@@ -199,83 +310,6 @@ const TicketManager = ({ role }) => {
           </table>
         </div>
       </div>
-
-      {/* Raise Ticket Modal */}
-      {showRaiseModal && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ zIndex: 1060, backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div className="card border-0 shadow-lg bg-dark text-white rounded-4 w-100 mx-3 animate-zoom-in" style={{ maxWidth: '500px' }}>
-            <div className="card-header border-bottom border-white border-opacity-10 p-4 d-flex justify-content-between align-items-center">
-              <div>
-                <h5 className="fw-black mb-1 text-uppercase tracking-widest">Raise System Ticket</h5>
-                <p className="text-white opacity-50 small mb-0">Describe your technical or operational issue</p>
-              </div>
-              <button 
-                onClick={() => setShowRaiseModal(false)}
-                className="btn-close btn-close-white opacity-50 shadow-none"
-              ></button>
-            </div>
-            <div className="card-body p-4">
-               <form onSubmit={handleRaiseTicket} className="d-flex flex-column gap-3">
-                  <div>
-                     <label className="small fw-black text-muted text-uppercase tracking-widest mb-2" style={{ fontSize: '10px' }}>Subject</label>
-                     <input 
-                       className="form-control bg-surface border-white border-opacity-10 text-white shadow-none py-2.5 rounded-3 fw-bold" 
-                       placeholder="Enter issue synopsis..."
-                       required
-                       value={newTicket.subject}
-                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                     />
-                  </div>
-                  <div className="row g-3">
-                     <div className="col-md-6">
-                        <label className="small fw-black text-muted text-uppercase tracking-widest mb-2" style={{ fontSize: '10px' }}>Category</label>
-                        <select 
-                          className="form-select bg-surface border-white border-opacity-10 text-white shadow-none py-2.5 rounded-3 fw-bold"
-                          value={newTicket.category}
-                          onChange={(e) => setNewTicket({...newTicket, category: e.target.value})}
-                        >
-                           <option value="SYSTEM">System/Technical</option>
-                           <option value="OPERATIONAL">Operational</option>
-                           <option value="FINANCIAL">Financial</option>
-                           <option value="HUMAN_RESOURCE">Human Resource</option>
-                        </select>
-                     </div>
-                     <div className="col-md-6">
-                        <label className="small fw-black text-muted text-uppercase tracking-widest mb-2" style={{ fontSize: '10px' }}>Priority</label>
-                        <select 
-                          className="form-select bg-surface border-white border-opacity-10 text-white shadow-none py-2.5 rounded-3 fw-bold text-danger"
-                          value={newTicket.priority}
-                          onChange={(e) => setNewTicket({...newTicket, priority: e.target.value})}
-                        >
-                           <option value="LOW">Low Level</option>
-                           <option value="MEDIUM">Medium Level</option>
-                           <option value="HIGH">High Criticality</option>
-                           <option value="URGENT">Urgent Deployment</option>
-                        </select>
-                     </div>
-                  </div>
-                  <div>
-                     <label className="small fw-black text-muted text-uppercase tracking-widest mb-2" style={{ fontSize: '10px' }}>Detailed Intelligence</label>
-                     <textarea 
-                       className="form-control bg-surface border-white border-opacity-10 text-white shadow-none py-2.5 rounded-3 fw-bold" 
-                       rows="4" 
-                       placeholder="Explain the operational block in detail..."
-                       required
-                       value={newTicket.description}
-                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                     ></textarea>
-                  </div>
-                  
-                  <div className="mt-2 pt-3 border-top border-white border-opacity-5">
-                     <button type="submit" className="btn btn-primary w-100 rounded-pill py-2.5 fw-black text-uppercase shadow-glow">
-                        Initialize Ticket Node
-                     </button>
-                  </div>
-               </form>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

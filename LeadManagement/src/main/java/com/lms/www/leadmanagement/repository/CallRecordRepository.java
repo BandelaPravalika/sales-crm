@@ -94,4 +94,21 @@ public interface CallRecordRepository extends JpaRepository<CallRecord, Long> {
            "COUNT(DISTINCT c.phoneNumber) as uniqueCount) " +
            "FROM CallRecord c WHERE c.user.id = :userId AND c.startTime BETWEEN :start AND :end")
     Map<String, Object> getStatsForUserByDate(@Param("userId") Long userId, @Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT new map(" +
+           "COUNT(c) as totalCalls, " +
+           "SUM(COALESCE(c.duration, 0)) as totalDuration, " +
+           "SUM(CASE WHEN c.callType = 'INCOMING' THEN 1 ELSE 0 END) as incomingCount, " +
+           "SUM(CASE WHEN c.callType = 'INCOMING' THEN COALESCE(c.duration, 0) ELSE 0 END) as incomingDuration, " +
+           "SUM(CASE WHEN c.callType = 'OUTGOING' THEN 1 ELSE 0 END) as outgoingCount, " +
+           "SUM(CASE WHEN c.callType = 'OUTGOING' THEN COALESCE(c.duration, 0) ELSE 0 END) as outgoingDuration, " +
+           "SUM(CASE WHEN c.status = 'MISSED' THEN 1 ELSE 0 END) as missedCount, " +
+           "SUM(CASE WHEN c.status = 'REJECTED' THEN 1 ELSE 0 END) as rejectedCount, " +
+           "SUM(CASE WHEN c.status = 'NEVER_ATTENDED' THEN 1 ELSE 0 END) as neverAttendedCount, " +
+           "SUM(CASE WHEN c.status = 'NOT_PICKED' OR c.status = 'NOT_PICKUP' THEN 1 ELSE 0 END) as notPickedCount, " +
+           "COUNT(DISTINCT c.phoneNumber) as uniqueCount) " +
+           "FROM CallRecord c WHERE c.user.id IN :userIds AND c.startTime BETWEEN :start AND :end")
+    Map<String, Object> getStatsForUsersByDate(@Param("userIds") List<Long> userIds, @Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    List<CallRecord> findByUserIdInAndStartTimeBetweenOrderByStartTimeDesc(List<Long> userIds, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

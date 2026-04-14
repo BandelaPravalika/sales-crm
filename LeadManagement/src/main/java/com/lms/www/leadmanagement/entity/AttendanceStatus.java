@@ -7,5 +7,6 @@ public enum AttendanceStatus {
     AUTO_BREAK,
     PUNCHED_OUT,
     ABSENT,
-    NOT_STARTED
+    NOT_STARTED,
+    OUTSIDE_UNAUTHORIZED
 }

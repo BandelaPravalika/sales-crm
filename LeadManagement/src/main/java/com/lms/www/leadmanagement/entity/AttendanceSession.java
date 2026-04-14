@@ -61,6 +61,12 @@ public class AttendanceSession {
 
     @Builder.Default
     private Integer outsideCount = 0;
+    
+    @Builder.Default
+    private Integer unauthorizedOutsideMinutes = 0;
+    
+    @Builder.Default
+    private Integer breakViolations = 0;
 
     private boolean isLate;
 

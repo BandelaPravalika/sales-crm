@@ -10,8 +10,9 @@ const tlService = {
   addLead: (leadData) => api.post('/tl/leads', leadData),
   updateLeadStatus: (leadId, status, note) => api.put(`/tl/leads/${leadId}/status`, null, { params: { status, note } }),
   recordCallOutcome: (leadId, outcomeData) => api.post(`/leads/${leadId}/record-outcome`, outcomeData),
-  sendPaymentLink: (leadId, paymentData) => api.post(`/tl/leads/${leadId}/send-payment-link`, paymentData),
+  sendPaymentLink: (leadId, paymentData) => api.post(`/leads/${leadId}/send-payment-link`, paymentData),
   assignLead: (leadId, associateId) => api.post(`/tl/leads/${leadId}/assign/${associateId}`),
+  updateLead: (id, leadData) => api.put(`/leads/${id}`, leadData),
   bulkUploadLeads: (file, assignedToIds) => {
     const formData = new FormData();
     formData.append('file', file);

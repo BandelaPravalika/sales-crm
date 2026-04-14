@@ -69,15 +69,30 @@ public class LeadBulkUploadService {
                 String[] data = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
 
                 if (data.length >= 2) {
-                    String name = data[0].trim().replace("\"", "");
+                    String serialNumber = "";
+                    String name = "";
                     String email = "";
                     String mobile = "";
+                    String college = "";
 
                     if (data.length == 2) {
-                        mobile = data[1].trim();
-                    } else if (data.length >= 3) {
-                        email = data[1].trim();
-                        mobile = data[2].trim();
+                        name = data[0].trim().replace("\"", "");
+                        mobile = data[1].trim().replace("\"", "");
+                    } else if (data.length == 3) {
+                        name = data[0].trim().replace("\"", "");
+                        email = data[1].trim().replace("\"", "");
+                        mobile = data[2].trim().replace("\"", "");
+                    } else if (data.length == 4) {
+                        name = data[0].trim().replace("\"", "");
+                        email = data[1].trim().replace("\"", "");
+                        mobile = data[2].trim().replace("\"", "");
+                        college = data[3].trim().replace("\"", "");
+                    } else if (data.length >= 5) {
+                        serialNumber = data[0].trim().replace("\"", "");
+                        name = data[1].trim().replace("\"", "");
+                        email = data[2].trim().replace("\"", "");
+                        mobile = data[3].trim().replace("\"", "");
+                        college = data[4].trim().replace("\"", "");
                     }
 
                     if (name.isEmpty() || mobile.isEmpty()) {
@@ -120,6 +135,8 @@ public class LeadBulkUploadService {
                             .name(name)
                             .email(email.isEmpty() ? null : email)
                             .mobile(mobile)
+                            .college(college.isEmpty() ? null : college)
+                            .serialNumber(serialNumber.isEmpty() ? null : serialNumber)
                             .status(Lead.Status.NEW)
                             .createdBy(creator)
                             .assignedTo(finalAssignee)

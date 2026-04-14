@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { Send, Clock, CheckCircle, XCircle, ExternalLink, Copy, MessageSquare, MessageCircle, BookOpen, Phone, Heart, Zap, TrendingUp } from 'lucide-react';
+import { Send, Clock, CheckCircle, XCircle, ExternalLink, Copy, MessageSquare, MessageCircle, BookOpen, Phone, Heart, Zap, TrendingUp, Edit, Search } from 'lucide-react';
 import { Button, Card, Input, Table } from './common/Components';
 import RejectionModal from './RejectionModal';
 import { toast } from 'react-toastify';
 import CallOutcomeModal from './CallOutcomeModal';
 import GeneratePaymentLinkModal from './GeneratePaymentLinkModal';
+import LeadEditModal from './LeadEditModal';
 
 const LeadTable = ({ 
   leads, 
@@ -14,6 +15,8 @@ const LeadTable = ({
   onUpdateStatus, 
   onRecordCallOutcome, 
   onAssignLead, 
+  onUpdateLead,
+  onEdit,
   associates = [], 
   role, 
   showActions = true,
@@ -22,9 +25,10 @@ const LeadTable = ({
   const { isDarkMode } = useTheme();
   const [selectedOutcomeLead, setSelectedOutcomeLead] = useState(null);
   const [selectedLinkLead, setSelectedLinkLead] = useState(null);
+  const [selectedEditLead, setSelectedEditLead] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const isLocked = (status) => ['PAID', 'CONVERTED', 'SUCCESSFUL'].includes(status);
+  const isLocked = (status) => ['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(status);
 
   const filteredLeads = leads.filter(l => {
     const term = searchTerm.toLowerCase();
@@ -52,101 +56,110 @@ const LeadTable = ({
 
   return (
     <div className="w-100 animate-fade-in">
-      <div className="p-3 border-bottom border-white border-opacity-5 d-flex justify-content-end">
-        <div style={{ maxWidth: '300px', width: '100%' }}>
-          <Input 
-            placeholder="Search by mail/name/contact..." 
+      <div className="p-4 bg-surface bg-opacity-5 border-bottom border-white border-opacity-5 d-flex justify-content-between align-items-center">
+        <div>
+          <h6 className="mb-1 text-main fw-black text-uppercase tracking-widest small">Local Data Pool</h6>
+          <small className="text-muted fw-bold opacity-30 text-uppercase tracking-widest" style={{ fontSize: '8px' }}>Personal Lead Cluster • Synchronized</small>
+        </div>
+        <div className="position-relative" style={{ maxWidth: '300px', width: '100%' }}>
+          <div className="position-absolute top-50 start-0 translate-middle-y ps-3 text-muted opacity-50">
+            <Search size={14} />
+          </div>
+          <input 
+            placeholder="Search leads..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-0 py-1.5"
+            className="form-control bg-dark bg-opacity-40 border border-white border-opacity-10 text-main py-2 ps-5 shadow-none rounded-pill transition-all"
             style={{ fontSize: '12px' }}
           />
         </div>
       </div>
-      <Table 
-        headers={['SNo', 'Name', 'Phone', 'Email', 'Status', 'Emp Name', ...(showActions ? ['Actions'] : [])]}
-        data={filteredLeads}
-        renderRow={(lead, index) => (
-          <>
-            <td className="ps-4">
-               <span className="text-muted small fw-bold">{index + 1}</span>
-            </td>
-            <td>
-               <span className="fw-black text-main small">{lead.name}</span>
-            </td>
-            <td>
-               <span className="text-primary small fw-black tracking-tighter">{lead.mobile}</span>
-            </td>
-            <td>
-               <span className="text-muted small opacity-75">{lead.email || '—'}</span>
-            </td>
-            <td className="text-center">
-              {getStatusBadge(lead.status)}
-            </td>
-            <td>
-              {role === 'TEAM_LEADER' ? (
-                <select 
-                  className={`ui-input py-1 px-2 mb-0 ${isLocked(lead.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  style={{ fontSize: '10px', width: 'fit-content', border: isDarkMode ? 'none' : '1px solid #ddd' }}
-                  value={lead.assignedToId || ""}
-                  onChange={(e) => onAssignLead && onAssignLead(lead.id, e.target.value)}
-                  disabled={isLocked(lead.status)}
-                >
-                  <option value="">Select Asst...</option>
-                  {currentUser && currentUser.id && (
-                    <option key="me" value={currentUser.id} className="fw-black text-primary bg-primary bg-opacity-10 text-uppercase">
-                      ★ SELF ({currentUser.name})
-                    </option>
-                  )}
-                  {associates && associates.length > 0 && (
-                    <optgroup label="SQUAD NODES">
-                      {associates.map((a) => (
-                        <option key={a.id} value={a.id}>↳ {a.name}</option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              ) : (
+
+      <div className="overflow-auto custom-scroll">
+        <Table 
+          headers={['SNo', 'Serial No.', 'Identity Node', 'Contact Info', 'Institutional Node', 'Status', 'Log State', ...(showActions ? ['Operations'] : [])]}
+          data={filteredLeads}
+          renderRow={(lead, index) => (
+            <>
+              <td className="ps-4">
+                 <span className="text-muted small fw-bold opacity-30">{index + 1}</span>
+              </td>
+              <td>
+                 <span className="text-info small fw-black tracking-tighter" style={{ fontSize: '11px' }}>{lead.serialNumber || 'NON-INDEXED'}</span>
+              </td>
+              <td>
                 <div className="d-flex align-items-center gap-2">
-                  <div className={`p-1 rounded-circle ${lead.assignedToId ? 'bg-success' : 'bg-muted opacity-25'}`} style={{ width: '6px', height: '6px' }}></div>
-                  <span className={`small fw-black text-uppercase tracking-tighter ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`} style={{ fontSize: '10px' }}>
-                    {lead.assignedToName || 'AWAITING NODE'}
-                  </span>
-                </div>
-              )}
-            </td>
-            {showActions && (
-              <td className="pe-4 text-end">
-                <div className="d-flex align-items-center justify-content-end gap-2">
-                  <button 
-                    className="p-1 text-primary border-0 bg-transparent hover-scale transition-smooth" 
-                    title="Record Call Outcome"
-                    onClick={() => setSelectedOutcomeLead(lead)}
-                  >
-                    <Phone size={14} />
-                  </button>
-                  <button 
-                    className="p-1 text-success border-0 bg-transparent hover-scale transition-smooth" 
-                    title="Generate Payment Link"
-                    onClick={() => setSelectedLinkLead(lead)}
-                  >
-                    <Zap size={14} />
-                  </button>
-                  {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
-                    <button 
-                      className="p-1 text-info border-0 bg-transparent hover-scale transition-smooth" 
-                      title="View Invoice"
-                      onClick={() => onViewInvoice && onViewInvoice(lead)}
-                    >
-                      <BookOpen size={14} />
-                    </button>
-                  )}
+                  <div className="p-1 bg-primary bg-opacity-10 text-primary rounded-circle small fw-black d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px', fontSize: '10px' }}>
+                    {lead.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="fw-black text-main small text-uppercase tracking-tight">{lead.name}</span>
                 </div>
               </td>
-            )}
-          </>
-        )}
-      />
+              <td>
+                 <div className="d-flex flex-column">
+                   <span className="text-primary small fw-black tracking-tighter" style={{ fontSize: '11px' }}>{lead.mobile}</span>
+                   <small className="text-muted fw-bold opacity-30" style={{ fontSize: '8px' }}>{lead.email || 'NO_MAIL'}</small>
+                 </div>
+              </td>
+              <td>
+                 <span className="text-muted small fw-bold opacity-75" style={{fontSize: '10px'}}>{lead.college || '—'}</span>
+              </td>
+              <td className="text-center">
+                {getStatusBadge(lead.status)}
+              </td>
+              <td>
+                <div className="d-flex align-items-center gap-2">
+                  <div className={`p-1 rounded-circle ${lead.assignedToId ? 'bg-success' : 'bg-muted opacity-25'}`} style={{ width: '6px', height: '6px' }}></div>
+                  <span className={`small fw-black text-uppercase tracking-tighter ${lead.assignedToId ? 'text-main' : 'text-muted italic opacity-50'}`} style={{ fontSize: '9px' }}>
+                    {lead.assignedToName?.split(' ')[0] || 'UNSYNCED'}
+                  </span>
+                </div>
+              </td>
+              {showActions && (
+                <td className="pe-4">
+                  <div className="d-flex align-items-center justify-content-end gap-1">
+                    <button 
+                      className="p-2 border-0 bg-transparent text-primary hover-scale transition-smooth rounded-circle hover:bg-primary hover:bg-opacity-10" 
+                      title="Record Call Outcome"
+                      onClick={() => {
+                        console.log("TeamNode: Triggering Call Outcome terminal for Lead:", lead.id);
+                        setSelectedOutcomeLead(lead);
+                      }}
+                    >
+                      <Phone size={15} />
+                    </button>
+                    {(role === 'ADMIN' || (!isLocked(lead.status) && !lead.paymentOrderId)) && (
+                      <button 
+                        className="p-2 border-0 bg-transparent text-success hover-scale transition-smooth rounded-circle hover:bg-success hover:bg-opacity-10" 
+                        title="Generate Payment Link"
+                        onClick={() => setSelectedLinkLead(lead)}
+                      >
+                        <Zap size={15} />
+                      </button>
+                    )}
+                    <button 
+                      className="p-2 border-0 bg-transparent text-warning hover-scale transition-smooth rounded-circle hover:bg-warning hover:bg-opacity-10" 
+                      title="Edit Lead Details"
+                      onClick={() => onEdit ? onEdit(lead) : setSelectedEditLead(lead)}
+                    >
+                      <Edit size={15} />
+                    </button>
+                    {['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(lead.status) && (
+                      <button 
+                        className="p-2 border-0 bg-transparent text-info hover-scale transition-smooth rounded-circle hover:bg-info hover:bg-opacity-10" 
+                        title="View Invoice"
+                        onClick={() => onViewInvoice && onViewInvoice(lead)}
+                      >
+                        <BookOpen size={15} />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
+            </>
+          )}
+        />
+      </div>
 
       {selectedOutcomeLead && (
         <CallOutcomeModal 
@@ -171,10 +184,20 @@ const LeadTable = ({
           show={!!selectedLinkLead}
           onClose={() => setSelectedLinkLead(null)}
           lead={selectedLinkLead}
+          role={role}
           onConfirm={(leadId, data) => {
             onSendPaymentLink(leadId, data);
             setSelectedLinkLead(null);
           }}
+        />
+      )}
+      {selectedEditLead && (
+        <LeadEditModal 
+          isOpen={!!selectedEditLead}
+          onClose={() => setSelectedEditLead(null)}
+          lead={selectedEditLead}
+          onUpdate={onUpdateLead}
+          role={role}
         />
       )}
     </div>

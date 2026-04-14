@@ -6,10 +6,10 @@ import api from '../api/api';
 const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
     const orderId = searchParams.get('order_id');
-    const [status, setStatus] = useState('loading'); // loading, SUCCESS, FAILED, PENDING
+    const [status, setStatus] = useState('loading');
     const [payment, setPayment] = useState(null);
     const [retryCount, setRetryCount] = useState(0);
-    const MAX_RETRIES = 12; // Poll for up to 36 seconds
+    const MAX_RETRIES = 12;
 
     useEffect(() => {
         if (orderId) {
@@ -57,7 +57,7 @@ const PaymentSuccess = () => {
                     </div>
                     <h2 className="h3 fw-bold mb-3">Verifying Transaction...</h2>
                     <p className="text-muted small">
-                        We are syncing with the bank. This page will update automatically. 
+                        We are syncing with the bank. This page will update automatically.
                         Please do not refresh or close this window.
                     </p>
                     <div className="mt-4 w-100 bg-secondary bg-opacity-20 rounded-pill h-1 overflow-hidden">
@@ -84,7 +84,7 @@ const PaymentSuccess = () => {
                         {isSuccess ? 'Payment Success' : 'Payment Verification Delayed'}
                     </h1>
                     <p className="text-muted small px-3">
-                        {isSuccess 
+                        {isSuccess
                             ? "Congratulations! Your admission is confirmed. Check your email for login credentials."
                             : "We couldn't confirm your transaction instantly. If money was debited, it will sync automatically within 5-10 minutes."}
                     </p>
@@ -100,7 +100,7 @@ const PaymentSuccess = () => {
                             </span>
                         </div>
                         <p className="font-monospace small text-white opacity-75 mb-3 select-all">{orderId}</p>
-                        
+
                         {payment && (
                             <div className="d-flex justify-content-between align-items-center border-top border-white border-opacity-5 pt-3">
                                 <div>
@@ -118,7 +118,7 @@ const PaymentSuccess = () => {
                     <div className="d-flex flex-column gap-3">
                         {isSuccess ? (
                             <>
-                                <button 
+                                <button
                                     onClick={async () => {
                                         try {
                                             const res = await api.get(`/public/payments/invoice?order_id=${orderId}`);
@@ -164,7 +164,7 @@ const PaymentSuccess = () => {
                     </div>
                 </div>
             </div>
-            
+
             <style>{`
                 @keyframes pulse {
                     0%, 100% { opacity: 1; }

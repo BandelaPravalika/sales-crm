@@ -125,12 +125,16 @@ public class ManagerController {
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/payments/history")
     public ResponseEntity<List<PaymentDTO>> getPaymentHistory(
+            @RequestParam(value = "userId", required = false) Long userId,
             @RequestParam(value = "tlId", required = false) Long tlId,
             @RequestParam(value = "associateId", required = false) Long associateId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = ISO.DATE_TIME) LocalDateTime endDate) {
-        return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(tlId, associateId, startDate, endDate, status));
+        if (userId == null && tlId == null && associateId == null) {
+            userId = managerService.getCurrentUser().getId();
+        }
+        return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(userId, tlId, associateId, startDate, endDate, status));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
@@ -194,5 +198,11 @@ public class ManagerController {
     @GetMapping("/shifts")
     public ResponseEntity<List<com.lms.www.leadmanagement.entity.AttendanceShift>> getAllShifts() {
         return ResponseEntity.ok(attendanceService.getAllShifts());
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @GetMapping("/offices")
+    public ResponseEntity<List<Map<String, Object>>> getAllOffices() {
+        return ResponseEntity.ok(adminService.getAllOffices());
     }
 }

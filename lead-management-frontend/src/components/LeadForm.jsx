@@ -8,8 +8,21 @@ const LeadForm = ({ onSubmit, title = "Add New Lead", initialData = {} }) => {
     name: initialData.name || '',
     email: initialData.email || '',
     mobile: initialData.mobile || '',
-    ...initialData
+    college: initialData.college || '',
   });
+
+  // Effect to sync with initialData if it changes
+  React.useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData({
+        name: initialData.name || '',
+        email: initialData.email || '',
+        mobile: initialData.mobile || '',
+        college: initialData.college || '',
+
+      });
+    }
+  }, [initialData]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,88 +44,110 @@ const LeadForm = ({ onSubmit, title = "Add New Lead", initialData = {} }) => {
   };
 
   return (
-    <div className="premium-card shadow-lg h-100 mb-0 border-0 overflow-hidden">
-      <div className="card-body d-flex flex-column h-100 p-4">
-        <div className="d-flex align-items-center gap-3 mb-4">
-          <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle shadow-glow">
-            <UserPlus size={22} />
-          </div>
-          <div>
-            <h5 className="fw-black text-main mb-0 text-uppercase tracking-widest small">{title}</h5>
-            <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>INITIALIZE SINGLE DATA NODE</small>
+    <div className="h-100 animate-fade-in">
+      <div className="d-flex align-items-center gap-4 mb-5">
+        <div className="p-3 bg-primary bg-opacity-10 text-primary rounded-4 shadow-glow border border-primary border-opacity-20 animate-pulse-slow">
+          <UserPlus size={28} strokeWidth={1.5} />
+        </div>
+        <div>
+          <h4 className="fw-black text-main mb-1 text-uppercase tracking-widest">{title}</h4>
+          <div className="d-flex align-items-center gap-2">
+            <span className="p-1 bg-success rounded-circle animate-pulse" style={{ width: '6px', height: '6px' }}></span>
+            <small className="text-muted fw-bold opacity-50 tracking-tighter" style={{ fontSize: '9px' }}>NODE UPLINK ACTIVE • READY FOR COMMIT</small>
           </div>
         </div>
-        
-        <form onSubmit={handleSubmit} className="d-flex flex-column flex-grow-1 justify-content-between">
-          <div className="row g-2 mb-4">
-            <div className="col-12 col-md-6">
-              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Full Name</label>
-              <input 
+      </div>
+
+      <form onSubmit={handleSubmit} className="d-flex flex-column h-100">
+        <div className="row g-4 mb-5">
+          <div className="col-12 col-md-6">
+            <div className="form-floating group">
+              <input
                 name="name"
-                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
-                placeholder="John Doe" 
-                value={formData.name}
+                className={`form-control ${isDarkMode ? 'bg-dark bg-opacity-60 border-white border-opacity-10 text-main' : 'bg-light border-dark border-opacity-10 text-dark'} py-4 px-3 shadow-none rounded-4 focus:border-primary transition-all custom-input`}
+                placeholder="Identity Character"
+                value={formData.name || ''}
                 onChange={handleChange}
                 autoComplete="off"
-                required 
+                required
+                style={{ fontSize: '14px', height: '64px' }}
               />
+              <label className={`${isDarkMode ? 'text-muted' : 'text-slate-500'} fw-bold small text-uppercase tracking-widest opacity-50 ps-4 pt-4`} style={{ fontSize: '10px' }}>Name</label>
             </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Phone Number</label>
-              <input 
+          </div>
+          <div className="col-12 col-md-6">
+            <div className="form-floating group">
+              <input
                 name="mobile"
-                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
-                placeholder="919876543210" 
-                value={formData.mobile}
+                className={`form-control ${isDarkMode ? 'bg-dark bg-opacity-60 border-white border-opacity-10 text-main' : 'bg-light border-dark border-opacity-10 text-dark'} py-4 px-3 shadow-none rounded-4 focus:border-primary transition-all custom-input`}
+                placeholder="Transmission Contact"
+                value={formData.mobile || ''}
                 onChange={handleChange}
                 autoComplete="off"
-                required 
+                required
+                style={{ fontSize: '14px', height: '64px' }}
               />
+              <label className={`${isDarkMode ? 'text-muted' : 'text-slate-500'} fw-bold small text-uppercase tracking-widest opacity-50 ps-4 pt-4`} style={{ fontSize: '10px' }}>Contact</label>
             </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>College / Inst.</label>
-              <input 
+          </div>          <div className="col-12 col-md-4">
+            <div className="form-floating group">
+              <input
                 name="college"
-                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
-                placeholder="e.g. IIT Delhi" 
+                className={`form-control ${isDarkMode ? 'bg-dark bg-opacity-60 border-white border-opacity-10 text-main' : 'bg-light border-dark border-opacity-10 text-dark'} py-4 px-3 shadow-none rounded-4 focus:border-primary transition-all custom-input`}
+                placeholder="Institutional Node"
                 value={formData.college || ''}
                 onChange={handleChange}
                 autoComplete="off"
+                style={{ fontSize: '14px', height: '64px' }}
               />
-            </div>
-            <div className="col-12 col-md-6">
-              <label className="form-label small fw-black text-uppercase text-muted mb-1 tracking-widest" style={{ fontSize: '9px' }}>Email (Opt.)</label>
-              <input 
-                name="email"
-                type="email"
-                className="form-control bg-surface border-0 text-main py-2 shadow-none rounded-3" 
-                placeholder="john@ex.com" 
-                value={formData.email}
-                onChange={handleChange}
-                autoComplete="off"
-              />
+              <label className={`${isDarkMode ? 'text-muted' : 'text-slate-500'} fw-bold small text-uppercase tracking-widest opacity-50 ps-4 pt-4`} style={{ fontSize: '10px' }}>College Name</label>
             </div>
           </div>
-          
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className={`btn btn-primary w-100 py-2.5 rounded-pill fw-black text-uppercase d-flex align-items-center justify-content-center gap-2 mt-auto shadow-glow border-0 transition-smooth ${isSubmitting ? 'opacity-50' : 'hover-up'}`}
-            style={{ letterSpacing: '1px', fontSize: '11px' }}
-          >
-             {isSubmitting ? (
-               <>
-                 <div className="spinner-border spinner-border-sm" role="status"></div>
-                 <span>TRANSMITTING...</span>
-               </>
-             ) : (
-               <>
-                 <UserPlus size={16} /> COMMIT LEAD NODE
-               </>
-             )}
-          </button>
-        </form>
-      </div>
+          <div className="col-12 col-md-4">
+            <div className="form-floating group">
+              <input
+                name="email"
+                type="email"
+                className={`form-control ${isDarkMode ? 'bg-dark bg-opacity-60 border-white border-opacity-10 text-main' : 'bg-light border-dark border-opacity-10 text-dark'} py-4 px-3 shadow-none rounded-4 focus:border-primary transition-all custom-input`}
+                placeholder="Email Protocol"
+                value={formData.email || ''}
+                onChange={handleChange}
+                autoComplete="off"
+                style={{ fontSize: '14px', height: '64px' }}
+              />
+              <label className={`${isDarkMode ? 'text-muted' : 'text-slate-500'} fw-bold small text-uppercase tracking-widest opacity-50 ps-4 pt-4`} style={{ fontSize: '10px' }}>Gmail</label>
+            </div>
+          </div>
+        </div>
+
+          <div className="mt-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`ui-btn ui-btn-primary w-100 py-4 rounded-pill fw-black text-uppercase d-flex align-items-center justify-content-center gap-3 shadow-glow transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover-scale'}`}
+              style={{ letterSpacing: '4px', fontSize: '13px' }}
+            >
+              {isSubmitting ? (
+                <div className="d-flex align-items-center gap-3">
+                  <div className="spinner-border spinner-border-sm" role="status"></div>
+                  <span>SYNCHRONIZING...</span>
+                </div>
+              ) : (
+                <>
+                  <div className={`p-1 px-3 ${isDarkMode ? 'bg-white bg-opacity-10' : 'bg-dark bg-opacity-10'} rounded-pill border border-white border-opacity-20`}>
+                    <UserPlus size={18} />
+                  </div>
+                  COMMIT NODE TO ARCHIVE
+                </>
+              )}
+            </button>
+            <div className="d-flex align-items-center justify-content-center gap-3 mt-4 opacity-30">
+              <div className="h-1px bg-white bg-opacity-10 flex-grow-1"></div>
+              <p className="text-muted small fw-bold mb-0 text-uppercase tracking-widest" style={{ fontSize: '7px' }}>V-PROTOCOL SECURED</p>
+              <div className="h-1px bg-white bg-opacity-10 flex-grow-1"></div>
+            </div>
+          </div>
+      </form>
     </div>
   );
 };

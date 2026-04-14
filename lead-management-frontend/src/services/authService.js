@@ -5,7 +5,8 @@ const authService = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-  }
+  },
+  getProfile: () => api.get('/auth/me')
 };
 
 export default authService;

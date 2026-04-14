@@ -28,8 +28,11 @@ public class UserDTO {
     private boolean active;
     private Long shiftId;
     private String shiftName;
+    private Long officeId;
+    private String officeName;
     private java.math.BigDecimal monthlyTarget;
     private java.util.List<UserDTO> subordinates;
+    private java.time.LocalDate joiningDate;
 
     private static final ThreadLocal<java.util.Set<Long>> visitedIds = ThreadLocal.withInitial(java.util.HashSet::new);
 
@@ -50,8 +53,9 @@ public class UserDTO {
     }
 
     private static UserDTO fromEntity(User user, boolean includeSubordinates) {
-        if (user == null) return null;
-        
+        if (user == null)
+            return null;
+
         // Circular reference check
         if (includeSubordinates) {
             if (visitedIds.get().contains(user.getId())) {
@@ -79,7 +83,10 @@ public class UserDTO {
                 .active(user.isActive())
                 .shiftId(user.getShift() != null ? user.getShift().getId() : null)
                 .shiftName(user.getShift() != null ? user.getShift().getName() : null)
+                .officeId(user.getAssignedOffice() != null ? user.getAssignedOffice().getId() : null)
+                .officeName(user.getAssignedOffice() != null ? user.getAssignedOffice().getName() : null)
                 .monthlyTarget(user.getMonthlyTarget())
+                .joiningDate(user.getJoiningDate())
                 .build();
 
         if (user.getDirectPermissions() != null && !user.getDirectPermissions().isEmpty()) {
@@ -93,23 +100,26 @@ public class UserDTO {
         } else {
             dto.setPermissions(new java.util.ArrayList<>());
         }
-        
+
         java.util.List<User> allSubs = new java.util.ArrayList<>();
-        if (user.getSubordinates() != null) allSubs.addAll(user.getSubordinates());
-        if (user.getManagedAssociates() != null) {
-            for (User assoc : user.getManagedAssociates()) {
-                if (!allSubs.contains(assoc)) allSubs.add(assoc);
+        if (includeSubordinates) {
+            if (user.getSubordinates() != null)
+                allSubs.addAll(user.getSubordinates());
+            if (user.getManagedAssociates() != null) {
+                for (User assoc : user.getManagedAssociates()) {
+                    if (!allSubs.contains(assoc))
+                        allSubs.add(assoc);
+                }
             }
         }
 
         if (includeSubordinates && !allSubs.isEmpty()) {
             dto.setSubordinates(allSubs.stream()
-                .map(u -> fromEntity(u, true))
-                .collect(java.util.stream.Collectors.toList()));
+                    .map(u -> fromEntity(u, true))
+                    .collect(java.util.stream.Collectors.toList()));
         } else {
             dto.setSubordinates(new java.util.ArrayList<>());
         }
-        
         return dto;
     }
 }

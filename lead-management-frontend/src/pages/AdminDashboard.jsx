@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ManagerProfile from './dashboard/components/ManagerProfile';
+import ManagerDashboardFilterHub from './dashboard/components/ManagerDashboardFilterHub';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import adminService from '../services/adminService';
@@ -17,13 +19,15 @@ import CallLogDashboard from './dashboard/components/CallLogDashboard';
 import CallAnalyticsGrid from './dashboard/components/CallAnalyticsGrid';
 import InvoiceModal from './dashboard/components/InvoiceModal';
 import paymentService from '../services/paymentService';
-import BulkUploadModal from './dashboard/components/BulkUploadModal';
 import LeadForm from '../components/LeadForm';
 import TicketManager from '../components/TicketManager';
+import LeadIngestionModal from './dashboard/components/LeadIngestionModal';
 
 import MetricCommandCenter from './dashboard/components/MetricCommandCenter';
-import { Button, Card, Input, Table } from '../components/common/Components';
 import TaskBoard from '../components/TaskBoard';
+import RevenueStrategyHub from './dashboard/components/RevenueStrategyHub';
+import LeadEditPage from './dashboard/components/LeadEditPage';
+import { Button, Card, Input, Table } from '../components/common/Components';
 import {
   UserPlus,
   Users,
@@ -35,6 +39,14 @@ import {
   TrendingUp,
   Power,
   Zap,
+  Clock,
+  AlertCircle,
+  ShieldHalf,
+  LifeBuoy,
+  RefreshCw,
+  Target,
+  Calendar,
+  Save
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -46,16 +58,34 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [availablePermissions, setAvailablePermissions] = useState([]);
   const [availableShifts, setAvailableShifts] = useState([]);
+  const [availableOffices, setAvailableOffices] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [editingLead, setEditingLead] = useState(null);
+  const [localSearch, setLocalSearch] = useState("");
   const [activeTab, setActiveTab] = useState('overview');
+  const [myDashboardSubTab, setMyDashboardSubTab] = useState('dashboard');
   const [leads, setLeads] = useState([]);
+
+  useEffect(() => {
+    // Mode-switching logic: 
+    // 'My Dashboard' forces personal scoping. Team tabs reset to global view.
+    if (activeTab === 'my-stats') {
+      if (filters.userId !== user?.id) {
+        setFilters(prev => ({ ...prev, userId: user?.id }));
+      }
+    } else {
+      if (filters.userId === user?.id) {
+        setFilters(prev => ({ ...prev, userId: null }));
+      }
+    }
+  }, [activeTab]);
   const [performance, setPerformance] = useState([]);
   const [trendData, setTrendData] = useState([]);
   const [callStats, setCallStats] = useState(null);
   const [teamTree, setTeamTree] = useState(null);
   const [summary, setSummary] = useState(null);
-  
+
   // Pipeline state
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,42 +95,54 @@ const AdminDashboard = () => {
   // Invoice state
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceData, setSelectedInvoiceData] = useState(null);
+  const [isIngestionModalOpen, setIsIngestionModalOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     from: new Date().toISOString().split('T')[0] + 'T00:00:00',
-    to:   new Date().toISOString().split('T')[0] + 'T23:59:59',
+    to: new Date().toISOString().split('T')[0] + 'T23:59:59',
     userId: null,
     currentUserId: user?.id
   });
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [targetPeriod, setTargetPeriod] = useState({ 
+    month: new Date().getMonth() + 1, 
+    year: new Date().getFullYear() 
+  });
+  const [revenueTargets, setRevenueTargets] = useState([]);
   const handleSync = () => setRefreshTrigger(prev => prev + 1);
 
   const fetchData = async () => {
     setLoading(true);
+    setPerformance([]); // Avoid stale hierarchical filtering
     try {
       const statsFilters = { start: filters.from, end: filters.to, userId: filters.userId };
-      const trendFilters = { 
-        from: filters.from.split('T')[0], 
-        to: filters.to.split('T')[0],
-        userId: filters.userId 
-      };
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
 
-      const [statsRes, perfRes, trendRes, usersRes, permsRes, shiftsRes, leadsRes, treeRes, callStatsRes, summaryRes] = await Promise.all([
-        adminService.fetchDashboardStats(statsFilters),
-        adminService.fetchMemberPerformance(statsFilters),
-        adminService.fetchTrendData(trendFilters),
+      const [statsRes, perfRes, trendRes, usersRes, permsRes, shiftsRes, officesRes, leadsRes, treeRes, callStatsRes, summaryRes, targetsRes] = await Promise.all([
+        adminService.fetchDashboardStats({ start: filters.from, end: filters.to, userId: filters.userId }),
+        adminService.fetchMemberPerformance({ start: filters.from, end: filters.to, userId: filters.userId }),
+        adminService.fetchTrendData({ from: filters.from.split('T')[0], to: filters.to.split('T')[0], userId: filters.userId }),
         adminService.fetchUsers(),
         adminService.fetchPermissions(),
         adminService.fetchShifts(),
-        adminService.fetchLeads(),
+        adminService.fetchOffices(),
+        adminService.fetchLeads(statsFilters),
         adminService.fetchTeamTree(),
         adminService.fetchGlobalCallStats({ date: filters.from.split('T')[0] }),
-        adminService.fetchDashboardSummary({ from: filters.from.split('T')[0], to: filters.to.split('T')[0] })
+        adminService.fetchDashboardSummary({
+          from: filters.from.split('T')[0],
+          to: filters.to.split('T')[0],
+          userId: filters.userId
+        }),
+        adminService.fetchRevenueTargets(targetPeriod.month, targetPeriod.year)
       ]);
 
       setStats(statsRes.data || {});
       setSummary(summaryRes.data);
+      setRevenueTargets(targetsRes.data?.data || targetsRes.data || []);
       const perfData = perfRes.data;
       setPerformance(Array.isArray(perfData) ? perfData : (perfData?.data || []));
       const trendPayload = trendRes.data;
@@ -110,6 +152,7 @@ const AdminDashboard = () => {
       const permsPayload = permsRes.data;
       setAvailablePermissions(Array.isArray(permsPayload) ? permsPayload : (permsPayload?.data || []));
       setAvailableShifts(Array.isArray(shiftsRes.data) ? shiftsRes.data : (shiftsRes.data?.data || []));
+      setAvailableOffices(Array.isArray(officesRes.data) ? officesRes.data : (officesRes.data?.data || []));
       const leadsPayload = leadsRes.data;
       setLeads(leadsPayload?.content || (Array.isArray(leadsPayload) ? leadsPayload : []));
       setTeamTree(treeRes.data || null);
@@ -125,7 +168,7 @@ const AdminDashboard = () => {
     fetchData();
     // Auto-scroll to top on filter change to ensure user sees updated charts/stats immediately
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [filters, refreshTrigger]);
+  }, [filters, refreshTrigger, targetPeriod]);
 
   const handleDeleteUser = async (id) => {
     if (window.confirm('Terminate this user access permanently?')) {
@@ -151,16 +194,16 @@ const AdminDashboard = () => {
     try {
       await adminService.updateUser(editingUser.id, editingUser);
       toast.success('User profile updated');
-      
+
       // Close first
       setIsEditModalOpen(false);
-      
+
       // Delay refresh to prevent race conditions
       setTimeout(() => {
         fetchData();
       }, 300);
     } catch (err) {
-      toast.error('Update failed');
+      toast.error(err.response?.data?.message || 'Update failed');
     }
   };
 
@@ -172,6 +215,18 @@ const AdminDashboard = () => {
       return true;
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lead transmission failed - duplicate entry or system error');
+      return false;
+    }
+  };
+
+  const handleUpdateLead = async (id, leadData) => {
+    try {
+      await adminService.updateLead(id, leadData);
+      toast.success('Lead details updated successfully');
+      fetchData();
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lead update failed');
       return false;
     }
   };
@@ -193,7 +248,7 @@ const AdminDashboard = () => {
       toast.success('Lead assignment confirmed');
       fetchData();
     } catch (err) {
-      toast.error('Assignment failed - logic error');
+      toast.error(err.response?.data?.message || 'Assignment failed - logic error');
     }
   };
 
@@ -240,14 +295,73 @@ const AdminDashboard = () => {
     );
   };
 
+  const getHierarchyIds = (targetId) => {
+    if (!targetId || !teamTree || !Array.isArray(teamTree)) return [];
+    const collectIds = (nodes, target, active) => {
+      let ids = [];
+      for (const node of nodes) {
+        const isSelfOrParentFound = active || node.id == target;
+        if (isSelfOrParentFound) ids.push(node.id);
+        if (node.subordinates && Array.isArray(node.subordinates)) {
+          ids = [...ids, ...collectIds(node.subordinates, target, isSelfOrParentFound)];
+        }
+      }
+      return ids;
+    };
+    return collectIds(teamTree, targetId, false);
+  };
+
   const filteredLeadsList = leads.filter(l => {
-    const matchesSearch = 
-      l.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch =
+      l.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.mobile?.includes(searchTerm) ||
       l.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesUnassigned = filterUnassigned ? !l.assignedToId : true;
-    return matchesSearch && matchesUnassigned;
+
+    // Use teamTree for deterministic hierarchical match
+    const hierarchyIds = filters.userId ? getHierarchyIds(filters.userId) : [];
+    const matchesUser = filters.userId
+      ? (l.assignedToId == filters.userId || hierarchyIds.some(id => id == l.assignedToId))
+      : true;
+
+    return matchesSearch && matchesUnassigned && matchesUser;
   });
+
+  const handleRecordCallOutcome = async (leadId, data) => {
+    try {
+      await adminService.recordCallOutcome(leadId, data);
+      toast.success('Sync Successful');
+      fetchData();
+    } catch (err) {
+      toast.error('Sync Protocol Failure');
+    }
+  };
+
+  const handleSendPaymentLink = async (leadId, paymentData) => {
+    try {
+      const res = await adminService.sendPaymentLink(leadId, paymentData);
+      if (res.data?.payment_url) {
+        toast.success('Payment Protocol Initialized');
+        fetchData();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Protocol failure');
+      return false;
+    }
+  };
+
+  const handleDeleteLead = async (id) => {
+    if (!window.confirm('PROTOCOL WARNING: This node will be purged from the registry. Proceed?')) return;
+    try {
+      await adminService.deleteLead(id);
+      toast.success('Node Decommissioned');
+      fetchData();
+    } catch (err) {
+      toast.error('Decommissioning failed');
+    }
+  };
 
   return (
     <DashboardLayout
@@ -256,127 +370,203 @@ const AdminDashboard = () => {
       role="ADMIN"
     >
       <div className="animate-fade-in">
-        {activeTab === 'overview' && (
-          <div className="d-flex flex-column gap-3">
-            {filters.userId && (
-              <div className="d-flex align-items-center justify-content-between p-3 bg-primary bg-opacity-10 border border-primary border-opacity-20 rounded-4 animate-slide-in mb-3 shadow-glow">
-                <div className="d-flex align-items-center gap-3">
-                  <div className="p-3 bg-primary bg-opacity-20 rounded-circle text-primary border border-primary border-opacity-30">
-                    <TrendingUp size={24} />
-                  </div>
-                  <div>
-                    <h4 className="fw-black mb-0 text-main text-uppercase tracking-widest">Performance Profile</h4>
-                    <p className="text-muted small mb-0 fw-bold opacity-75">Viewing specialized analytical data for selected staff node</p>
-                  </div>
+        {activeTab === 'my-stats' && (
+          <div className="d-flex flex-column gap-3 animate-fade-in">
+            <div className="px-1 d-flex flex-wrap align-items-center justify-content-between gap-3">
+              <div className="d-flex align-items-center gap-3">
+                <div className="p-2.5 bg-primary bg-opacity-10 rounded-circle text-primary shadow-glow-sm">
+                  <div className="custom-pulse"></div>
+                  <TrendingUp size={24} />
                 </div>
+                <div>
+                  <h4 className="fw-black text-main mb-0 text-uppercase tracking-tighter" style={{ fontSize: '20px', letterSpacing: '-0.5px' }}>Strategic Hub</h4>
+                  <p className="text-muted small fw-bold opacity-60 mb-0 d-flex align-items-center gap-2" style={{ fontSize: '10px' }}>
+                    <span className="dot bg-success"></span>
+                    INDIVIDUAL PERFORMANCE ANALYTICS
+                  </p>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center bg-surface border border-white border-opacity-10 rounded-pill shadow-sm px-3 py-1.5 gap-2">
+                <Clock size={12} className="text-primary opacity-50" />
+                <input
+                  type="date"
+                  className="bg-transparent border-0 shadow-none text-main fw-black p-0"
+                  value={filters.from.split('T')[0]}
+                  onChange={e => setFilters({ ...filters, from: e.target.value + 'T00:00:00' })}
+                  style={{ fontSize: '10px', outline: 'none' }}
+                />
+                <span className="text-muted fw-bold small opacity-25">TO</span>
+                <input
+                  type="date"
+                  className="bg-transparent border-0 shadow-none text-main fw-black p-0"
+                  value={filters.to.split('T')[0]}
+                  onChange={e => setFilters({ ...filters, to: e.target.value + 'T23:59:59' })}
+                  style={{ fontSize: '10px', outline: 'none' }}
+                />
+              </div>
+            </div>
+
+            {/* Sub-tabs for My Dashboard */}
+            <div className="d-flex gap-2 p-2 bg-surface bg-opacity-20 rounded-pill border border-white border-opacity-5 mb-2 overflow-auto" style={{ width: 'fit-content' }}>
+              {[
+                { id: 'dashboard', label: 'Dashboard', icon: ShieldHalf || Zap },
+                { id: 'calls', label: 'My Calllogs', icon: Phone },
+                { id: 'reports', label: 'My Reports', icon: TrendingUp },
+              ].map(sub => (
                 <button
-                  className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-primary border-opacity-30 fw-black text-uppercase tracking-wider"
-                  onClick={() => setFilters({...filters, userId: null})}
-                  style={{ fontSize: '11px' }}
+                  key={sub.id}
+                  onClick={() => setMyDashboardSubTab(sub.id)}
+                  className={`px-4 py-2 rounded-pill border-0 fw-black text-uppercase tracking-widest transition-all d-flex align-items-center gap-2 ${myDashboardSubTab === sub.id ? 'bg-primary text-white shadow-glow translate-y-n1' : 'bg-transparent text-muted opacity-50 hover:opacity-100'}`}
+                  style={{ fontSize: '9px' }}
                 >
-                  ← Back to Global Overview
+                  <sub.icon size={12} />
+                  {sub.label}
                 </button>
+              ))}
+            </div>
+
+            {myDashboardSubTab === 'dashboard' && (
+              <>
+                <ManagerProfile manager={null} />
+                <MetricCommandCenter
+                  stats={{ ...summary, ...stats, performance: performance.filter(p => p.userId === user.id) }}
+                  role="ADMIN"
+                  filters={{ ...filters, userId: user.id }}
+                  onNavigate={setActiveTab}
+                />
+              </>
+            )}
+
+            {myDashboardSubTab === 'calls' && <CallLogDashboard userId={user?.id} hideHeader={true} />}
+            {myDashboardSubTab === 'reports' && (
+              <div className="row g-4 animate-fade-in">
+                <div className="col-12 col-xl-8">
+                  {user?.role !== 'ADMIN' && (
+                    <Card title="My Conversion Velocity" subtitle="Individual Performance Analytics" className="h-100">
+                      <div className="py-2" style={{ height: '360px' }}>
+                        <RevenueTrendChart data={trendData} theme={theme} />
+                      </div>
+                    </Card>
+                  )}
+                  {user?.role === 'ADMIN' && (
+                    <Card title="Performance Analytics" subtitle="Administrative Overview" className="h-100">
+                      <div className="d-flex align-items-center justify-content-center h-100 text-muted opacity-50">
+                        <div className="text-center">
+                          <TrendingUp size={48} className="mb-3" />
+                          <p className="fw-bold">Individual performance tracking is disabled for Admin accounts.</p>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+                <div className="col-12 col-xl-4 d-flex flex-column gap-3">
+                  {user?.role !== 'ADMIN' && (
+                    <>
+                      <StatCard title="My Efficiency" value={stats?.totalGlobalLeads > 0 ? ((stats?.convertedToday / stats?.totalGlobalLeads) * 100).toFixed(1) : 0} unit="%" sub="Personal Conversion Ratio" icon={<TrendingUp />} color="primary" />
+                      <StatCard title="My Collection" value={stats?.totalPayments || 0} unit="T" sub="Monthly Transmissions" icon={<IndianRupee />} color="success" />
+                    </>
+                  )}
+                </div>
               </div>
             )}
-            
-            <div className="mb-2">
-               <MetricCommandCenter stats={{...summary, performance}} role="ADMIN" filters={filters} onNavigate={setActiveTab} />
-            </div>
-            <div className="row g-3 mb-1">
+          </div>
+        )}
+        {activeTab === 'overview' && (
+          <div className="d-flex flex-column gap-3 p-1">
+            <div className="row g-3">
               <div className="col-12">
                 <FiltersBar
                   filters={filters}
                   onChange={setFilters}
                   onSync={handleSync}
-                  users={users}
                   role="ADMIN"
+                  currentUserId={user?.id}
                 />
               </div>
             </div>
 
-            <div className="row g-3">
-              <div className="col-12 col-xl-8">
-                <Card title="Revenue Trajectory" subtitle="Aggregated Performance Analytics" className="h-100">
-                  <div className="py-2" style={{ height: '380px' }}>
-                    <RevenueTrendChart data={trendData} theme={theme} />
-                  </div>
-                </Card>
-              </div>
-              <div className="col-12 col-xl-4">
-                <div className="row g-3">
-                  <div className="col-12">
-                    <StatCard title="Total Managed" value={stats?.totalGlobalLeads || 0} sub="Global Operational Records" icon={<Users />} color="primary" />
-                  </div>
-                  <div className="col-12 col-sm-6 col-xl-6">
-                    <StatCard title="Success Leads" value={stats?.convertedToday || 0} sub="Paid Today" icon={<CheckCircle />} color="success" />
-                  </div>
-                  <div className="col-12 col-sm-6 col-xl-6">
-                    <StatCard title="Lost (Today)" value={stats?.lostToday || 0} sub="Off-Pitch" icon={<Phone />} color="danger" />
-                  </div>
-                  <div className="col-12 col-sm-6 col-xl-6">
-                    <StatCard title="Pending Value" value={stats?.pendingRevenue || 0} sub="Projected" icon={<IndianRupee />} color="info" unit="Trans" />
-                  </div>
-                  <div className="col-12 col-sm-6 col-xl-6">
-                    <StatCard title="Revenue" value={stats?.totalPayments || 0} sub="Confirmed" icon={<IndianRupee />} color="success" unit="Trans" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-12 text-main">
-                <Card title="Management Matrix" subtitle="Global User Efficiency Snapshot">
-                  <Table 
-                    headers={[
-                      'Staff Node', 
-                      'Operational Slot', 
-                      <div className="text-center">Load</div>, 
-                      <div className="text-center">Success</div>, 
-                      <div className="text-center">Risk</div>, 
-                      'Sync Rate'
-                    ]}
-                    data={performance.slice(0, 10)}
-                    renderRow={(p) => (
-                      <>
-                        <td
-                          className="ps-4 fw-bold text-primary cursor-pointer hover-scale transition-all"
-                          onClick={() => {
-                            setFilters({...filters, userId: p.userId});
-                            toast.info(`Drilling into performance profile for ${p.username}`);
-                          }}
-                          title="Click to drill into this member's data"
-                        >
-                          <div className="d-flex align-items-center gap-2">
-                            <Zap size={10} className="text-warning animate-pulse" />
-                            {p.username}
-                          </div>
-                        </td>
-                        <td><span className="ui-badge bg-surface text-muted small">{p.role}</span></td>
-                        <td className="text-center fw-bold">{p.totalLeads}</td>
-                        <td className="text-center text-success fw-bold">{p.convertedLeads || 0}</td>
-                        <td className="text-center text-danger fw-bold">{p.lostLeads || 0}</td>
-                        <td className="pe-4 text-end text-primary fw-black">
-                          {p.totalLeads > 0 ? ((p.convertedLeads / p.totalLeads) * 100).toFixed(1) : 0}%
-                        </td>
-                      </>
-                    )}
-                  />
-                </Card>
-              </div>
+            <div className="mb-4">
+              <MetricCommandCenter 
+                stats={{ 
+                  ...summary, 
+                  ...stats, 
+                  performance,
+                  presentCount: stats?.presentCount || summary?.attendance?.present || 0,
+                  absentCount: stats?.absentCount || summary?.attendance?.absent || 0,
+                  lateCount: stats?.lateCount || summary?.attendance?.late || 0,
+                  monthlyRevenue: stats?.monthlyRevenue || summary?.revenue?.monthly || 0,
+                  monthlyTarget: stats?.monthlyTarget || summary?.revenue?.target || 0,
+                  targetAchievement: stats?.targetAchievement || summary?.revenue?.achievement || 0,
+                  todayFollowups: stats?.todayFollowups || summary?.leads?.todayFollowups || 0,
+                  pendingFollowups: stats?.pendingFollowups || summary?.leads?.pendingFollowups || 0
+                }} 
+                role="ADMIN" 
+                filters={filters} 
+                onNavigate={setActiveTab} 
+              />
             </div>
           </div>
         )}
 
-         {activeTab === 'users' && (
-          <div className="animate-fade-in">
-            <TeamManagement 
+        {activeTab === 'team-dashboard' && (
+          <div className="animate-fade-in p-1">
+            <ManagerDashboardFilterHub
+              teamTree={teamTree}
+              stats={stats}
+              callStats={callStats}
+              leads={filteredLeadsList}
+              loadLeads={fetchData}
+              filters={filters}
+              setFilters={setFilters}
               teamLeaders={users}
-              roles={[{id: 1, name: 'ADMIN'}, {id: 2, name: 'MANAGER'}, {id: 3, name: 'TEAM_LEADER'}, {id: 4, name: 'ASSOCIATE'}]}
+              loading={loading}
+              onEdit={(lead) => {
+                setEditingLead(lead);
+                setActiveTab('edit-lead');
+              }}
+              handleAssignLead={handleAssignLead}
+              onUpdateLead={handleUpdateLead}
+              onRecordCallOutcome={handleRecordCallOutcome}
+              onSendPaymentLink={handleSendPaymentLink}
+              onDeleteLead={handleDeleteLead}
+            />
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="animate-fade-in">
+            <TeamManagement
+              teamLeaders={users}
+              roles={[{ id: 1, name: 'ADMIN' }, { id: 2, name: 'MANAGER' }, { id: 3, name: 'TEAM_LEADER' }, { id: 4, name: 'ASSOCIATE' }]}
               permissions={availablePermissions}
+              shifts={availableShifts}
+              offices={availableOffices}
               handleCreateUser={handleCreateUser}
               handleDeleteUser={handleDeleteUser}
               handleEditUser={handleEditUser}
               handleAssignSupervisor={handleAssignSupervisor}
-              setSelectedPerfUserId={(id) => setFilters({...filters, userId: id})}
+              setSelectedPerfUserId={(id) => setFilters({ ...filters, userId: id })}
               setActiveTab={setActiveTab}
+            />
+          </div>
+        )}
+
+        {activeTab === 'onboard' && (
+          <div className="animate-fade-in">
+            <TeamManagement
+              teamLeaders={users}
+              roles={[{ id: 1, name: 'ADMIN' }, { id: 2, name: 'MANAGER' }, { id: 3, name: 'TEAM_LEADER' }, { id: 4, name: 'ASSOCIATE' }]}
+              permissions={availablePermissions}
+              shifts={availableShifts}
+              offices={availableOffices}
+              handleCreateUser={handleCreateUser}
+              handleDeleteUser={handleDeleteUser}
+              handleEditUser={handleEditUser}
+              handleAssignSupervisor={handleAssignSupervisor}
+              setSelectedPerfUserId={(id) => setFilters({ ...filters, userId: id })}
+              setActiveTab={setActiveTab}
+              defaultShowForm={true}
             />
           </div>
         )}
@@ -386,52 +576,122 @@ const AdminDashboard = () => {
             <div className="col-12">
               <TeamTree
                 data={teamTree}
-                onFocus={(id) => setFilters({...filters, userId: id})}
+                onFocus={(id) => setFilters({ ...filters, userId: id })}
                 currentFocusId={filters.userId}
+                onAddUser={() => setActiveTab('users')}
               />
             </div>
           </div>
         )}
 
         {activeTab === 'pipeline' && (
-          <div className="animate-fade-in d-flex flex-column gap-4">
+          <div className="animate-fade-in d-flex flex-column gap-3">
+            <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
+            <div className="row g-3">
+              <div className="col-12 col-md-3">
+                <StatCard
+                  title="Call Back"
+                  value={summary?.callbackCount || 0}
+                  sub="Registry Awaiting Response"
+                  icon={<Phone size={18} />}
+                  color="warning"
+                />
+              </div>
+              <div className="col-12 col-md-3">
+                <StatCard
+                  title="Converted"
+                  value={summary?.convertedCount || stats?.convertedToday || 0}
+                  sub="Successful Transmissions"
+                  icon={<CheckCircle size={18} />}
+                  color="success"
+                />
+              </div>
+              <div className="col-12 col-md-3">
+                <StatCard
+                  title="Follow-up"
+                  value={summary?.todayFollowups || 0}
+                  sub="Active Operational Nodes"
+                  icon={<Clock size={18} />}
+                  color="info"
+                />
+              </div>
+              <div className="col-12 col-md-3">
+                <StatCard
+                  title="Lost"
+                  value={stats?.lostToday || summary?.lostCount || 0}
+                  sub="Off-Pitch Terminations"
+                  icon={<AlertCircle size={18} />}
+                  color="danger"
+                />
+              </div>
+            </div>
+
             <div className="row">
               <div className="col-12">
-                 <div className="premium-card overflow-hidden animate-fade-in shadow-lg h-100">
-                    <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
-                       <div>
-                           <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Global Pipeline Ledger</h5>
-                           <small className="text-muted fw-bold opacity-50 small text-uppercase tracking-wider" style={{ fontSize: '9px' }}>IDENTIFICATION & ASSIGNMENT NODE</small>
-                       </div>
-                       <button className="ui-btn ui-btn-primary btn-sm px-4 rounded-pill shadow-glow" onClick={() => fetchData()}>LIVE SYNC</button>
+                <div className="premium-card overflow-hidden animate-fade-in shadow-lg h-100">
+                  <div className="card-header bg-transparent p-4 border-0 d-flex justify-content-between align-items-center border-bottom border-white border-opacity-5">
+                    <div>
+                      <h5 className="fw-black mb-0 text-main text-uppercase tracking-widest small">Global Pipeline Ledger</h5>
+                      <small className="text-muted fw-bold opacity-50 small text-uppercase tracking-wider" style={{ fontSize: '9px' }}>IDENTIFICATION & ASSIGNMENT NODE</small>
                     </div>
-                    <div className="card-body p-0">
-                       <LeadsTable
-                         leads={filteredLeadsList}
-                         searchTerm={searchTerm}
-                         setSearchTerm={setSearchTerm}
-                         filterUnassigned={filterUnassigned}
-                         setFilterUnassigned={setFilterUnassigned}
-                         selectedLeadIds={selectedLeadIds}
-                         toggleSelection={toggleSelection}
-                         toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === filteredLeadsList.length ? [] : filteredLeadsList.map(l => l.id))}
-                         bulkAssignTlId={bulkAssignTlId}
-                         setBulkAssignTlId={setBulkAssignTlId}
-                         handleAssignLead={handleAssignLead}
-                         onViewInvoice={handleViewInvoice}
-                         onRecordCallOutcome={async (lead, data) => {
-                           try {
-                             await adminService.recordCallOutcome(lead.id, data);
-                             toast.success('Outcome recorded');
-                             fetchData();
-                           } catch (err) {
-                             toast.error('Failed to record outcome');
-                           }
-                         }}
-                         teamLeaders={users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER' || u.role === 'ASSOCIATE')}
-                       />
+                    <div className="d-flex gap-2">
+                      <button
+                        className="ui-btn ui-btn-primary px-4 py-2 rounded-pill shadow-glow animate-fade-in"
+                        onClick={() => setActiveTab('ingestion')}
+                      >
+                        <UserPlus size={16} className="me-2" />
+                        Add Lead
+                      </button>
+                      <button className="ui-btn ui-btn-outline btn-sm px-4 rounded-pill border-primary border-opacity-30 fw-black" style={{ fontSize: '10px' }} onClick={() => fetchData()}>LIVE SYNC</button>
                     </div>
-                 </div>
+                  </div>
+                  <div className="card-body p-0">
+                    {loading ? (
+                      <div className="p-5 text-center">
+                        <div className="spinner-border text-primary opacity-25"></div>
+                        <p className="mt-2 text-muted small fw-bold">SYNCHRONIZING LEDGER...</p>
+                      </div>
+                    ) : (
+                      <LeadsTable
+                        leads={filteredLeadsList}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                        filterUnassigned={filterUnassigned}
+                        setFilterUnassigned={setFilterUnassigned}
+                        selectedLeadIds={selectedLeadIds}
+                        toggleSelection={toggleSelection}
+                        toggleSelectAll={() => setSelectedLeadIds(selectedLeadIds.length === filteredLeadsList.length ? [] : filteredLeadsList.map(l => l.id))}
+                        bulkAssignTlId={bulkAssignTlId}
+                        setBulkAssignTlId={setBulkAssignTlId}
+                        handleAssignLead={handleAssignLead}
+                        onViewInvoice={handleViewInvoice}
+                        onUpdateLead={handleUpdateLead}
+                        onEdit={(lead) => {
+                          setEditingLead(lead);
+                          setActiveTab('edit-lead');
+                        }}
+                        onRecordCallOutcome={async (leadId, data) => {
+                          try {
+                            await adminService.recordCallOutcome(leadId, data);
+                            toast.success('Outcome recorded');
+                            fetchData();
+                          } catch (err) {
+                            toast.error('Failed to record outcome');
+                          }
+                        }}
+                        onSendPaymentLink={handleSendPaymentLink}
+                        teamLeaders={users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER' || u.role === 'ASSOCIATE')}
+                        role={user?.role}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -439,89 +699,170 @@ const AdminDashboard = () => {
 
 
         {activeTab === 'attendance-logs' && (
-          <div className="animate-fade-in">
-             <AttendanceDashboard role="ADMIN" />
+          <div className="animate-fade-in d-flex flex-column gap-4">
+            <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
+            <AttendanceDashboard role="ADMIN" userId={filters.userId} date={filters.from.split('T')[0]} />
           </div>
         )}
 
         {activeTab === 'attendance-settings' && (
           <div className="animate-fade-in">
-             <AttendanceSettings />
+            <AttendanceSettings />
           </div>
         )}
 
         {activeTab === 'tasks' && (
-          <div className="animate-fade-in">
+          <div className="animate-fade-in d-flex flex-column gap-4">
+            <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
             <TaskBoard
               leads={leads}
               theme={theme}
-              onUpdateStatus={handleUpdateUser} // Generic refresh
+              onUpdateStatus={handleUpdateUser} 
               fetchLeads={fetchData}
+              userId={filters.userId}
+              hideFilters={true}
             />
           </div>
         )}
 
         {activeTab === 'call-logs' && (
-          <CallLogDashboard />
+          <div className="animate-fade-in d-flex flex-column gap-4">
+             <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
+            <CallLogDashboard userId={filters.userId} />
+          </div>
         )}
 
         {activeTab === 'revenue' && (
           <div className="d-flex flex-column gap-4 animate-fade-in">
-             <div className="d-flex align-items-center gap-3 mb-1">
-                <div className="p-2 bg-primary bg-opacity-10 rounded text-primary border border-primary border-opacity-10">
-                    <TrendingUp size={18} />
-                </div>
-                <div>
-                   <h5 className="fw-black mb-0 text-main text-uppercase small tracking-widest">Financial Transmission Ledger</h5>
-                   <p className="text-muted small mb-0 fw-bold opacity-50" style={{fontSize: '9px'}}>AGGREGATED TRANSACTIONAL ARCHIVE</p>
-                </div>
+            <div className="d-flex align-items-center gap-3 mb-1">
+              <div className="p-2 bg-primary bg-opacity-10 rounded text-primary border border-primary border-opacity-10">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <h5 className="fw-black mb-0 text-main text-uppercase small tracking-widest">Financial Transmission Ledger</h5>
+                <p className="text-muted small mb-0 fw-bold opacity-50" style={{ fontSize: '9px' }}>AGGREGATED TRANSACTIONAL ARCHIVE</p>
+              </div>
             </div>
-            <PaymentHistory role="ADMIN" />
+            <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
+            <PaymentHistory role="ADMIN" userId={filters.userId} from={filters.from} to={filters.to} hideHeader={true} />
           </div>
         )}
         {activeTab === 'ingestion' && (
-          <div className="animate-fade-in d-flex flex-column gap-4">
-            <div className="row g-4">
-              <div className="col-12 col-xl-4">
-                 <div className="d-flex flex-column gap-4 h-100">
-                   <LeadForm onSubmit={handleAddLead} title="Seed Global Lead" />
-                 </div>
-              </div>
-              <div className="col-12 col-xl-8">
-                 <BulkUploadModal 
-                    isInline={true} 
-                    assignees={users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER' || u.role === 'ASSOCIATE')}
-                    onSuccess={fetchData} 
-                 />
-              </div>
-            </div>
+          <div className="animate-fade-in">
+            <LeadIngestionModal
+              isOpen={true}
+              isInline={true}
+              onAddLead={handleAddLead}
+              onSuccess={fetchData}
+              associates={users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER' || u.role === 'ASSOCIATE')}
+              onClose={() => setActiveTab('pipeline')}
+            />
           </div>
         )}
         {activeTab === 'tickets' && (
-          <div className="animate-fade-in">
-             <TicketManager role="ADMIN" />
+          <div className="animate-fade-in d-flex flex-column gap-4">
+            <FiltersBar
+              filters={filters}
+              onChange={setFilters}
+              onSync={fetchData}
+              role="ADMIN"
+              currentUserId={user?.id}
+            />
+            {loading ? (
+              <div className="p-5 text-center">
+                <div className="spinner-border text-primary opacity-25"></div>
+                <p className="mt-2 text-muted small fw-bold">SYNCHRONIZING SUPPORT SPECTRUM...</p>
+              </div>
+            ) : (
+              <TicketManager 
+                role="ADMIN" 
+                userId={filters.userId}
+                memberIds={Array.isArray(performance) ? performance.map(p => p.userId) : []}
+              />
+            )}
           </div>
         )}
-      </div>
 
-      <UserEditModal 
+        {activeTab === 'edit-lead' && (
+          <LeadEditPage 
+            lead={editingLead}
+            users={users}
+            onCancel={() => {
+              setEditingLead(null);
+              setActiveTab('pipeline');
+            }}
+            onSendPaymentLink={handleSendPaymentLink}
+            onSave={async (data) => {
+              const success = await handleUpdateLead(editingLead.id, data);
+              if (success) {
+                setEditingLead(null);
+                setActiveTab('pipeline');
+              }
+            }}
+          />
+        )}
+
+        {activeTab === 'revenue-targets' && (
+          <div className="animate-fade-in">
+            <RevenueStrategyHub 
+              users={users} 
+              onSync={fetchData} 
+            />
+          </div>
+        )}
+
+      <LeadIngestionModal
+        isOpen={isIngestionModalOpen}
+        onClose={() => setIsIngestionModalOpen(false)}
+        onAddLead={handleAddLead}
+        onSuccess={fetchData}
+        associates={users.filter(u => u.role === 'TEAM_LEADER' || u.role === 'MANAGER' || u.role === 'ASSOCIATE')}
+      />
+
+      <UserEditModal
         key={editingUser?.id}
-        isOpen={isEditModalOpen} 
-        onClose={() => setIsEditModalOpen(false)} 
-        user={editingUser} 
-        setUser={setEditingUser} 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={editingUser}
+        setUser={setEditingUser}
         onSubmit={handleUpdateUser}
-        roles={[{id: 1, name: 'ADMIN'}, {id: 2, name: 'MANAGER'}, {id: 3, name: 'TEAM_LEADER'}, {id: 4, name: 'ASSOCIATE'}]} 
+        roles={[{ id: 1, name: 'ADMIN' }, { id: 2, name: 'MANAGER' }, { id: 3, name: 'TEAM_LEADER' }, { id: 4, name: 'ASSOCIATE' }]}
         permissions={availablePermissions}
         teamLeaders={users}
         shifts={availableShifts}
+        offices={availableOffices}
       />
 
-      <InvoiceModal 
+      <InvoiceModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
         invoiceData={selectedInvoiceData}
       />
+      </div>
     </DashboardLayout>
   );
 };

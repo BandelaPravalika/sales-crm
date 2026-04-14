@@ -128,12 +128,12 @@ const CallAnalyticsGrid = ({ stats, loading, isDarkMode }) => {
                                         {card.value}
                                     </h3>
                                 </div>
-                                {card.subValue && (
+                                {/* {card.subValue && (
                                     <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top border-white border-opacity-5" style={{ color: card.color }}>
                                         <Clock size={16} />
                                         <span className="fw-black" style={{ fontSize: '14px' }}>{card.subValue}</span>
                                     </div>
-                                )}
+                                )} */}
                             </div>
                         </div>
                     </div>

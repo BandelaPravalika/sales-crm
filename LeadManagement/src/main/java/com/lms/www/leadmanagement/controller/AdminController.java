@@ -57,6 +57,22 @@ public class AdminController {
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/users/{id}/reset-password-otp")
+    public ResponseEntity<Map<String, String>> generateResetOtp(@PathVariable Long id) {
+        String otp = adminService.generateResetOtp(id);
+        return ResponseEntity.ok(Map.of("otp", otp, "message", "OTP generated successfully"));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
+    @PostMapping("/users/{id}/verify-reset-otp")
+    public ResponseEntity<Map<String, String>> verifyResetOtp(
+            @PathVariable Long id, 
+            @RequestBody Map<String, String> request) {
+        adminService.resetPasswordWithOtp(id, request.get("otp"), request.get("newPassword"));
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully"));
+    }
+
+    @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
         adminService.deactivateUser(id);
@@ -84,7 +100,7 @@ public class AdminController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAM_LEADER')")
     @GetMapping("/leads")
-    public ResponseEntity<Page<LeadDTO>> getAllLeads(@PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<Page<LeadDTO>> getAllLeads(@PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         System.out.println("API CALL: GET /api/admin/leads?page=" + pageable.getPageNumber());
         return ResponseEntity.ok(adminService.getAllLeads(pageable));
     }
@@ -118,12 +134,13 @@ public class AdminController {
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @GetMapping("/payments/history")
     public ResponseEntity<List<PaymentDTO>> getPaymentHistory(
+            @RequestParam(value = "userId", required = false) Long userId,
             @RequestParam(value = "tlId", required = false) Long tlId,
             @RequestParam(value = "associateId", required = false) Long associateId,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "startDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
             @RequestParam(value = "endDate", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate) {
-        return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(tlId, associateId, startDate, endDate, status));
+        return ResponseEntity.ok(leadPaymentService.getFilteredPaymentHistory(userId, tlId, associateId, startDate, endDate, status));
     }
 
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
@@ -159,9 +176,29 @@ public class AdminController {
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @GetMapping("/managers")
+    public ResponseEntity<List<UserDTO>> getManagers() {
+        return ResponseEntity.ok(adminService.getManagers());
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @GetMapping("/teams")
+    public ResponseEntity<List<UserDTO>> getTeamsByManager(@RequestParam Long managerId) {
+        return ResponseEntity.ok(adminService.getTeamsByManager(managerId));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @GetMapping("/associates")
+    public ResponseEntity<List<UserDTO>> getAssociatesFiltered(
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(required = false) Long managerId) {
+        return ResponseEntity.ok(adminService.getAssociates(teamId, managerId));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/team-tree")
     public ResponseEntity<List<UserDTO>> getTeamTree() {
-        return ResponseEntity.ok(adminService.getGlobalTeamTree());
+        return ResponseEntity.ok(adminService.getStaffTree());
     }
 
     @PreAuthorize("hasAuthority('ASSIGN_TO_TL') or hasAuthority('ADMIN') or hasAuthority('MANAGER')")
@@ -189,7 +226,7 @@ public class AdminController {
     @PreAuthorize("hasAuthority('MANAGE_USERS')")
     @PostMapping("/bulk-assign-hierarchy")
     public ResponseEntity<Map<String, Object>> bulkAssignHierarchy(@RequestBody Map<String, String> emailMap) {
-        return ResponseEntity.ok(adminService.bulkAssignSupervisorByEmail(emailMap));
+        return ResponseEntity.ok(adminService.bulkMapAssociates(emailMap));
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")

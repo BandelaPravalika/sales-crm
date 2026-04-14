@@ -67,6 +67,18 @@ export const useLeads = () => {
         }
     };
 
+    const handleUpdateLead = async (id, leadData) => {
+        try {
+            await managerService.updateLead(id, leadData);
+            toast.success('Lead details updated');
+            loadLeads();
+            return true;
+        } catch (err) {
+            toast.error('Update failed');
+            return false;
+        }
+    };
+
     const toggleSelection = (id) => {
         setSelectedLeadIds(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -82,6 +94,7 @@ export const useLeads = () => {
         setSelectedLeadIds,
         toggleSelection,
         handleAssignLead,
-        handleBulkAssign
+        handleBulkAssign,
+        handleUpdateLead
     };
 };

@@ -30,9 +30,12 @@ public class ReportController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String status) {
         
+        LocalDate endDate = (to == null) ? LocalDate.now() : to;
+        LocalDate startDate = (from == null) ? endDate.minusDays(30) : from;
+
         ReportFilterDTO filter = ReportFilterDTO.builder()
-                .fromDate(from)
-                .toDate(to)
+                .fromDate(startDate)
+                .toDate(endDate)
                 .teamLeaderId(teamLeaderId)
                 .userId(userId)
                 .status(status)

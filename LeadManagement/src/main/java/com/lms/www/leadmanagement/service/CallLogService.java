@@ -16,10 +16,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -216,19 +215,74 @@ public class CallLogService {
 
     // --- Administrative Reporting ---
 
-    public List<CallRecord> getAllLogsAdmin(LocalDate from, LocalDate to, Long userId) {
-        if (from != null && userId != null) {
-            LocalDateTime start = from.atStartOfDay();
-            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
-            return callRecordRepository.findByUserIdAndStartTimeBetweenOrderByStartTimeDesc(userId, start, end);
-        } else if (from != null) {
-            LocalDateTime start = from.atStartOfDay();
-            LocalDateTime end = (to != null ? to : from).atTime(23, 59, 59);
-            return callRecordRepository.findByStartTimeBetweenOrderByStartTimeDesc(start, end);
-        } else if (userId != null) {
-            return callRecordRepository.findByUserIdOrderByStartTimeDesc(userId);
+    public List<CallRecord> getAllLogsAdmin(LocalDate from, LocalDate to, Long targetUserId, Long requesterId) {
+        User requester = userRepository.findById(requesterId).orElseThrow(() -> new RuntimeException("Requester not found"));
+        String role = requester.getRole().getName();
+        
+        List<Long> allowedUserIds = new ArrayList<>();
+        if ("ADMIN".equals(role)) {
+            // Admin can see everything
+            if (targetUserId != null) allowedUserIds.add(targetUserId);
         } else {
+            // Manager/TL hierarchy restriction
+            List<User> subordinates = new ArrayList<>();
+            subordinates.add(requester);
+            collectSubordinates(requester, subordinates);
+            
+            allowedUserIds = subordinates.stream().map(User::getId).collect(Collectors.toList());
+            
+            if (targetUserId != null) {
+                if (allowedUserIds.contains(targetUserId)) {
+                    allowedUserIds = Collections.singletonList(targetUserId);
+                } else {
+                    return Collections.emptyList(); // Unauthorized target
+                }
+            }
+        }
+
+        LocalDateTime start = (from != null) ? from.atStartOfDay() : null;
+        LocalDateTime end = (from != null) ? (to != null ? to : from).atTime(23, 59, 59) : null;
+
+        if (allowedUserIds.isEmpty()) {
+            if (start != null && end != null) return callRecordRepository.findByStartTimeBetweenOrderByStartTimeDesc(start, end);
             return callRecordRepository.findAll();
+        } else {
+            return callRecordRepository.findByUserIdInAndStartTimeBetweenOrderByStartTimeDesc(allowedUserIds, 
+                start != null ? start : LocalDateTime.now().minusYears(1), 
+                end != null ? end : LocalDateTime.now());
+        }
+    }
+
+    public Map<String, Object> getGlobalStatsWithHierarchy(LocalDate from, LocalDate to, Long requesterId) {
+        User requester = userRepository.findById(requesterId).orElseThrow(() -> new RuntimeException("Requester not found"));
+        String role = requester.getRole().getName();
+
+        if ("ADMIN".equals(role)) {
+            return getGlobalStats(from, to);
+        }
+
+        List<User> subordinates = new ArrayList<>();
+        subordinates.add(requester);
+        collectSubordinates(requester, subordinates);
+        List<Long> userIds = subordinates.stream().map(User::getId).collect(Collectors.toList());
+
+        LocalDateTime start = (from != null) ? from.atStartOfDay() : LocalDateTime.now().minusDays(365);
+        LocalDateTime end = (to != null ? to : (from != null ? from : LocalDate.now())).atTime(23, 59, 59);
+
+        Map<String, Object> stats = callRecordRepository.getStatsForUsersByDate(userIds, start, end);
+        return processStats(stats);
+    }
+
+    private void collectSubordinates(User user, List<User> collector) {
+        List<User> subs = new ArrayList<>();
+        subs.addAll(userRepository.findByManager(user));
+        subs.addAll(userRepository.findBySupervisor(user));
+        
+        for (User sub : subs) {
+            if (!collector.contains(sub)) {
+                collector.add(sub);
+                collectSubordinates(sub, collector);
+            }
         }
     }
 }

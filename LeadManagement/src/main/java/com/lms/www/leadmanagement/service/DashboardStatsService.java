@@ -35,6 +35,9 @@ public class DashboardStatsService {
     @Autowired
     private RevenueTargetRepository targetRepository;
 
+    @Autowired
+    private AttendanceService attendanceService;
+
     public DashboardStatsDTO getStats(User user, LocalDate from, LocalDate to) {
         if (user == null) return null;
 
@@ -57,11 +60,30 @@ public class DashboardStatsService {
         long totalActiveUsers = targetUserIds.size();
         long absent = Math.max(0, totalActiveUsers - present);
 
-        // 2. Revenue - Filter by payments belonging to leads assigned to targetUserIds
+        // 2. Targets & Revenue
+        LocalDateTime nowIndia = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
+        BigDecimal monthlyTarget = BigDecimal.ZERO;
+        
+        // If viewing global/team stats as Admin/Manager, default to the GlobalTarget goal if no specific node target is set
+        monthlyTarget = targetRepository.findByUserIdAndMonthAndYear(user.getId(), nowIndia.getMonthValue(), nowIndia.getYear())
+                .map(RevenueTarget::getTargetAmount)
+                .orElse(user.getMonthlyTarget());
+        
+        if (monthlyTarget == null || monthlyTarget.compareTo(BigDecimal.ZERO) == 0) {
+            // Fallback to GlobalTarget settings for high-level dashboards
+            try {
+                GlobalTarget gt = attendanceService.getGlobalTarget();
+                if (gt != null) monthlyTarget = gt.getMonthlyRevenueGoal();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        
+        if (monthlyTarget == null) monthlyTarget = BigDecimal.ZERO;
+
         List<Payment> payments = paymentRepository.findFilteredByUserIds(targetUserIds, start, end);
         BigDecimal daily = BigDecimal.ZERO;
         BigDecimal monthly = BigDecimal.ZERO;
-        BigDecimal expected = BigDecimal.ZERO;
 
         if (payments != null) {
             daily = payments.stream()
@@ -75,12 +97,10 @@ public class DashboardStatsService {
                 .filter(p -> p.getCreatedAt().isAfter(LocalDate.now().withDayOfMonth(1).atStartOfDay()))
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            expected = payments.stream()
-                .filter(p -> p.getStatus() == Payment.Status.PENDING || p.getStatus() == Payment.Status.APPROVED)
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
+
+        // Expected Revenue is defined as Target gap (Target - Achieved) per user request
+        BigDecimal expected = monthlyTarget.subtract(monthly).max(BigDecimal.ZERO);
 
         // 3. Follow-ups
         List<LeadTask> tasks = taskRepository.findFilteredByUserIds(targetUserIds, start, end);
@@ -92,13 +112,6 @@ public class DashboardStatsService {
                 .filter(t -> t.getStatus() == LeadTask.TaskStatus.PENDING && t.getDueDate() != null && t.getDueDate().isBefore(LocalDateTime.now()))
                 .count() : 0;
 
-        // 4. Targets
-        LocalDateTime nowIndia = LocalDateTime.now(ZoneId.of("Asia/Kolkata"));
-        BigDecimal monthlyTarget = targetRepository.findByUserIdAndMonthAndYear(user.getId(), nowIndia.getMonthValue(), nowIndia.getYear())
-                .map(RevenueTarget::getTargetAmount)
-                .filter(amt -> amt != null)
-                .orElse(BigDecimal.ZERO);
-        
         Double achievement = 0.0;
         if (monthlyTarget.compareTo(BigDecimal.ZERO) > 0) {
             achievement = monthly.divide(monthlyTarget, 4, java.math.RoundingMode.HALF_UP).multiply(new BigDecimal(100)).doubleValue();

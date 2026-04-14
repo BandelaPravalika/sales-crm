@@ -1,127 +1,190 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, LayoutDashboard, RefreshCcw, ChevronDown, User, Users } from 'lucide-react';
+import { Calendar, RefreshCcw, User, Users, ShieldHalf, Filter } from 'lucide-react';
 import { Button } from '../../../components/common/Components';
+import adminService from '../../../services/adminService';
 
-const FiltersBar = ({ filters, onChange, onSync, title = "Operational Scope", users = [], role = "ADMIN" }) => {
-  const [selectedManagerId, setSelectedManagerId] = useState("");
+const FiltersBar = ({ filters, onChange, onSync, title = "COMMAND CENTER", role = "", currentUserId }) => {
+  const [selectedMgrId, setSelectedMgrId] = useState("");
   const [selectedTlId, setSelectedTlId] = useState("");
+  const [selectedAssocId, setSelectedAssocId] = useState("");
 
-  // Options for Admin: Select Manager
-  const managers = users.filter(u => u.role === 'MANAGER');
-  
-  // Options for selected Manager or current Manager: Select TL
-  const getTls = (mgrId) => users.filter(u => u.role === 'TEAM_LEADER' && u.supervisorId == mgrId);
+  const [managers, setManagers] = useState([]);
+  const [tls, setTls] = useState([]);
+  const [associates, setAssociates] = useState([]);
 
-  const handleManagerChange = (id) => {
-    setSelectedManagerId(id);
-    setSelectedTlId("");
-    onChange({...filters, userId: id || null});
-  };
+  const isManager = role === 'MANAGER';
+  const isTL = role === 'TEAM_LEADER';
+  const isAssociate = role === 'ASSOCIATE';
+  const effectiveUserId = isManager ? currentUserId : selectedMgrId;
 
-  const handleTlChange = (id) => {
-    setSelectedTlId(id);
-    onChange({...filters, userId: id || null});
-  };
+  // Fetch Managers on Load (Admin only)
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      adminService.fetchManagers().then(res => setManagers(res.data)).catch(() => {});
+    }
+  }, [role]);
+
+  // Fetch Teams on Manager Change (Admin/Manager only)
+  useEffect(() => {
+    if (effectiveUserId && (role === 'ADMIN' || role === 'MANAGER')) {
+      adminService.fetchTeamsByManager(effectiveUserId).then(res => setTls(res.data)).catch(() => {});
+    } else {
+      setTls([]);
+    }
+  }, [effectiveUserId, role]);
+
+  // Fetch Associates on Team Change
+  useEffect(() => {
+    if (selectedTlId) {
+      adminService.fetchAssociates(selectedTlId, null).then(res => setAssociates(res.data)).catch(() => {});
+    } else if (effectiveUserId) {
+      adminService.fetchAssociates(null, effectiveUserId).then(res => setAssociates(res.data)).catch(() => {});
+    } else {
+      setAssociates([]);
+    }
+  }, [selectedTlId, effectiveUserId]);
+
+  useEffect(() => {
+    let targetUserId = null;
+    if (selectedAssocId) targetUserId = selectedAssocId;
+    else if (selectedTlId) targetUserId = selectedTlId;
+    else if (selectedMgrId) targetUserId = selectedMgrId;
+    else if (isManager) targetUserId = currentUserId;
+
+    if (filters?.userId !== targetUserId) {
+      onChange({ ...filters, userId: targetUserId });
+    }
+  }, [selectedMgrId, selectedTlId, selectedAssocId, filters?.userId]);
 
   return (
-    <div className="premium-card p-3 mb-4 animate-fade-in border-0 shadow-lg bg-surface bg-opacity-10 backdrop-blur" style={{ backdropFilter: 'blur(20px)' }}>
-      <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4">
-        <div className="d-flex flex-wrap align-items-center gap-4">
-          <div className="d-flex align-items-center gap-3">
-             <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-pill border border-primary border-opacity-10">
-                <LayoutDashboard size={16} />
-             </div>
-             <div>
-                <h6 className="fw-black mb-0 text-main small tracking-widest text-uppercase">{title}</h6>
-                <small className="text-muted fw-bold opacity-50" style={{ fontSize: '8px' }}>CORE FILTER ENGINE</small>
-             </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-2">
-            {/* 1. Admin Dropdown for Manager */}
-            {role === 'ADMIN' && (
-              <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-30 p-1 px-3 rounded-pill border border-white border-opacity-5">
-                <User size={12} className="text-primary opacity-50" />
-                <select 
-                  className="bg-transparent border-0 text-main fw-black small text-uppercase tracking-wider outline-none py-1"
-                  style={{ fontSize: '10px', minWidth: '120px' }}
-                  value={selectedManagerId}
-                  onChange={(e) => handleManagerChange(e.target.value)}
-                >
-                  <option value="">All Managers</option>
-                  {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </div>
-            )}
-
-            {/* 2. Manager/Admin Dropdown for TL (Team Selection) */}
-            {(role === 'ADMIN' || role === 'MANAGER') && (
-              <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-30 p-1 px-3 rounded-pill border border-white border-opacity-5">
-                <Users size={12} className="text-primary opacity-50" />
-                <select 
-                  className="bg-transparent border-0 text-main fw-black small text-uppercase tracking-wider outline-none py-1"
-                  style={{ fontSize: '10px', minWidth: '120px' }}
-                  value={selectedTlId}
-                  onChange={(e) => handleTlChange(e.target.value)}
-                >
-                  <option value="">{role === 'MANAGER' ? 'Direct Reports' : 'All Teams'}</option>
-                  {getTls(role === 'MANAGER' ? filters.currentUserId : selectedManagerId).map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="d-flex flex-wrap align-items-center gap-2">
-          <div className="d-flex align-items-center gap-2 bg-surface bg-opacity-50 p-2 px-3 rounded-pill border border-white border-opacity-5 shadow-sm">
-            <Calendar size={14} className="text-primary" />
-            <div className="d-flex align-items-center gap-1">
-                <input 
-                  type="date" 
-                  className="bg-transparent border-0 text-main fw-black px-1"
-                  value={filters.from?.split('T')[0] || ""}
-                  onChange={(e) => onChange({...filters, from: e.target.value + 'T00:00:00'})}
-                  style={{ width: '130px', fontSize: '11px', outline: 'none', letterSpacing: '0.02em' }}
-                />
-                <span className="text-muted small px-1 opacity-25">|</span>
-                <input 
-                  type="date" 
-                  className="bg-transparent border-0 text-main fw-black px-1"
-                  value={filters.to?.split('T')[0] || ""}
-                  onChange={(e) => onChange({...filters, to: e.target.value + 'T23:59:59'})}
-                  style={{ width: '130px', fontSize: '11px', outline: 'none', letterSpacing: '0.02em' }}
-                />
+    <div className="bg-white p-2 mb-3 animate-fade-in border border-light shadow-sm rounded-pill px-4">
+      <div className="d-flex align-items-center justify-content-between gap-2 overflow-x-auto no-scrollbar">
+        {/* Left Section: Title + Dropdowns */}
+        <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-2 pe-3 border-end border-light">
+            <div className="p-2 bg-primary bg-opacity-10 text-primary rounded-circle">
+              <Filter size={16} />
+            </div>
+            <div className="d-none d-xxl-block">
+              <h5 className="fw-black mb-0 text-dark tracking-wide text-uppercase" style={{ fontSize: '11px' }}>{title}</h5>
+              <p className="text-muted small mb-0 fw-bold opacity-50 text-uppercase" style={{ fontSize: '7px', letterSpacing: '0.4px' }}>
+                ANALYSIS
+              </p>
             </div>
           </div>
-          
-          <Button 
-            variant="secondary"
-            className="py-2 px-4 rounded-pill border-0 shadow-sm"
+
+          {!isAssociate && (
+            <div className="d-flex align-items-center gap-2">
+              {role === 'ADMIN' && (
+                <div className="bg-light p-1 px-3 rounded-pill border border-light">
+                  <select
+                    className="bg-transparent border-0 text-main fw-bold small text-uppercase outline-none py-1"
+                    style={{ fontSize: '9px', minWidth: '130px' }}
+                    value={selectedMgrId}
+                    onChange={(e) => {
+                      setSelectedMgrId(e.target.value);
+                      setSelectedTlId("");
+                      setSelectedAssocId("");
+                    }}
+                  >
+                    <option value="">CHOOSE MANAGER</option>
+                    {managers.map(m => (
+                      <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Team selection for Admin, Manager and TL (if applicable) */}
+              {(role === 'ADMIN' || isManager) && (
+                <div className="bg-light p-1 px-3 rounded-pill border border-light">
+                  <select
+                    className="bg-transparent border-0 text-main fw-bold small text-uppercase outline-none py-1"
+                    style={{ fontSize: '9px', minWidth: '130px' }}
+                    value={selectedTlId}
+                    onChange={(e) => {
+                      setSelectedTlId(e.target.value);
+                      setSelectedAssocId("");
+                    }}
+                    disabled={!effectiveUserId}
+                  >
+                    <option value="">{effectiveUserId ? 'ALL TEAMS' : '---'}</option>
+                    {tls.map(t => (
+                      <option key={t.id} value={t.id}>{t.name.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Associate selection for Admin, Manager and TL */}
+              {(role === 'ADMIN' || isManager || isTL) && (
+                <div className="bg-light p-1 px-3 rounded-pill border border-light">
+                  <select
+                    className="bg-transparent border-0 text-main fw-bold small text-uppercase outline-none py-1"
+                    style={{ fontSize: '9px', minWidth: '130px' }}
+                    value={selectedAssocId}
+                    onChange={(e) => setSelectedAssocId(e.target.value)}
+                    disabled={!effectiveUserId && role !== 'TEAM_LEADER'}
+                  >
+                    <option value="">{(effectiveUserId || isTL) ? 'ALL ASSOCIATES' : '---'}</option>
+                    {associates.map(a => (
+                      <option key={a.id} value={a.id}>{a.name.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right Section: Calendar + Reset + Sync */}
+        <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2 bg-light p-1 px-3 rounded-pill border border-light">
+            <Calendar size={12} className="text-muted" />
+            <div className="d-flex align-items-center gap-1">
+              <input
+                type="date"
+                className="bg-transparent border-0 text-main fw-bold px-1"
+                value={filters.from?.split('T')[0] || ""}
+                onChange={(e) => onChange({ ...filters, from: e.target.value + 'T00:00:00' })}
+                style={{ width: '105px', fontSize: '10px', outline: 'none' }}
+              />
+              <span className="text-muted small opacity-25">|</span>
+              <input
+                type="date"
+                className="bg-transparent border-0 text-main fw-bold px-1"
+                value={filters.to?.split('T')[0] || ""}
+                onChange={(e) => onChange({ ...filters, to: e.target.value + 'T23:59:59' })}
+                style={{ width: '105px', fontSize: '10px', outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          <button
+            className="btn btn-outline-secondary rounded-pill border-light py-1.5 px-3 fw-bold text-uppercase"
             onClick={() => {
-              setSelectedManagerId("");
+              setSelectedMgrId("");
               setSelectedTlId("");
+              setSelectedAssocId("");
               onChange({
                 from: new Date().toISOString().split('T')[0] + 'T00:00:00',
                 to: new Date().toISOString().split('T')[0] + 'T23:59:59',
-                userId: null
+                userId: isManager ? currentUserId : null
               });
             }}
-            style={{ fontSize: '10px' }}
+            style={{ fontSize: '9px' }}
           >
             RESET
-          </Button>
-
-          <Button 
-            variant="primary" 
-            className="py-2 px-4 rounded-pill border-0 shadow-glow"
-            onClick={() => onSync ? onSync() : onChange(filters)} 
-            style={{ fontSize: '10px' }}
+          </button>
+          
+          <button
+            className="btn btn-primary rounded-pill py-1.5 px-3 border-0 fw-bold text-uppercase d-flex align-items-center gap-2 shadow-sm"
+            onClick={() => onSync ? onSync() : onChange(filters)}
+            style={{ fontSize: '9px' }}
           >
-            <RefreshCcw size={14} className="me-2" />
+            <RefreshCcw size={12} />
             SYNC CORE
-          </Button>
+          </button>
         </div>
       </div>
     </div>

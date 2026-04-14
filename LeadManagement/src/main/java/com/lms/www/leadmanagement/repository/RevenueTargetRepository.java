@@ -10,4 +10,5 @@ import java.util.List;
 public interface RevenueTargetRepository extends JpaRepository<RevenueTarget, Long> {
     Optional<RevenueTarget> findByUserIdAndMonthAndYear(Long userId, Integer month, Integer year);
     List<RevenueTarget> findByUserIdInAndMonthAndYear(java.util.Collection<Long> userIds, Integer month, Integer year);
+    List<RevenueTarget> findByMonthAndYear(Integer month, Integer year);
 }

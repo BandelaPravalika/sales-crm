@@ -8,8 +8,10 @@ const associateService = {
   }),
   recordOutcome: (leadId, outcomeData) => api.post(`/leads/${leadId}/record-outcome`, outcomeData),
   addLead: (leadData) => api.post('/leads', leadData),
+  updateLead: (id, leadData) => api.put(`/leads/${id}`, leadData),
   sendPaymentLink: (leadId, paymentData) => api.post(`/leads/${leadId}/send-payment-link`, paymentData),
   fetchCallStats: (filters) => api.get('/call-records/stats', { params: filters }),
+  fetchMyLogs: (filters) => api.get('/call-records/my', { params: filters }),
   fetchTrendData: (filters) => api.get('/reports/trend', { params: filters }),
   
   fetchLeadTasks: (leadId) => api.get(`/tasks/lead/${leadId}`),

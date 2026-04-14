@@ -35,30 +35,25 @@ public class LeadTaskController {
         String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         com.lms.www.leadmanagement.entity.User requester = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
         
-        java.util.List<com.lms.www.leadmanagement.entity.User> visibleUsers = new java.util.ArrayList<>();
-        visibleUsers.add(requester);
-        
-        com.lms.www.leadmanagement.entity.ReportScope scope = requester.getReportScope();
+        String role = requester.getRole().getName();
         List<LeadTask> tasks;
-        if (scope == com.lms.www.leadmanagement.entity.ReportScope.ALL) {
+
+        if ("ADMIN".equals(role)) {
             tasks = leadTaskRepository.findAll();
         } else {
-            if (scope == com.lms.www.leadmanagement.entity.ReportScope.TEAM) {
-                collectSubordinates(requester, visibleUsers);
+            java.util.List<com.lms.www.leadmanagement.entity.User> visibleUsers = new java.util.ArrayList<>();
+            visibleUsers.add(requester);
+            
+            // Mandatory hierarchy for Manager/TL
+            List<Long> subIds = userRepository.findSubordinateIds(requester.getId());
+            if (subIds != null && !subIds.isEmpty()) {
+                visibleUsers.addAll(userRepository.findAllById(subIds));
             }
+            
             tasks = leadTaskRepository.findByLeadAssignedToIn(visibleUsers);
         }
         
         return ResponseEntity.ok(tasks.stream().map(this::convertToDTO).collect(Collectors.toList()));
-    }
-
-    private void collectSubordinates(com.lms.www.leadmanagement.entity.User user, java.util.List<com.lms.www.leadmanagement.entity.User> collector) {
-        if (user.getSubordinates() != null) {
-            for (com.lms.www.leadmanagement.entity.User sub : user.getSubordinates()) {
-                collector.add(sub);
-                collectSubordinates(sub, collector);
-            }
-        }
     }
 
     @GetMapping("/lead/{leadId}")
@@ -136,7 +131,7 @@ public class LeadTaskController {
                 .title(task.getTitle())
                 .description(task.getDescription())
                 .dueDate(task.getDueDate())
-                .status(task.getStatus().name())
+                .status(task.getStatus() != null ? task.getStatus().name() : "PENDING")
                 .taskType(task.getTaskType())
                 .createdAt(task.getCreatedAt())
                 .build();

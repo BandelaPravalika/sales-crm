@@ -35,7 +35,7 @@ const StatCard = ({ title, value, sub, icon, color = 'primary', unit = 'Nodes' }
           </div>
         </div>
 
-        <div className="mt-auto">
+        {/* <div className="mt-auto">
           <div className="p-2 rounded-3 bg-surface bg-opacity-40 border border-white border-opacity-5 relative overflow-hidden backdrop-blur-sm">
               <div className="d-flex justify-content-between align-items-center mb-1 gap-2">
                  <span className="text-muted fw-bold small opacity-50 text-uppercase tracking-widest text-truncate" style={{ fontSize: '7px', maxWidth: '70%' }}>{sub}</span>
@@ -50,7 +50,7 @@ const StatCard = ({ title, value, sub, icon, color = 'primary', unit = 'Nodes' }
                      style={{ width: '100%', backgroundColor: themeColor.base, boxShadow: `0 0 8px ${themeColor.shadow}` }}></div>
              </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       <style>{`

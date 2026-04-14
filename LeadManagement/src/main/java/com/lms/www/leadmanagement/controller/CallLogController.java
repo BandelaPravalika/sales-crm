@@ -198,7 +198,7 @@ public class CallLogController {
         try {
             // Diagnostic logging for 400 errors
             System.out.println("DEBUG: GET /admin/all - from=" + from + ", to=" + to + ", userId=" + userId);
-            List<CallRecord> logs = callLogService.getAllLogsAdmin(from, to, userId);
+            List<CallRecord> logs = callLogService.getAllLogsAdmin(from, to, userId, getCurrentUserId());
             return ResponseEntity.ok(ApiResponse.success(logs));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));
@@ -211,7 +211,7 @@ public class CallLogController {
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) java.time.LocalDate to) {
         try {
-            Map<String, Object> stats = callLogService.getGlobalStats(from, to);
+            Map<String, Object> stats = callLogService.getGlobalStatsWithHierarchy(from, to, getCurrentUserId());
             return ResponseEntity.ok(ApiResponse.success(stats));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error(e.getMessage()));

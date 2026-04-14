@@ -18,6 +18,7 @@ public class LeadDTO {
     private String email;
     private String mobile;
     private String college;
+    private String serialNumber;
     private String status;
     private Long assignedToId;
     private String assignedToName;
@@ -44,6 +45,7 @@ public class LeadDTO {
                 .email(lead.getEmail())
                 .mobile(lead.getMobile())
                 .college(lead.getCollege())
+                .serialNumber(lead.getSerialNumber())
                 .status(lead.getStatus() != null ? lead.getStatus().name() : "NEW")
                 .assignedToId(lead.getAssignedTo() != null ? lead.getAssignedTo().getId() : null)
                 .assignedToName(lead.getAssignedTo() != null ? lead.getAssignedTo().getName() : null)

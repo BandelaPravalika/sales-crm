@@ -25,16 +25,17 @@ export const Button = ({
   );
 };
 
-export const Card = ({ children, title, subtitle, className = '', ...props }) => {
+export const Card = ({ children, title, subtitle, extra, className = '', ...props }) => {
   return (
     <div className={`premium-card p-4 h-100 ${className}`} {...props}>
-      {(title || subtitle) && (
+      {(title || subtitle || extra) && (
         <div className="mb-4">
-          <div className="d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center justify-content-between gap-3">
             <div>
               {title && <h5 className="fw-black mb-0 text-main" style={{ fontSize: '15px' }}>{title}</h5>}
               {subtitle && <small className="text-muted fw-bold opacity-50 text-uppercase tracking-widest mt-1 d-block" style={{ fontSize: '9px' }}>{subtitle}</small>}
             </div>
+            {extra && <div className="d-flex align-items-center gap-2">{extra}</div>}
           </div>
         </div>
       )}
@@ -71,7 +72,7 @@ export const Table = ({ headers, data, renderRow, className = '' }) => {
         <tbody>
           {data.map((item, idx) => (
             <tr key={idx} className="table-row border-bottom transition-all" style={{ borderColor: 'var(--border-color)' }}>
-              {renderRow(item)}
+              {renderRow(item, idx)}
             </tr>
           ))}
           {data.length === 0 && (

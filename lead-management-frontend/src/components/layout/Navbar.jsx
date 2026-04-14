@@ -42,16 +42,23 @@ const Navbar = ({ isCollapsed, userEmail, onLogout, onToggleSidebar, windowWidth
 
         {/* Desktop search bar */}
         {windowWidth > 1280 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface)', padding: '6px 16px', borderRadius: '999px', border: '1px solid var(--border-color)' }}>
-            <Search size={14} style={{ color: 'var(--text-muted)' }} />
+          <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface)', padding: '6px 16px', borderRadius: '999px', border: '1px solid var(--border-color)', transition: 'all 0.3s' }}>
+            <Search size={14} className="search-icon" style={{ color: 'var(--text-muted)', transition: 'color 0.3s' }} />
             <input
               type="text"
-              placeholder="Search..."
-              style={{ outline: 'none', width: '200px', fontSize: '12px', background: 'transparent', border: 'none', color: 'var(--text-main)', fontWeight: 500 }}
+              placeholder="Search leads, users or nodes... (Ctrl+K)"
+              className="search-input"
+              style={{ outline: 'none', width: '280px', fontSize: '12px', background: 'transparent', border: 'none', color: 'var(--text-main)', fontWeight: 500 }}
             />
           </div>
         )}
       </div>
+
+      <style>{`
+        .search-container:focus-within { border-color: var(--primary-color) !important; background: var(--nav-bg) !important; box-shadow: 0 0 15px rgba(99, 102, 241, 0.15); }
+        .search-container:focus-within .search-icon { color: var(--primary-color) !important; }
+        .search-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+      `}</style>
 
       <div className="d-flex align-items-center gap-3 gap-md-4">
         <div className="d-flex align-items-center gap-2 p-1 bg-surface bg-opacity-50 rounded-pill border border-white border-opacity-5">

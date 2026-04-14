@@ -44,7 +44,11 @@ const managerService = {
         return api.post('/manager/leads/bulk-upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-    }
+    },
+    updateLead: (id, data) => api.put(`/leads/${id}`, data),
+    sendPaymentLink: (leadId, data) => api.post(`/leads/${leadId}/send-payment-link`, data),
+    deleteLead: (id) => api.delete(`/leads/${id}`),
+    fetchOffices: () => api.get('/manager/offices')
 };
 
 export default managerService;

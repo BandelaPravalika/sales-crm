@@ -15,6 +15,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException e) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", e.getMessage());
+        response.put("message", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -22,6 +23,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException e) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", e.getMessage());
+        response.put("message", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -30,6 +32,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException e) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", e.getMessage());
+        response.put("message", e.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
@@ -37,13 +40,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleSecurityViolation(SecurityViolationException e) {
         Map<String, Object> response = new HashMap<>();
         response.put("error", e.getMessage());
+        response.put("message", e.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException e) {
         Map<String, Object> response = new HashMap<>();
-        response.put("error", "Access Denied: " + e.getMessage());
+        response.put("error", "Access Denied");
+        response.put("message", e.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
@@ -55,6 +60,7 @@ public class GlobalExceptionHandler {
         
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Validation failed");
+        body.put("message", "One or more fields are invalid");
         body.put("details", errors);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -65,7 +71,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception e) {
         Map<String, Object> response = new HashMap<>();
-        response.put("error", "An unexpected error occurred: " + e.getMessage());
+        response.put("error", "Operation Failed");
+        response.put("message", e.getMessage());
         return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(response);
