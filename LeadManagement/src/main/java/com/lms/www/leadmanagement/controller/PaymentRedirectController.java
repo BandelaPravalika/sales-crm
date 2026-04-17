@@ -10,11 +10,12 @@ import org.springframework.web.servlet.view.RedirectView;
 @Controller
 public class PaymentRedirectController {
 
-    @Value("${app.frontend-url:http://localhost:3000}")
+    @Value("${app.frontend-url:https://salestoo.netlify.app}")
     private String frontendUrl;
 
     @GetMapping("/pay/{sessionId}")
-    public RedirectView redirectToFrontend(@PathVariable String sessionId, @RequestParam(required = false) String mode) {
+    public RedirectView redirectToFrontend(@PathVariable String sessionId,
+            @RequestParam(required = false) String mode) {
         String redirectUrl = frontendUrl + "/pay/" + sessionId;
         if (mode != null) {
             redirectUrl += "?mode=" + mode;
