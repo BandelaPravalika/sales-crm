@@ -41,8 +41,8 @@ public class LeadPaymentService {
     @Autowired
     private MailService mailService;
 
-    @Value("${lms.base-url}")
-    private String baseUrl;
+    // @Value("${lms.base-url:}")
+    // private String baseUrl;
 
     @Value("${cashfree.environment:SANDBOX}")
     private String environment;
