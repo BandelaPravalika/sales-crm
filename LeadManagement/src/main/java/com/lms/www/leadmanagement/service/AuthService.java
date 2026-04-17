@@ -11,8 +11,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 @Transactional
@@ -27,7 +29,10 @@ public class AuthService {
     @Autowired
     private UserRepository userRepository;
 
-    public AuthResponse authenticateUser(LoginRequest loginRequest) {
+    @Autowired
+    private UserSessionService userSessionService;
+
+    public AuthResponse authenticateUser(LoginRequest loginRequest, HttpServletRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
@@ -37,6 +42,10 @@ public class AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Authenticated user not found in database: " + userDetails.getUsername()));
+
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty()) ip = request.getRemoteAddr();
+        userSessionService.startSession(user, ip, request.getHeader("User-Agent"));
 
         return AuthResponse.builder()
                 .token(jwt)

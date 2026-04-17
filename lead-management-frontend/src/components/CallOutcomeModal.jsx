@@ -8,12 +8,15 @@ import {
 import { toast } from 'react-toastify';
 import associateService from '../services/associateService';
 import adminService from '../services/adminService';
+import { useAuth } from '../context/AuthContext';
 
 const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymentLink }) => {
+  const { clearCall } = useAuth();
   const [outcome, setOutcome] = useState('CONTACTED');
   const [note, setNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [callId, setCallId] = useState(null);
   const [showAddNote, setShowAddNote] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
@@ -31,6 +34,11 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
       setOutcome(lead.status === 'NEW' ? 'CONTACTED' : lead.status);
       setPaymentAmount('');
       setPaymentMethod('UPI');
+      // If we are ending a specific call passed via lead object or extra prop
+      if (lead.activeCallId) {
+        setCallId(lead.activeCallId);
+        setShowAddNote(true);
+      }
     }
   }, [lead]);
 
@@ -38,23 +46,38 @@ const CallOutcomeModal = ({ isOpen, onClose, lead, onSubmit, theme, onSendPaymen
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    if (outcome === 'PAID' && (!paymentAmount || parseFloat(paymentAmount) <= 0)) {
-       return toast.error('Please enter a valid payment amount for conversion.');
-    }
+    
+    // Strict Validations
+    if (!outcome) return toast.error('Status is mandatory');
+    if (!note || note.trim().length < 10) return toast.error('Notes must be at least 10 characters');
 
+    setIsSubmitting(true);
+    
     try {
-      await onSubmit({
-        status: outcome,
-        note: note,
-        amount: parseFloat(paymentAmount),
-        paymentMethod: paymentMethod
-      });
+      if (callId) {
+        // Strict End Call Path
+        await associateService.endCall(callId, {
+          status: outcome,
+          notes: note,
+          followUpDate: followUpDate || null
+        });
+        clearCall();
+        toast.success('Interaction Logged Successfully');
+      } else {
+        // Legacy/Direct Status Update Path
+        await onSubmit({
+          status: outcome,
+          note: note,
+          amount: parseFloat(paymentAmount),
+          paymentMethod: paymentMethod
+        });
+      }
 
       setShowAddNote(false);
       setNote('');
+      onClose();
     } catch (err) {
-      toast.error('Failed to log outcome');
+      toast.error(err.response?.data?.message || 'Submission failed: Constraint Violation');
       console.error(err);
     } finally {
       setIsSubmitting(false);

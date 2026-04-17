@@ -22,7 +22,12 @@ const associateService = {
   
   addLeadTask: (leadId, task) => api.post(`/tasks/lead/${leadId}`, task),
   
-  updateTaskStatus: (taskId, status) => api.put(`/tasks/${taskId}/status`, null, { params: { status } })
+  updateTaskStatus: (taskId, status) => api.put(`/tasks/${taskId}/status`, null, { params: { status } }),
+
+  // Strict Call Tracking
+  startCall: (data) => api.post('/calls/start', data),
+  endCall: (callId, data) => api.post(`/calls/end/${callId}`, data),
+  fetchTodayReport: () => api.get('/calls/today')
 };
 
 export default associateService;

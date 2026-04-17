@@ -26,6 +26,9 @@ public class WebSecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Autowired
+    private SessionActivityFilter sessionActivityFilter;
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -59,6 +62,7 @@ public class WebSecurityConfig {
 
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(sessionActivityFilter, JwtAuthenticationFilter.class);
 
         http.exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {

@@ -12,6 +12,12 @@ import java.util.Map;
 @Repository
 public interface CallRecordRepository extends JpaRepository<CallRecord, Long> {
 
+    java.util.Optional<CallRecord> findTopByUserIdAndEndTimeIsNullOrderByStartTimeDesc(Long userId);
+
+    @Query("SELECT new com.lms.www.leadmanagement.dto.DailyUserReportDTO(c.user.id, c.user.name, COUNT(c), SUM(c.duration), AVG(c.duration)) " +
+           "FROM CallRecord c WHERE c.startTime BETWEEN :start AND :end AND c.endTime IS NOT NULL GROUP BY c.user.id, c.user.name")
+    List<com.lms.www.leadmanagement.dto.DailyUserReportDTO> getDailyUserReports(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
     List<CallRecord> findByUserIdOrderByStartTimeDesc(Long userId);
 
     List<CallRecord> findByUserIdInOrderByStartTimeDesc(List<Long> userIds);

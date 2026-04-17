@@ -228,7 +228,7 @@ public class LeadService {
                 .phoneNumber(lead.getMobile())
                 .callType("OUTGOING")
                 .status(status)
-                .note(note)
+                .notes(note)
                 .startTime(LocalDateTime.now(INDIA_ZONE))
                 .endTime(LocalDateTime.now(INDIA_ZONE))
                 .build();
@@ -329,6 +329,7 @@ public class LeadService {
 
     @Transactional
     public List<LeadDTO> bulkAssignLeads(List<Long> leadIds, Long userId) {
+        if (leadIds == null || leadIds.isEmpty()) return Collections.emptyList();
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Target user not found"));
 
@@ -370,6 +371,7 @@ public class LeadService {
 
     @Transactional
     public LeadDTO updateLead(Long id, LeadDTO leadDTO) {
+        if (id == null) throw new RuntimeException("Lead ID is required for update operation.");
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
 
@@ -386,14 +388,19 @@ public class LeadService {
         if (leadDTO.getNote() != null)
             lead.setNote(leadDTO.getNote());
 
+        if (lead == null) throw new RuntimeException("Failed to prepare lead for persistence.");
         return convertToDTO(leadRepository.save(lead));
     }
 
     @Transactional
     public LeadDTO updateNote(Long id, String note) {
+        if (id == null) throw new RuntimeException("Lead ID required for note update.");
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
-        User currentUser = userRepository.findById(getCurrentUserId()).orElse(null);
+        
+        Long userId = getCurrentUserId();
+        if (userId == null) throw new RuntimeException("Authentication failure: User ID not found.");
+        User currentUser = userRepository.findById(userId).orElse(null);
 
         lead.setNote(note);
         lead.setUpdatedBy(currentUser);
@@ -406,7 +413,9 @@ public class LeadService {
                     .createdBy(currentUser)
                     .createdAt(LocalDateTime.now())
                     .build();
-            leadNoteRepository.save(leadNote);
+            if (leadNote != null) {
+                leadNoteRepository.save(leadNote);
+            }
             if (lead.getNotes() == null)
                 lead.setNotes(new java.util.ArrayList<>());
             lead.getNotes().add(leadNote);
@@ -417,6 +426,7 @@ public class LeadService {
 
     @Transactional
     public LeadDTO updatePaymentLink(Long id, String paymentLink) {
+        if (id == null) throw new RuntimeException("Lead ID required for payment synchronization.");
         Lead lead = leadRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
         lead.setPaymentLink(paymentLink);

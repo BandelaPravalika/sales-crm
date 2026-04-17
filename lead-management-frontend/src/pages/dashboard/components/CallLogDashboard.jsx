@@ -106,7 +106,7 @@ const CallLogDashboard = ({ userId: externalUserId, hideHeader = false }) => {
         } else {
             if (audioObj) audioObj.pause();
             const token = localStorage.getItem('token');
-            const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/call-records/${id}/audio?token=${token}`;
+            const url = `${import.meta.env.VITE_API_BASE_URL || ''}/api/call-records/${id}/audio?token=${token}`;
             const audio = new Audio(url);
             audio.play().catch(err => toast.error("Could not play audio"));
             audio.onended = () => setPlayingId(null);

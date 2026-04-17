@@ -48,7 +48,7 @@ public class Attendance {
     private String ipHash;
     private String lastRequestId;
     
-    private LocalDateTime outsideStartTime; // For time-based jitter protection
+    private LocalDateTime outsideStartTime;
     private LocalDateTime breakStartTime; // For actual break tracking
     
     @Builder.Default

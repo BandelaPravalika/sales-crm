@@ -80,7 +80,7 @@ public class CallLogService {
                     .phoneNumber(phoneNumber)
                     .callType(callType)
                     .status(status)
-                    .note(note)
+                    .notes(note)
                     .duration(duration)
                     .startTime(effectiveStart)
                     .endTime(effectiveEnd)
@@ -109,9 +109,10 @@ public class CallLogService {
                 }
             }
 
-            CallRecord savedRecord = callRecordRepository.save(callRecord);
-            if (savedRecord == null) throw new RuntimeException("Failed to save call record in database");
-            return savedRecord;
+            if (callRecord == null) {
+                throw new RuntimeException("Failed to initialize interaction record");
+            }
+            return callRecordRepository.save(callRecord);
         } catch (Exception e) {
             Files.deleteIfExists(filePath);
             log.error("Rolling back audio file save for user {} due to DB error", userId);

@@ -19,9 +19,8 @@ const Sidebar = ({ isOpen, onClose, activeTab, onTabChange, role, isCollapsed, o
           // { id: 'onboard', label: 'Add User', icon: UserPlus },
           { id: 'revenue', label: 'Revenue Stats', icon: IndianRupee },
           { id: 'attendance-logs', label: 'Team Attendance', icon: FileText },
-          // { id: 'tickets', label: 'Support Queue', icon: LifeBuoy },
+          { id: 'call-logs', label: 'Team Calllogs', icon: PhoneIcon },
           { id: 'attendance-settings', label: 'Global Settings', icon: Settings },
-          // { id: 'revenue-targets', label: 'Revenue Targets', icon: Target },
         ];
       case 'MANAGER':
         return [

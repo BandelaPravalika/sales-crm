@@ -40,7 +40,8 @@ public class CallRecord {
     // Status like "FOLLOW_UP", "INTERESTED", etc.
     private String status;
 
-    private String note;
+    private String notes;
+    private LocalDateTime followUpDate;
 
     private String recordingPath;
 

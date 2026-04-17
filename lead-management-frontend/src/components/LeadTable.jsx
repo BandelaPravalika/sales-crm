@@ -7,6 +7,8 @@ import { toast } from 'react-toastify';
 import CallOutcomeModal from './CallOutcomeModal';
 import GeneratePaymentLinkModal from './GeneratePaymentLinkModal';
 import LeadEditModal from './LeadEditModal';
+import associateService from '../services/associateService';
+import { useAuth } from '../context/AuthContext';
 
 const LeadTable = ({ 
   leads, 
@@ -23,10 +25,45 @@ const LeadTable = ({
   currentUser = null 
 }) => {
   const { isDarkMode } = useTheme();
+  const { activeCall, startCall: logActiveCall } = useAuth();
   const [selectedOutcomeLead, setSelectedOutcomeLead] = useState(null);
   const [selectedLinkLead, setSelectedLinkLead] = useState(null);
   const [selectedEditLead, setSelectedEditLead] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isStartingCall, setIsStartingCall] = useState(false);
+
+  const handleStartCall = async (lead) => {
+    if (activeCall) {
+      toast.warning('Another interaction is currently active. Finish it first.');
+      return;
+    }
+
+    setIsStartingCall(true);
+    try {
+      const res = await associateService.startCall({
+        leadId: lead.id,
+        phoneNumber: lead.mobile
+      });
+      
+      const sessionData = {
+        callId: res.data.data.id,
+        leadId: lead.id,
+        leadName: lead.name,
+        phoneNumber: lead.mobile,
+        startTime: res.data.data.startTime
+      };
+      
+      logActiveCall(sessionData);
+      toast.success('Interaction sequence initiated');
+      
+      // Trigger native dialer
+      window.location.href = `tel:${lead.mobile}`;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to initiate interaction');
+    } finally {
+      setIsStartingCall(false);
+    }
+  };
 
   const isLocked = (status) => ['PAID', 'CONVERTED', 'EMI', 'SUCCESSFUL'].includes(status);
 
@@ -119,12 +156,10 @@ const LeadTable = ({
                 <td className="pe-4">
                   <div className="d-flex align-items-center justify-content-end gap-1">
                     <button 
-                      className="p-2 border-0 bg-transparent text-primary hover-scale transition-smooth rounded-circle hover:bg-primary hover:bg-opacity-10" 
-                      title="Record Call Outcome"
-                      onClick={() => {
-                        console.log("TeamNode: Triggering Call Outcome terminal for Lead:", lead.id);
-                        setSelectedOutcomeLead(lead);
-                      }}
+                      className={`p-2 border-0 bg-transparent transition-smooth rounded-circle hover-scale ${activeCall ? 'opacity-25 pointer-events-none' : 'text-primary hover:bg-primary hover:bg-opacity-10'}`} 
+                      title={activeCall ? "Interaction Blocked: Current Session Active" : "Initiate Terminal Connection"}
+                      disabled={isStartingCall || !!activeCall}
+                      onClick={() => handleStartCall(lead)}
                     >
                       <Phone size={15} />
                     </button>

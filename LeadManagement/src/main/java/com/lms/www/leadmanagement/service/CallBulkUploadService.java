@@ -49,7 +49,8 @@ public class CallBulkUploadService {
                     continue;
                 }
 
-                if (line.trim().isEmpty()) continue;
+                if (line.trim().isEmpty())
+                    continue;
                 total++;
 
                 // Regex to split by comma but ignore commas inside quotes
@@ -60,7 +61,7 @@ public class CallBulkUploadService {
                         String mobile = data[0].trim().replace("\"", "").replaceAll("[^0-9]", "");
                         String type = data[1].trim().replace("\"", "").toUpperCase(); // INCOMING / OUTGOING
                         String status = data[2].trim().replace("\"", "").toUpperCase(); // CONNECTED, BUSY, etc.
-                        
+
                         Integer duration = 0;
                         if (data.length >= 4) {
                             try {
@@ -71,7 +72,7 @@ public class CallBulkUploadService {
                         }
 
                         String note = (data.length >= 5) ? data[4].trim().replace("\"", "") : "Bulk Uploaded";
-                        
+
                         LocalDateTime timestamp = LocalDateTime.now();
                         if (data.length >= 6) {
                             try {
@@ -96,17 +97,20 @@ public class CallBulkUploadService {
                                 .phoneNumber(mobile)
                                 .callType(type)
                                 .status(status)
-                                .note(note)
+                                .notes(note)
                                 .duration(duration)
                                 .startTime(timestamp.minusSeconds(duration))
                                 .endTime(timestamp)
                                 .build();
 
-                        callRecordRepository.save(record);
+                        if (record != null) {
+                            callRecordRepository.save(record);
+                        }
                         success++;
                     } else {
                         failures++;
-                        errorList.add("Row " + rowNum + ": Insufficient columns (Expected Mobile, Type, Status, [Duration], [Note], [Timestamp])");
+                        errorList.add("Row " + rowNum
+                                + ": Insufficient columns (Expected Mobile, Type, Status, [Duration], [Note], [Timestamp])");
                     }
                 } catch (Exception e) {
                     failures++;
@@ -120,7 +124,7 @@ public class CallBulkUploadService {
         return BulkUploadResponseDTO.builder()
                 .totalProcessed(total)
                 .successCount(success)
-                .duplicateCount(0) // Logic for duplicates not defined for calls yet
+                .duplicateCount(0)
                 .failureCount(failures)
                 .errors(errorList)
                 .build();

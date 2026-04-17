@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import api from '../api/api';
 import authService from '../services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [activeCall, setActiveCall] = useState(JSON.parse(localStorage.getItem('activeCall')));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,14 +47,31 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.warn("Logout ping failed");
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('activeCall');
     setUser(null);
+    setActiveCall(null);
+  };
+
+  const startCall = (callData) => {
+    localStorage.setItem('activeCall', JSON.stringify(callData));
+    setActiveCall(callData);
+  };
+
+  const clearCall = () => {
+    localStorage.removeItem('activeCall');
+    setActiveCall(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginDemo, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginDemo, logout, loading, activeCall, startCall, clearCall }}>
       {children}
     </AuthContext.Provider>
   );

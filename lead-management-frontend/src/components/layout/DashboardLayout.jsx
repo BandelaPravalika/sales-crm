@@ -3,9 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import CallActiveRibbon from '../CallActiveRibbon';
+import CallOutcomeModal from '../CallOutcomeModal';
 
 const DashboardLayout = ({ children, activeTab, onTabChange, role }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, clearCall } = useAuth();
+  const { isDarkMode } = useTheme();
+  const [endingCallLead, setEndingCallLead] = useState(null);
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1200);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -49,6 +53,33 @@ const DashboardLayout = ({ children, activeTab, onTabChange, role }) => {
           {children}
         </div>
       </div>
+
+      <CallActiveRibbon 
+        onEndCall={(call) => setEndingCallLead({
+          id: call.leadId,
+          name: call.leadName,
+          mobile: call.phoneNumber,
+          activeCallId: call.callId
+        })}
+      />
+
+      {endingCallLead && (
+        <CallOutcomeModal 
+          isOpen={!!endingCallLead}
+          onClose={() => {
+            setEndingCallLead(null);
+            // Don't clear activeCall here so it stays in context until successfully logged
+          }}
+          lead={endingCallLead}
+          theme={isDarkMode ? 'dark' : 'light'}
+          onSubmit={async () => {
+             // This is used for the legacy/direct update path if needed
+             setEndingCallLead(null);
+             clearCall();
+             if (window.location.reload) window.location.reload(); // Refresh to sync stats
+          }}
+        />
+      )}
     </div>
   );
 };
