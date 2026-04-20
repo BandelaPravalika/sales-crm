@@ -278,7 +278,7 @@ public class LeadPaymentService {
     }
 
     public List<PaymentDTO> getPaymentHistoryForTL(String tlEmail) {
-        getFilteredPaymentHistoryForTL(email, null, null, null, null);
+        return getFilteredPaymentHistoryForTL(tlEmail, null, null, null, null);
     }
 
     @Transactional
