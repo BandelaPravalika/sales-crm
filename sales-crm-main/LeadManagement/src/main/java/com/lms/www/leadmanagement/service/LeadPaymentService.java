@@ -278,7 +278,7 @@ public class LeadPaymentService {
     }
 
     public List<PaymentDTO> getPaymentHistoryForTL(String tlEmail) {
-        return getFilteredPaymentHistoryForTL(tlEmail, null, null, null);
+        getFilteredPaymentHistoryForTL(email, null, null, null, null);
     }
 
     @Transactional
@@ -603,8 +603,8 @@ public class LeadPaymentService {
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new RuntimeException("Lead not found"));
 
-        BigDecimal totalAmountInput = data.containsKey("totalAmount") 
-                ? new BigDecimal(data.get("totalAmount").toString()) 
+        BigDecimal totalAmountInput = data.containsKey("totalAmount")
+                ? new BigDecimal(data.get("totalAmount").toString())
                 : amount;
 
         // Create the PAID record
@@ -673,27 +673,30 @@ public class LeadPaymentService {
 
     public Map<String, Object> getStudentFeeStructure(Long leadId) {
         Map<String, Object> response = new HashMap<>();
-        
+
         // 1. Get Student Fee Details
         StudentFee fee = studentFeeRepository.findByLeadId(leadId)
                 .orElse(null);
         response.put("fee", fee);
-        
+
         // 2. Get Payments (Installments)
         List<Payment> payments = paymentRepository.findByLeadIdIn(java.util.Collections.singletonList(leadId));
-        
+
         // Sort payments by due date
         if (payments != null) {
             payments.sort((p1, p2) -> {
-                if (p1.getDueDate() == null && p2.getDueDate() == null) return 0;
-                if (p1.getDueDate() == null) return 1;
-                if (p2.getDueDate() == null) return -1;
+                if (p1.getDueDate() == null && p2.getDueDate() == null)
+                    return 0;
+                if (p1.getDueDate() == null)
+                    return 1;
+                if (p2.getDueDate() == null)
+                    return -1;
                 return p1.getDueDate().compareTo(p2.getDueDate());
             });
         }
-        
+
         response.put("payments", payments);
-        
+
         return response;
     }
 }
