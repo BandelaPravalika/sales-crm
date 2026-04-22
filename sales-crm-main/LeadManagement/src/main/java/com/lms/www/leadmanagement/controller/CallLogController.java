@@ -166,7 +166,7 @@ public class CallLogController {
                     byte[] data = stream.readNBytes((int) contentLength);
                     if (data == null) throw new RuntimeException("Failed to read audio data");
                     return ResponseEntity.status(org.springframework.http.HttpStatus.PARTIAL_CONTENT)
-                            .contentType(MediaType.parseMediaType(contentType))
+                            .contentType(java.util.Objects.requireNonNull(MediaType.parseMediaType(contentType)))
                             .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileLength)
                             .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                             .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(contentLength))
@@ -175,14 +175,14 @@ public class CallLogController {
             }
 
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
+                    .contentType(java.util.Objects.requireNonNull(MediaType.parseMediaType(contentType)))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + path.getFileName() + "\"")
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                     .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileLength))
                     .body(resource);
         } catch (Exception e) {
-            return ResponseEntity.status(403)
-                    .contentType(MediaType.APPLICATION_JSON)
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .body(ApiResponse.error(e.getMessage()));
         }
     }

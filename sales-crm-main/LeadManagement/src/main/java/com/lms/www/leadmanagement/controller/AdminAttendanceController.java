@@ -29,9 +29,10 @@ public class AdminAttendanceController {
 
     @GetMapping("/summaries")
     public ResponseEntity<ApiResponse<List<AttendanceDTO>>> getSummaries(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getDailySummaries(date, userId, getCurrentUserId())));
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getDailySummaries(startDate, endDate, userId, getCurrentUserId())));
     }
 
     private Long getCurrentUserId() {

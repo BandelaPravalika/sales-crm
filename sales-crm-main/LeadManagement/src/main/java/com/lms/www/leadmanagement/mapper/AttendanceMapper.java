@@ -6,12 +6,13 @@ import com.lms.www.leadmanagement.dto.OfficeLocationDTO;
 import com.lms.www.leadmanagement.entity.AttendanceSession;
 import com.lms.www.leadmanagement.entity.AttendancePolicy;
 import com.lms.www.leadmanagement.entity.OfficeLocation;
+import java.time.LocalDate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AttendanceMapper {
 
-    public AttendanceDTO toDTO(AttendanceSession s, AttendancePolicy policy, int dayWorkMinutes, String dayWorkHours) {
+    public AttendanceDTO toDTO(AttendanceSession s, AttendancePolicy policy, int dayWorkMinutes, String dayWorkHours, LocalDate date) {
         if (s == null) return null;
 
         OfficeLocation office = s.getOffice();
@@ -29,6 +30,7 @@ public class AttendanceMapper {
                 .id(s.getId())
                 .userId(s.getUser().getId())
                 .userName(s.getUser().getName())
+                .date(date)
                 .checkInTime(s.getCheckInTime())
                 .checkOutTime(s.getCheckOutTime())
                 .status(s.getStatus().name())

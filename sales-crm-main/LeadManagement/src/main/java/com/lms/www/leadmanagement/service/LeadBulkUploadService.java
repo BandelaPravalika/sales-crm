@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Objects;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -141,7 +142,7 @@ public class LeadBulkUploadService {
                             .createdBy(creator)
                             .assignedTo(finalAssignee)
                             .build();
-                    leadRepository.save(lead);
+                    leadRepository.save(Objects.requireNonNull(lead));
                     success++;
                 } else {
                     failures++;

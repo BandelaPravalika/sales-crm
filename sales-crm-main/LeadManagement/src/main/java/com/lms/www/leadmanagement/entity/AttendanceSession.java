@@ -55,9 +55,18 @@ public class AttendanceSession {
     
     @Builder.Default
     private Integer totalWorkMinutes = 0;
-    
+
     @Builder.Default
     private Integer totalBreakMinutes = 0;
+
+    @Builder.Default
+    private Long totalWorkSeconds = 0L;
+
+    @Builder.Default
+    private Long totalBreakSeconds = 0L;
+
+    @Builder.Default
+    private Long unauthorizedOutsideSeconds = 0L;
 
     @Builder.Default
     private Integer outsideCount = 0;

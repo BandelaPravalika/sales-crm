@@ -15,6 +15,7 @@ public interface AttendanceDailyRepository extends JpaRepository<AttendanceDaily
     Optional<AttendanceDaily> findByUserIdAndDate(Long userId, LocalDate date);
 
     List<AttendanceDaily> findByDate(LocalDate date);
+    List<AttendanceDaily> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
     List<AttendanceDaily> findByUserIdOrderByDateDesc(Long userId);
     

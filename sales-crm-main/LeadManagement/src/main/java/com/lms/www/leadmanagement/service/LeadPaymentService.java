@@ -2,7 +2,6 @@ package com.lms.www.leadmanagement.service;
 
 import com.lms.www.leadmanagement.entity.Lead;
 import com.lms.www.leadmanagement.entity.Payment;
-import com.lms.www.leadmanagement.entity.LeadNote;
 import com.lms.www.leadmanagement.entity.StudentFee;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.entity.LeadTask;

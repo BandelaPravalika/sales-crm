@@ -1,6 +1,5 @@
 package com.lms.www.leadmanagement.config;
 
-import com.lms.www.leadmanagement.entity.Permission;
 import com.lms.www.leadmanagement.entity.Role;
 import com.lms.www.leadmanagement.entity.User;
 import com.lms.www.leadmanagement.entity.ReportScope;
@@ -44,15 +43,25 @@ public class DataInitializer implements CommandLineRunner {
         seedPermission("ASSIGN_LEADS", "Permission to assign leads to others");
 
         // Seed Roles with Clear-Cut Permission Mappings
-        seedRole("ADMIN", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS", "ASSIGN_LEADS"), ReportScope.ALL);
-        seedRole("MANAGER", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS", "ASSIGN_LEADS"), ReportScope.ALL);
-        seedRole("TEAM_LEADER", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.TEAM);
-        seedRole("ASSOCIATE", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "UPDATE_STATUS", "UPDATE_LEAD_STATUS", "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.OWN);
+        seedRole("ADMIN",
+                java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS",
+                        "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS",
+                        "ASSIGN_LEADS"),
+                ReportScope.ALL);
+        seedRole("MANAGER",
+                java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_TL", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS",
+                        "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD", "MANAGE_USERS",
+                        "ASSIGN_LEADS"),
+                ReportScope.ALL);
+        seedRole("TEAM_LEADER", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "ASSIGN_TO_ASSOCIATE", "UPDATE_STATUS",
+                "UPDATE_LEAD_STATUS", "SEND_PAYMENT", "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.TEAM);
+        seedRole("ASSOCIATE", java.util.Set.of("VIEW_LEADS", "CREATE_LEADS", "UPDATE_STATUS", "UPDATE_LEAD_STATUS",
+                "VIEW_REPORTS", "BULK_UPLOAD"), ReportScope.OWN);
         seedRole("USER", java.util.Set.of("VIEW_LEADS"), ReportScope.OWN);
 
         if (!userRepository.existsByEmail("admin@lms.com")) {
             Role adminRole = roleRepository.findByName("ADMIN")
-                .orElseGet(() -> roleRepository.save(new Role(null, "ADMIN", null)));
+                    .orElseGet(() -> roleRepository.save(new Role(null, "ADMIN", null)));
             User admin = User.builder()
                     .name("Admin")
                     .email("admin@lms.com")
@@ -68,14 +77,14 @@ public class DataInitializer implements CommandLineRunner {
         } else {
             // Update existing admin
             User admin = userRepository.findByEmail("admin@lms.com")
-                .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setName("System Admin");
-                    newUser.setEmail("admin@lms.com");
-                    newUser.setMobile("+91 00000 00000");
-                    newUser.setPassword(passwordEncoder.encode("admin123"));
-                    return userRepository.save(newUser);
-                });
+                    .orElseGet(() -> {
+                        User newUser = new User();
+                        newUser.setName("System Admin");
+                        newUser.setEmail("admin@lms.com");
+                        newUser.setMobile("+91 00000 00000");
+                        newUser.setPassword(passwordEncoder.encode("admin123"));
+                        return userRepository.save(newUser);
+                    });
             roleRepository.findByName("ADMIN").ifPresent(role -> {
                 admin.setRole(role);
                 admin.setReportScope(com.lms.www.leadmanagement.entity.ReportScope.ALL);
@@ -88,11 +97,12 @@ public class DataInitializer implements CommandLineRunner {
         // Cleanup: Remove permissions 6, 7, 8 (or specific names) if they exist
         java.util.List.of("UPDATE_PAYMENT", "VIEW_PROFILE", "VIEW_COURSES").forEach(pName -> {
             permissionRepository.findByName(pName).ifPresent(p -> {
-                // Remove from Roles first (implicitly handled by Cascade if mapped, but let's be safe)
+                // Remove from Roles first (implicitly handled by Cascade if mapped, but let's
+                // be safe)
                 roleRepository.findAll().forEach(r -> {
-                   if (r.getPermissions().remove(p)) {
-                       roleRepository.save(r);
-                   }
+                    if (r.getPermissions().remove(p)) {
+                        roleRepository.save(r);
+                    }
                 });
                 permissionRepository.delete(p);
                 permissionRepository.flush();
@@ -111,10 +121,12 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void seedRole(String name, java.util.Set<String> perms, com.lms.www.leadmanagement.entity.ReportScope defaultScope) {
+    private void seedRole(String name, java.util.Set<String> perms,
+            com.lms.www.leadmanagement.entity.ReportScope defaultScope) {
         java.util.Set<com.lms.www.leadmanagement.entity.Permission> dbPerms = perms.stream()
                 .map(p -> permissionRepository.findByName(p).orElseGet(() -> {
-                    // Create a default permission if not found, or throw an exception if that's the desired behavior
+                    // Create a default permission if not found, or throw an exception if that's the
+                    // desired behavior
                     // For now, let's assume it should exist, or create a placeholder.
                     // Based on the instruction, it implies handling non-existence gracefully.
                     // The provided snippet for line 72 suggests creating a default permission.
@@ -129,7 +141,8 @@ public class DataInitializer implements CommandLineRunner {
             roleRepository.save(Role.builder().name(name).permissions(dbPerms).build());
             roleRepository.flush();
         } else {
-            Role role = roleRepository.findByName(name).orElseThrow(() -> new RuntimeException("Role " + name + " not found after check"));
+            Role role = roleRepository.findByName(name)
+                    .orElseThrow(() -> new RuntimeException("Role " + name + " not found after check"));
             role.setPermissions(dbPerms);
             roleRepository.save(role);
             roleRepository.flush();

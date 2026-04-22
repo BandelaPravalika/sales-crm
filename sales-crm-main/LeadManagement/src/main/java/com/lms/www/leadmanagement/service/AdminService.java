@@ -24,8 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
-import com.lms.www.leadmanagement.service.DashboardStatsService;
-
 import java.util.List;
 import java.util.ArrayList;
 import java.util.*;
@@ -207,8 +205,11 @@ public class AdminService {
                     if (teamId != null) {
                         return u.getSupervisor() != null && u.getSupervisor().getId().equals(teamId);
                     } else if (managerId != null) {
-                        boolean reportsToManager = u.getSupervisor() != null && u.getSupervisor().getId().equals(managerId);
-                        boolean reportsToTLUnderManager = u.getSupervisor() != null && u.getSupervisor().getSupervisor() != null && u.getSupervisor().getSupervisor().getId().equals(managerId);
+                        boolean reportsToManager = u.getSupervisor() != null
+                                && u.getSupervisor().getId().equals(managerId);
+                        boolean reportsToTLUnderManager = u.getSupervisor() != null
+                                && u.getSupervisor().getSupervisor() != null
+                                && u.getSupervisor().getSupervisor().getId().equals(managerId);
                         return reportsToManager || reportsToTLUnderManager;
                     }
                     return true;
@@ -581,9 +582,12 @@ public class AdminService {
         userRepository.save(user);
     }
 
-    public Map<String, Object> getDashboardStats(LocalDateTime start, LocalDateTime end, User requester, Long targetUserId) {
-        if (start == null) start = LocalDate.now().atStartOfDay();
-        if (end == null) end = LocalDateTime.now();
+    public Map<String, Object> getDashboardStats(LocalDateTime start, LocalDateTime end, User requester,
+            Long targetUserId) {
+        if (start == null)
+            start = LocalDate.now().atStartOfDay();
+        if (end == null)
+            end = LocalDateTime.now();
 
         Map<String, Object> stats = new HashMap<>();
         User targetUser = requester; // Default to self
@@ -592,8 +596,8 @@ public class AdminService {
             User target = userRepository.findById(targetUserId).orElse(null);
             if (target != null) {
                 // Check if requester is allowed to view this user
-                boolean allowed = requester.getRole().getName().equals("ADMIN") || 
-                                isAncestorOrSelf(requester.getId(), target.getId());
+                boolean allowed = requester.getRole().getName().equals("ADMIN") ||
+                        isAncestorOrSelf(requester.getId(), target.getId());
                 if (allowed) {
                     targetUser = target;
                 }
@@ -601,9 +605,10 @@ public class AdminService {
         }
 
         // Use unified DashboardStatsService for core metrics
-        boolean includeSubordinates = (targetUserId == null); 
-        DashboardStatsDTO coreStats = dashboardStatsService.getStats(targetUser, start.toLocalDate(), end.toLocalDate(), includeSubordinates);
-        
+        boolean includeSubordinates = (targetUserId == null);
+        DashboardStatsDTO coreStats = dashboardStatsService.getStats(targetUser, start.toLocalDate(), end.toLocalDate(),
+                includeSubordinates);
+
         if (coreStats != null) {
             stats.put("presentCount", coreStats.getPresentCount());
             stats.put("absentCount", coreStats.getAbsentCount());
@@ -612,7 +617,7 @@ public class AdminService {
             stats.put("monthlyRevenue", coreStats.getMonthlyRevenue());
             stats.put("dailyRevenue", coreStats.getDailyRevenue());
             stats.put("expectedRevenue", coreStats.getExpectedRevenue()); // This is our 'Gap'
-            stats.put("pendingRevenue", coreStats.getExpectedRevenue());  // Legacy compatibility
+            stats.put("pendingRevenue", coreStats.getExpectedRevenue()); // Legacy compatibility
             stats.put("monthlyTarget", coreStats.getMonthlyTarget());
             stats.put("targetAchievement", coreStats.getTargetAchievement());
             stats.put("todayFollowups", coreStats.getTodayFollowups());
@@ -633,7 +638,7 @@ public class AdminService {
 
         stats.put("totalGlobalLeads", leadRepository.count());
         stats.put("celebrations", new ArrayList<>()); // Placeholder for legacy UI
-        
+
         return stats;
     }
 
@@ -645,7 +650,7 @@ public class AdminService {
 
     public java.util.List<java.util.Map<String, Object>> getMemberPerformanceFiltered(java.time.LocalDateTime start,
             java.time.LocalDateTime end, User requester, Long targetUserId) {
-        
+
         User filterUser = requester;
         if (targetUserId != null) {
             User target = userRepository.findById(targetUserId).orElse(null);

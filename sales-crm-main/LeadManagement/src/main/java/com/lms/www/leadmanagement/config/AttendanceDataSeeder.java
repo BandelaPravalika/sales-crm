@@ -6,12 +6,10 @@ import com.lms.www.leadmanagement.repository.AttendanceShiftRepository;
 import com.lms.www.leadmanagement.repository.OfficeLocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalTime;
 import java.util.List;
 
-@Component
+// @Component
 public class AttendanceDataSeeder implements CommandLineRunner {
 
     @Autowired
@@ -29,7 +27,7 @@ public class AttendanceDataSeeder implements CommandLineRunner {
     private void seedShifts() {
         if (shiftRepository.count() == 0) {
             System.out.println("SEEDING: Initializing operational attendance shifts...");
-            
+
             AttendanceShift dayShift = AttendanceShift.builder()
                     .name("Day Shift (Standard)")
                     .startTime(LocalTime.of(9, 0))
